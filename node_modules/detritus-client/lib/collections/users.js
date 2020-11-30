@@ -1,0 +1,20 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Users = void 0;
+const basecollection_1 = require("./basecollection");
+;
+/**
+ * Users Collection
+ * @category Collections
+ */
+class Users extends basecollection_1.BaseClientCollection {
+    insert(user) {
+        if (user.isMe || this.enabled) {
+            this.set(user.id, user);
+        }
+    }
+    get [Symbol.toStringTag]() {
+        return `Users (${this.size.toLocaleString()} items)`;
+    }
+}
+exports.Users = Users;

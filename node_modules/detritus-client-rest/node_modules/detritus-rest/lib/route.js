@@ -1,0 +1,22 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.replacePathParameters = exports.PathReplacementRegexp = exports.Route = void 0;
+class Route {
+    constructor(method, path = '', params = {}) {
+        this.method = method.toUpperCase();
+        this.path = path;
+        this.params = params;
+        this.urlPath = replacePathParameters(path, params);
+    }
+}
+exports.Route = Route;
+exports.PathReplacementRegexp = /:(\w+):?/g;
+function replacePathParameters(path, parameters = {}) {
+    return path.replace(exports.PathReplacementRegexp, (match, key) => {
+        if (key in parameters) {
+            return encodeURIComponent(String(parameters[key]));
+        }
+        return match;
+    });
+}
+exports.replacePathParameters = replacePathParameters;

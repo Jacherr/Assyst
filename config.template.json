@@ -1,0 +1,25 @@
+{
+    "database": {
+        "host": "",
+        "user": "",
+        "password": "",
+        "database": "",
+        "port": 1234
+    },
+    "logWebhooks": {
+        "commandErrors": "",
+        "shards": ""
+    },
+    "prefixOverride": "",
+    "tokens": {
+        "bot": "",
+        "fapi": ""
+    },
+    "evalurl": "",
+    "maryjaneurl": "",
+    "zx8Token": "",
+    "ownerOnly": false,
+    "packageWhitelist": [""],
+    "admins": [""],
+    "channelWhitelist": []
+}

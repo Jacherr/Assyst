@@ -1,0 +1,21 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Relationships = void 0;
+const basecollection_1 = require("./basecollection");
+;
+/**
+ * Relationships Collection
+ * (Bots cannot fill this)
+ * @category Collections
+ */
+class Relationships extends basecollection_1.BaseClientCollection {
+    insert(relationship) {
+        if (this.enabled) {
+            this.set(relationship.id, relationship);
+        }
+    }
+    get [Symbol.toStringTag]() {
+        return `Relationships (${this.size.toLocaleString()} items)`;
+    }
+}
+exports.Relationships = Relationships;

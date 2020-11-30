@@ -1,0 +1,25 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.VoiceCalls = void 0;
+const basecollection_1 = require("./basecollection");
+;
+/**
+ * VoiceCalls Collection, DM VoiceCalls
+ * (Bots cannot fill this)
+ * @category Collections
+ */
+class VoiceCalls extends basecollection_1.BaseClientCollection {
+    constructor() {
+        super(...arguments);
+        this.defaultKey = 'channelId';
+    }
+    insert(call) {
+        if (this.enabled) {
+            this.set(call.channelId, call);
+        }
+    }
+    get [Symbol.toStringTag]() {
+        return `VoiceCalls (${this.size.toLocaleString()} items)`;
+    }
+}
+exports.VoiceCalls = VoiceCalls;

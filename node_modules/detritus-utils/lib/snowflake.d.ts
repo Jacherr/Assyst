@@ -1,0 +1,20 @@
+export interface Snowflake {
+    id: string;
+    processId: number;
+    sequence: number;
+    timestamp: number;
+    workerId: number;
+}
+export interface SnowflakeGenerateOptions {
+    epoch?: number;
+    processId?: number;
+    sequence?: number;
+    timestamp?: number;
+    workerId?: number;
+}
+export declare function generate(options?: SnowflakeGenerateOptions): Snowflake;
+export interface SnowflakeDeconstructOptions {
+    epoch?: number;
+}
+export declare function deconstruct(id: string, options?: SnowflakeDeconstructOptions): Snowflake;
+export declare function timestamp(id: string, options?: SnowflakeDeconstructOptions): number;
