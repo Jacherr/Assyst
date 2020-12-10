@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "resolveJsonModule": true,
+    "target": "ES6",                          
+    "module": "commonjs",                       
+    "outDir": "./dist",                         
+    "strict": true,                           
+    "noImplicitAny": true,                    
+    "alwaysStrict": true,                     
+    "esModuleInterop": true,                  
+    "forceConsistentCasingInFileNames": true,
+    "rootDir": "."
+  },
+
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}
