@@ -9,7 +9,8 @@
     "alwaysStrict": true,                     
     "esModuleInterop": true,                  
     "forceConsistentCasingInFileNames": true,
-    "rootDir": "."
+    "rootDir": ".",
+    "skipLibCheck": true
   },
 
   "include": ["src"],

@@ -3,7 +3,7 @@
 while :
 do
         echo "Starting process..."
-	cd /home/assyst/dist/src
+	cd /home/james/Assyst/dist/src
         node run
         if [ $? -eq 0 ]
         then
