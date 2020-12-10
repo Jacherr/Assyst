@@ -1,11 +1,8 @@
 import fetch from 'node-fetch';
 
 export enum Endpoints {
-<<<<<<< HEAD
     DISCORD_TENOR_GIF = 'https://discord.com/api/v8/gifs/search?media_format=gif&provider=tenor&locale=en-US&q=:q',
     DISCORD_TENOR_GIF_SUGGESTIONS = 'https://discord.com/api/v8/gifs/suggest?q=:q',
-=======
->>>>>>> 60bda2ae8ce6f0f56586085f0bb01da24d7c04d4
     TSU = 'https://tsu.sh',
     RUST = 'https://play.rust-lang.org/execute'
 }
