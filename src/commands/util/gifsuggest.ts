@@ -26,6 +26,6 @@ export default class GifCommand extends BaseCommand {
       if(results.length === 0) {
           return this.error(context, 'No results found.')
       }
-      return context.reply(Markup.codeblock(results.join('\n')));
+      return context.editOrReply(Markup.codeblock(results.join('\n')));
     }
 }

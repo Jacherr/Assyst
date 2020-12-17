@@ -26,52 +26,6 @@ export class BaseFapiCommand extends BaseCommand {
     return true;
   }
 
-  public async getRecentAttachmentOrEmbed (msg: Message, amtOfMessages: number): Promise<string | undefined> {
-    if (msg.attachments.length > 0) {
-      return msg.attachments.first()?.url;
-    }
-    const messages: Array<Message> = await this.commandClient.rest.fetchMessages(msg.channelId, { limit: amtOfMessages });
-    if (!messages) {
-      return undefined;
-    }
-    let attachment: string | undefined;
-    for (const message of messages) {
-      if (message.attachments.length > 0) {
-        // types broke
-        // @ts-ignore
-        return message.attachments[0].url;
-      } else if (message.embeds.length > 0) {
-        // types broke
-        // @ts-ignore
-        const embed: MessageEmbed | undefined = message.embeds[0];
-        if (embed?.thumbnail) {
-          return embed.thumbnail.url;
-        } else if (embed?.image) {
-          return embed.image.url;
-        } else {
-          continue;
-        }
-      }
-    }
-    return attachment;
-  }
-
-  public async getUrlFromChannel (ctx: Command.Context, args?: string): Promise<string | undefined> {
-    let imageUrl: string | undefined;
-    if (args) {
-      imageUrl = args;
-      try {
-        const parsedURL: URL = new URL(<string>imageUrl);
-        imageUrl = parsedURL.origin + parsedURL.pathname + parsedURL.search;
-      } catch (e) {
-        return undefined;
-      }
-    } else {
-      imageUrl = await this.getRecentAttachmentOrEmbed(ctx.message, 50);
-    }
-    return imageUrl;
-  }
-
   public parseImageScriptArgs (args: string): [string, string] {
     const indexOfWhitespace = args.search(/\s/);
     if (indexOfWhitespace === -1) return [args, ''];

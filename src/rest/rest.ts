@@ -3,8 +3,9 @@ import fetch from 'node-fetch';
 export enum Endpoints {
     DISCORD_TENOR_GIF = 'https://discord.com/api/v8/gifs/search?media_format=gif&provider=tenor&locale=en-US&q=:q',
     DISCORD_TENOR_GIF_SUGGESTIONS = 'https://discord.com/api/v8/gifs/suggest?q=:q',
-    TSU = 'https://tsu.sh',
-    RUST = 'https://play.rust-lang.org/execute'
+    OCR = 'https://ocr--y21_.repl.co/?url=:url',
+    RUST = 'https://play.rust-lang.org/execute',
+    TSU = 'https://tsu.sh'
 }
 
 export interface RustData {
@@ -14,6 +15,10 @@ export interface RustData {
     edition?: string;
     mode?: string;
     tests?: boolean;
+}
+
+export async function ocrImage(url: string) {
+  return fetch(Endpoints.OCR.replace(':url', encodeURIComponent(url))).then(c => c.text());
 }
 
 export async function uploadToTsu (data: any, contentType: string) {
