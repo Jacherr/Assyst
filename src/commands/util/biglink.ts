@@ -14,16 +14,20 @@ function getProxyUrlFromEmbed(message: Message): string {
 async function generateBigLink(context: Context, url: string): Promise<string> {
   const initial = await context.reply({ embed: { image: { url } } });
   
-  let previous: string = getProxyUrlFromEmbed(initial);
+  let previous: string = getProxyUrlFromEmbed(initial), counter = 0;
   
-  while (true) {
+  // We use a counter variable to ensure it never edits more than 10 times
+  // This is to prevent infinite loops (in case it somehow never exceeds 2000 characters)
+  while (counter++ < 10) {
     const next = await initial.edit({ embed: { image: { url: previous } } });
     
     const url = getProxyUrlFromEmbed(next);
     if (url.length > 2000) break;
     previous = url;
   }
-  
+
+  await initial.delete();
+
   return previous;
 }
 
@@ -39,7 +43,8 @@ export default class BiglinkCommand extends BaseCommand {
     }
 
     async run (context: Context, args: CommandArgs) {
-        const url = await this.getUrlFromChannel(context, args.link);
+        const url = await this.getUrlFromChannel(context, args.link
+        if (!url) return context.editOrReply('URL not found');
         const link = await generateBigLink(context, url);
         return context.editOrReply(link);
     }
