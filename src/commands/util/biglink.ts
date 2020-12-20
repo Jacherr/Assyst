@@ -43,7 +43,7 @@ export default class BiglinkCommand extends BaseCommand {
     }
 
     async run (context: Context, args: CommandArgs) {
-        const url = await this.getUrlFromChannel(context, args.link
+        const url = await this.getUrlFromChannel(context, args.link);
         if (!url) return context.editOrReply('URL not found');
         const link = await generateBigLink(context, url);
         return context.editOrReply(link);
