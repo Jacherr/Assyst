@@ -8,7 +8,7 @@ interface CommandArgs {
 
 function getProxyUrlFromEmbed(message: Message): string {
   // We assert it because we know it will have a proxy url
-  return message.embeds.first().image.proxyUrl!;
+  return message.embeds.first()!.image.proxyUrl!;
 }
 
 async function generateBigLink(context: Context, url: string): Promise<string> {
@@ -40,7 +40,8 @@ export default class BiglinkCommand extends BaseCommand {
 
     async run (context: Context, args: CommandArgs) {
         if (!args.link) return context.reply('no link provided');
-        const link = await generateBigLink(context, args.link);
+        const url = await this.getUrlFromChannel(context, args.link);
+        const link = await generateBigLink(context, url);
         return context.editOrReply(link);
     }
 }
