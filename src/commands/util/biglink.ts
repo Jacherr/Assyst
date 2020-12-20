@@ -1,6 +1,6 @@
 import { BaseCommand } from '../basecommand';
 import { Context } from 'detritus-client/lib/command';
-import { Message } from 'detritus-client/structures';
+import { Message } from 'detritus-client/lib/structures';
 
 interface CommandArgs {
     link: string
@@ -10,7 +10,7 @@ function getProxyUrlFromEmbed(message: Message) {
   return message.embeds.first().image.proxyUrl;
 }
 
-function generateBigLink(context: Context, url: string): Promise<string> {
+async function generateBigLink(context: Context, url: string): Promise<string> {
   const initial = await context.reply({ embed: { image: { url } } });
   
   let previous: string = getProxyUrlFromEmbed(initial);
@@ -38,7 +38,7 @@ export default class BiglinkCommand extends BaseCommand {
     }
 
     async run (context: Context, args: CommandArgs) {
-        const link = await generateBigLink(args.link);
+        const link = await generateBigLink(context, args.link);
         return context.editOrReply(link);
     }
 }
