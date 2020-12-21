@@ -1,6 +1,8 @@
 import { BaseFapiCommand } from '../basefapicommand';
 import { Context, EditOrReply } from 'detritus-client/lib/command';
-import { ReturnTypes } from 'fapi-client/JS/src/types';
+import { Markup } from 'detritus-client/lib/utils'
+
+import { executeImageScript, IsapiData } from '../../rest/rest';
 
 export interface CommandArgs {
     args: string;
@@ -49,42 +51,50 @@ export default class ImageScriptTagCommand extends BaseFapiCommand {
 
       code.content = await this.injectImageScriptPackages(code.content);
 
-      let response: ReturnTypes.ImageScript;
+      let response: IsapiData;
 
       try {
-        response = await this.fapi.imageScript(code.content, {
-          avatar: context.user.avatarUrl + '?size=1024',
+        response = await executeImageScript(code.content, {
+          avatar: context.user.avatarUrl,
           args: tagArgs
         });
       } catch (e) {
         return context.editOrReply(e.message);
       }
-
-      const guildAttachmentLimitBytes = await context.rest.fetchGuild(<string> context.guildId).then(g => g.maxAttachmentSize);
-
+  
+      const guildAttachmentLimitBytes = await context.rest.fetchGuild(<string>context.guildId).then(g => g.maxAttachmentSize);
+  
       let output: EditOrReply = {};
-
+      output.content = "";
+  
       if (args.m) {
         output.content = [
-            `**CPU Time**: \`${response.cpuTime.toFixed(1)}ms\``,
-            `**Wall Time**: \`${response.wallTime.toFixed(1)}ms\``,
-            `**Memory Usage**: \`${response.memoryUsage.toFixed(1)} MB\``,
-            `**Image Size**: \`${(response.image.length / 1000 / 1000).toFixed(1)} MB\``
+          `**CPU Time**: \`${response.cpuTime.toFixed(1)}ms\``,
+          `**Wall Time**: \`${response.wallTime.toFixed(1)}ms\``,
         ].join('\n');
+        if (response.image) {
+          output.content += `\n**Image Size**: \`${(response.image.length / 1000 / 1000).toFixed(1)} MB\``;
+        }
       }
-
-      if (response.image.length > guildAttachmentLimitBytes || args.upload) {
-        output.content += '\n' + await this.uploadFile(response.image, `image/${response.format}`);
-      } else {
-        output = {
-          ...output,
-          file: {
-            filename: 'imagescript.' + response.format,
-            value: response.image
-          }
-        };
+  
+      if (response.text) {
+        output.content += `\n**Text**: ${Markup.codeblock(response.text)}`;
       }
-
+  
+      if (response.image) {
+        if (response.image.length > guildAttachmentLimitBytes || response.format === 'gif') {
+          output.content += '\n' + await this.uploadFile(response.image, `image/${response.format}`);
+        } else {
+          output = {
+            ...output,
+            file: {
+              filename: 'imagescript.' + response.format,
+              value: response.image
+            }
+          };
+        }
+      }
+  
       return context.editOrReply(output);
     }
 }

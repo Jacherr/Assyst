@@ -1,11 +1,24 @@
 import fetch from 'node-fetch';
 
+import { isapiAuth } from '../../config.json';
+
 export enum Endpoints {
     DISCORD_TENOR_GIF = 'https://discord.com/api/v8/gifs/search?media_format=gif&provider=tenor&locale=en-US&q=:q',
     DISCORD_TENOR_GIF_SUGGESTIONS = 'https://discord.com/api/v8/gifs/suggest?q=:q',
+    ISAPI = 'http://127.0.0.1:1234',
     OCR = 'https://ocr--y21_.repl.co/?url=:url',
     RUST = 'https://play.rust-lang.org/execute',
     TSU = 'https://tsu.sh'
+}
+
+export type Serializable = string | number | boolean
+
+export interface IsapiData {
+  image?: Buffer
+  text?: string
+  cpuTime: number
+  wallTime: number
+  format?: string
 }
 
 export interface RustData {
@@ -15,6 +28,32 @@ export interface RustData {
     edition?: string;
     mode?: string;
     tests?: boolean;
+}
+
+export async function executeImageScript(script: string, inject?: { [key: string]: Serializable }): Promise<IsapiData> {
+  return fetch(Endpoints.ISAPI, {
+    method: 'POST',
+    headers: {
+      authorization: isapiAuth
+    },
+    body: JSON.stringify({
+      script,
+      inject
+    })
+  }).then(async res => {
+    if(res.status === 400) {
+      throw new Error(await res.text());
+    } else {
+      const out: IsapiData = {
+        image: res.status === 200 ? await res.buffer() : undefined,
+        text: res.headers.get('x-text') ? res.headers.get('x-text')?.split(' ').map(a => String.fromCharCode(parseInt(a))).join('') : undefined,
+        cpuTime: parseInt(res.headers.get('x-cpu-time') as string),
+        wallTime: parseInt(res.headers.get('x-wall-time') as string),
+        format: res.headers.get('x-format') ?? undefined
+      }
+      return out;
+    }
+  })
 }
 
 export async function ocrImage(url: string) {

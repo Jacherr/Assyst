@@ -1,13 +1,11 @@
-import { BaseFapiCommand } from '../basefapicommand';
+import { BaseImageScriptCommand } from '../baseimagescriptcommand';
 import { Context, EditOrReply } from 'detritus-client/lib/command';
-import { parseCodeblocks } from '../../utils';
-import { Attachment } from 'detritus-client/lib/structures';
 
 export interface CommandArgs {
     args: string;
 }
 
-export default class ImageScriptCreateCommand extends BaseFapiCommand {
+export default class ImageScriptCreateCommand extends BaseImageScriptCommand {
     aliases = ['ist create']
 
     label = 'args'

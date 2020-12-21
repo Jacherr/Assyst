@@ -18,7 +18,7 @@ async function generateBigLink(context: Context, url: string): Promise<string> {
   
   // We use a counter variable to ensure it never edits more than 10 times
   // This is to prevent infinite loops (in case it somehow never exceeds 2000 characters)
-  while (counter++ < 10) {
+  while (counter++ < 25) {
     const next = await initial.edit({ embed: { image: { url: previous } } });
     
     const url = getProxyUrlFromEmbed(next);
@@ -46,6 +46,6 @@ export default class BiglinkCommand extends BaseCommand {
         const url = await this.getUrlFromChannel(context, args.link);
         if (!url) return context.editOrReply('URL not found');
         const link = await generateBigLink(context, url);
-        return context.editOrReply(link);
+        return context.editOrReply(`<${link}>`);
     }
 }

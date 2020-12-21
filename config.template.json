@@ -18,6 +18,7 @@
     "evalurl": "",
     "maryjaneurl": "",
     "zx8Token": "",
+    "isapiAuth": "",
     "ownerOnly": false,
     "packageWhitelist": [""],
     "admins": [""],

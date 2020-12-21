@@ -1,11 +1,11 @@
-import { BaseFapiCommand } from '../basefapicommand';
+import { BaseImageScriptCommand } from '../baseimagescriptcommand';
 import { Context, EditOrReply } from 'detritus-client/lib/command';
 
 export interface CommandArgs {
     name: string;
 }
 
-export default class ImageScriptDeleteCommand extends BaseFapiCommand {
+export default class ImageScriptDeleteCommand extends BaseImageScriptCommand {
     aliases = ['ist delete']
 
     label = 'name'

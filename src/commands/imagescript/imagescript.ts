@@ -1,64 +1,70 @@
-import { BaseFapiCommand } from '../basefapicommand';
+import { BaseImageScriptCommand } from '../baseimagescriptcommand';
 import { Context, EditOrReply } from 'detritus-client/lib/command';
-import { parseCodeblocks } from '../../utils';
-import { Attachment } from 'detritus-client/lib/structures';
-import { ReturnTypes } from 'fapi-client/JS/src/types';
+import { executeImageScript, IsapiData } from '../../rest/rest';
+import { Markup } from 'detritus-client/lib/utils';
 
 export interface CommandArgs {
-    code: string;
-    m: boolean
+  code: string;
+  m: boolean
 }
 
-export default class ImageScriptCommand extends BaseFapiCommand {
-    aliases = ['is']
+export default class ImageScriptCommand extends BaseImageScriptCommand {
+  aliases = ['is']
 
-    args = [
-      {
-        name: 'm',
-        type: Boolean,
-        default: false
-      }
-    ]
+  args = [
+    {
+      name: 'm',
+      type: Boolean,
+      default: false
+    }
+  ]
 
-    label = 'code'
+  label = 'code'
 
-    name = 'imagescript'
+  name = 'imagescript'
 
-    metadata = {
-      description: 'Run ImageScript scripts',
-      examples: ['const image = Image.new(1000, 1000, 0xffffff)'],
-      usage: '[script]'
+  metadata = {
+    description: 'Run ImageScript scripts',
+    examples: ['const image = Image.new(1000, 1000, 0xffffff)'],
+    usage: '[script]'
+  }
+
+  async run(context: Context, args: CommandArgs) {
+    let code = await this.loadCode(context, args.code);
+
+    code = await this.injectImageScriptPackages(code);
+
+    let response: IsapiData;
+
+    try {
+      response = await executeImageScript(code, {
+        avatar: context.user.avatarUrl
+      });
+    } catch (e) {
+      return context.editOrReply(e.message);
     }
 
-    async run (context: Context, args: CommandArgs) {
-      let code = await this.loadCode(context, args.code);
+    const guildAttachmentLimitBytes = await context.rest.fetchGuild(<string>context.guildId).then(g => g.maxAttachmentSize);
 
-      code = await this.injectImageScriptPackages(code);
+    let output: EditOrReply = {};
+    output.content = "";
 
-      let response: ReturnTypes.ImageScript;
-
-      try {
-        response = await this.fapi.imageScript(code, {
-          avatar: context.user.avatarUrl + '?size=1024'
-        });
-      } catch (e) {
-        return context.editOrReply(e.message);
+    if (args.m) {
+      output.content = [
+        `**CPU Time**: \`${response.cpuTime.toFixed(1)}ms\``,
+        `**Wall Time**: \`${response.wallTime.toFixed(1)}ms\``,
+      ].join('\n');
+      if (response.image) {
+        output.content += `\n**Image Size**: \`${(response.image.length / 1000 / 1000).toFixed(1)} MB\``;
       }
+    }
 
-      const guildAttachmentLimitBytes = await context.rest.fetchGuild(<string> context.guildId).then(g => g.maxAttachmentSize);
+    if (response.text) {
+      output.content += `${Markup.codeblock(response.text.slice(0, 1900))}`;
+    }
 
-      let output: EditOrReply = {};
-
-      if (args.m) {
-        output.content = [
-            `**CPU Time**: \`${response.cpuTime.toFixed(1)}ms\``,
-            `**Wall Time**: \`${response.wallTime.toFixed(1)}ms\``,
-            `**Memory Usage**: \`${response.memoryUsage.toFixed(1)} MB\``,
-            `**Image Size**: \`${(response.image.length / 1000 / 1000).toFixed(1)} MB\``
-        ].join('\n');
-      }
-
-      if (response.image.length > guildAttachmentLimitBytes) {
+    if (response.image) {
+      if (response.image.length > guildAttachmentLimitBytes || response.format === 'gif') {
         output.content += '\n' + await this.uploadFile(response.image, `image/${response.format}`);
       } else {
         output = {
@@ -69,7 +75,8 @@ export default class ImageScriptCommand extends BaseFapiCommand {
           }
         };
       }
-
-      return context.editOrReply(output);
     }
+
+    return context.editOrReply(output);
+  }
 }
