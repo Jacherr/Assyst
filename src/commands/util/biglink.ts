@@ -24,7 +24,7 @@ async function generateBigLink(context: Context, url: string): Promise<string> {
   // We use a counter variable to ensure it never edits more than 10 times
   // This is to prevent infinite loops (in case it somehow never exceeds 2000 characters)
   while (counter++ < 25) {
-    await new Promise((r) => setTimeout(r, 5000));
+    await new Promise((r) => setTimeout(r, 1000));
     const next = await initial.edit({ embed: { description: previous.length + '/2000 characters', image: { url: previous } } });
     
     const url = getProxyUrlFromEmbed(next);
