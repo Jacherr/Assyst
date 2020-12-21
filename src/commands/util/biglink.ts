@@ -6,17 +6,17 @@ interface CommandArgs {
     link: string
 }
 
-function getProxyUrlFromEmbed(message: Message): string {
+function getProxyUrlFromEmbed(message: Message): string | undefined {
   // We assert it because we know it will have a proxy url
-  return message.embeds.first()!.image!.proxyUrl!;
+  return message.embeds.first()?.image?.proxyUrl;
 }
 
 async function generateBigLink(context: Context, url: string): Promise<string> {
   const initial = await context.reply({ embed: { image: { url } } });
   
-  let previous: string = getProxyUrlFromEmbed(initial), counter = 0;
+  let previous: string | undefined = getProxyUrlFromEmbed(initial), counter = 0;
   
-  if(previous.length > 2000) {
+  if(!previous || previous.length > 2000) {
     await initial.delete();
     return url;
   }
@@ -28,7 +28,7 @@ async function generateBigLink(context: Context, url: string): Promise<string> {
     const next = await initial.edit({ embed: { description: previous.length + '/2000 characters', image: { url: previous } } });
     
     const url = getProxyUrlFromEmbed(next);
-    if (url.length > 2000) break;
+    if (!url || url.length > 2000) break;
     previous = url;
   }
 
