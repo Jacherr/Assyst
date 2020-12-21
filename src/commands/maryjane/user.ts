@@ -25,7 +25,6 @@ export default class MaryjaneUserCommand extends BaseCommand {
       const user = await this.assyst.maryjane.user(args.userId?.replace(/[<>@!]/g, '') || context.userId);
 
       const kvList = generateKVList([
-        ['ID', user.id],
         ['Tag', user.tag],
         ['Bot', String(user.bot)],
         ['Flags', String(user.flags)],
@@ -35,6 +34,6 @@ export default class MaryjaneUserCommand extends BaseCommand {
         ['Premium_Since', user.premiumsince ? new Date(user.premiumsince).toLocaleString() : 'N/A']
       ])
 
-      return context.editOrReply(Markup.codeblock(kvList, { language: 'ml' }))
+      return context.editOrReply(`**Information for user ${user.id}** ${Markup.codeblock(kvList, { language: 'ml' })}`)
     }
 }
