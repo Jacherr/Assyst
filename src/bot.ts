@@ -88,9 +88,11 @@ bot.on('commandDelete', ({ reply }) => {
   reply.delete();
 });
 
+const interval = 15000;
+
 setInterval(async () => {
   const allReminders = await bot.database.getAllReminders();
-  const upcomingReminders = allReminders.filter((r) => BigInt(r.timestamp) < BigInt(Date.now() + 60000));
+  const upcomingReminders = allReminders.filter((r) => BigInt(r.timestamp) < BigInt(Date.now() + 15000));
   upcomingReminders.forEach(r => {
     setTimeout(async () => {
       try {
@@ -112,7 +114,7 @@ setInterval(async () => {
       bot.database.deleteReminder(r.message_id);
     }, parseInt(r.timestamp) - Date.now())
   })
-}, 60000);
+}, 15000);
 
 (async () => {
   const cluster = bot.client as ClusterClient;

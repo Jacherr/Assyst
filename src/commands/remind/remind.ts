@@ -23,6 +23,8 @@ export default class GifCommand extends BaseCommand {
       const timestamp = parseTimestamp(args.args, 157766400000);
       if(timestamp === 0) {
         return this.error(context, 'No valid time was found. Use the format [val][unit], e.g. 3days 3hours');
+      } else if(timestamp < 60000) {
+        return this.error(context, 'Time must be at least 1 minute.');
       }
 
       const userReminders = await this.assyst.database.getUserReminders(context.userId);
