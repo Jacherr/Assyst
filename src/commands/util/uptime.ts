@@ -1,7 +1,7 @@
 import { BaseCommand } from '../basecommand';
 import { Context } from 'detritus-client/lib/command';
 
-import { elapsed } from '../../utils';
+import { elapsed, formatElapsed } from '../../utils';
 
 export default class UptimeCommand extends BaseCommand {
     aliases = ['up']
@@ -14,8 +14,8 @@ export default class UptimeCommand extends BaseCommand {
 
     async run (context: Context) {
       const uptimeMillis = process.uptime() * 1000; // ms
-      const uptime = elapsed(uptimeMillis);
+      const uptime = formatElapsed(elapsed(uptimeMillis));
 
-      return context.editOrReply(`Uptime: ${uptime.days}d ${uptime.hours}h ${uptime.minutes}m ${uptime.seconds}s`);
+      return context.editOrReply(`Uptime: ${uptime}`);
     }
 }

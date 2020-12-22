@@ -1,6 +1,7 @@
 export type Serializable = string | number | boolean;
 
 export const CODEBLOCK_REGEX = new RegExp('^\\s*```\\w*|```\\s*$', 'g');
+export const TIME_REGEX = /(\d+)([a-z]+)/gi
 
 export interface TableData {
   header: Array<Serializable>;
@@ -8,11 +9,96 @@ export interface TableData {
   offset?: number;
 }
 
-interface ElapsedTime {
+export interface ElapsedTime {
   seconds: number,
   minutes: number,
   hours: number,
-  days: number
+  days: number,
+  years: number
+}
+
+const enum Units {
+  SECOND = 1000,
+  MINUTE = SECOND * 60,
+  HOUR = MINUTE * 60,
+  DAY = HOUR * 24,
+  WEEK = DAY * 7,
+  YEAR = DAY * 365.25
+}
+
+const multipliers = new Map([
+  ['s', Units.SECOND],
+  ['sec', Units.SECOND],
+  ['m', Units.MINUTE],
+  ['min', Units.MINUTE],
+  ['h', Units.HOUR],
+  ['hour', Units.HOUR],
+  ['hours', Units.HOUR],
+  ['d', Units.DAY],
+  ['days', Units.DAY],
+  ['day', Units.DAY],
+  ['y', Units.YEAR],
+  ['years', Units.YEAR],
+  ['year', Units.YEAR]
+]);
+
+export function parseTimestamp(input: string, max?: number): number {
+  let total = 0;
+
+  for (const [, value, unit] of input.matchAll(TIME_REGEX)) {
+    const multiplier = multipliers.get(unit.toLowerCase());
+
+    const valueNum = Number(value);
+
+    if (multiplier) {
+      const cur = valueNum * multiplier;
+      if (max && total + cur > max) return max;
+
+      total += cur;
+    }
+  }
+
+  return total;
+}
+
+export function elapsed(ms: number): ElapsedTime {
+  let res: ElapsedTime = {
+    years: 0,
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0
+  };
+
+  res.years = Math.floor(ms / Units.YEAR);
+  ms -= res.years * Units.YEAR;
+
+  res.days = Math.floor(ms / Units.DAY);
+  ms -= res.days * Units.DAY;
+
+  res.hours = Math.floor(ms / (Units.HOUR));
+  ms -= res.hours * Units.HOUR;
+
+  res.minutes = Math.floor(ms / Units.MINUTE);
+  ms -= res.minutes * Units.MINUTE;
+
+  res.seconds = Math.floor(ms / Units.SECOND);
+  ms -= res.seconds * Units.SECOND;
+
+  return res;
+}
+
+export function formatElapsed(elapsed: ElapsedTime) {
+  let out = '';
+  if(elapsed.years > 0) out += `${elapsed.years} year${elapsed.years > 1 ? 's' : ''}, `;
+  if(elapsed.days > 0) out += `${elapsed.days} day${elapsed.days > 1 ? 's' : ''}, `;
+  if(elapsed.hours > 0) out += `${elapsed.hours} hour${elapsed.hours > 1 ? 's' : ''}, `
+  if(elapsed.minutes > 0) out += `${elapsed.minutes} minute${elapsed.minutes > 1 ? 's' : ''}, `
+  if(elapsed.seconds > 0) out += `${elapsed.seconds} second${elapsed.seconds > 1 ? 's' : ''}`
+
+  out = out.trim();
+  if(out.endsWith(',')) out = out.slice(0, out.length - 1);
+  return out;
 }
 
 export function generateKVList(items: [string, string][]) {
@@ -72,12 +158,6 @@ export function splitArray<T = any>(array: Array<T>, size: number): Array<Array<
     out.push(array.slice(i, i + size));
   }
   return out;
-}
-
-export function elapsed(value: number): ElapsedTime {
-  const date: Date = new Date(value);
-  const elapsed = { days: date.getUTCDate() - 1, hours: date.getUTCHours(), minutes: date.getUTCMinutes(), seconds: date.getUTCSeconds() };
-  return elapsed;
 }
 
 export function flat<T = any>(arr: Array<T>, sizePerElement: number): Array<Array<T>> {

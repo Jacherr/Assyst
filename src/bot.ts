@@ -88,6 +88,24 @@ bot.on('commandDelete', ({ reply }) => {
   reply.delete();
 });
 
+setInterval(async () => {
+  const allReminders = await bot.database.getAllReminders();
+  const upcomingReminders = allReminders.filter((r) => BigInt(r.timestamp) < BigInt(Date.now() + 60000));
+  upcomingReminders.forEach(r => {
+    setTimeout(() => {
+      bot.rest.createMessage(r.channel_id, {
+        content: `Reminder: ${r.message}`,
+        messageReference: {
+          guildId: r.guild_id,
+          channelId: r.channel_id,
+          messageId: r.message_id
+        }
+      });
+      bot.database.deleteReminder(r.message_id);
+    }, parseInt(r.timestamp) - Date.now())
+  })
+}, 60000);
+
 (async () => {
   const cluster = bot.client as ClusterClient;
   process.title = `Assyst Cluster ${cluster.manager?.clusterId}, Shards ${cluster.shardStart}-${cluster.shardEnd}`;

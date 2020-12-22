@@ -34,14 +34,8 @@ export class BaseCommand extends Command.Command {
     return this.commandClient as Assyst;
   }
 
-  async error (context: Command.Context, content: string) {
-    return context.editOrReply({
-      embed: {
-        color: EmbedColors.ERROR,
-        title: '⚠️ Command Error',
-        description: content.slice(0, 1500)
-      }
-    });
+  error (context: Command.Context, content: string) {
+    return context.editOrReply(`⚠️ \`${content}\``);
   }
 
   public async getRecentAttachmentOrEmbed (msg: Message, amtOfMessages: number): Promise<string | undefined> {

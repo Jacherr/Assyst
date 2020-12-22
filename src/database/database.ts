@@ -12,10 +12,20 @@ export interface DatabaseAuth {
     port: number
 }
 
+export interface Reminder {
+  timestamp: string,
+  message: string,
+  guild_id: string,
+  user_id: string,
+  channel_id: string,
+  message_id: string
+}
+
 export enum TableNames {
     IMAGESCRIPT_PACKAGES = 'is_packages',
     IMAGESCRIPT_TAGS = 'is_tags',
-    PREFIXES = 'prefixes'
+    PREFIXES = 'prefixes',
+    REMINDERS = 'reminders'
 }
 
 export class Database {
@@ -146,5 +156,21 @@ export class Database {
     public async editGuildPrefix(guildId: string, prefix: string): Promise<void> {
       this.guildPrefixes.set(guildId, prefix);
       await this.sql(`update ${TableNames.PREFIXES} set prefix = $1 where guild = $2`, [prefix, guildId]);
+    }
+
+    public setReminder(timestamp: BigInt, message: string, userId: string, guildId: string, channelId: string, messageId: string) {
+      return this.sql(`insert into ${TableNames.REMINDERS}(user_id, timestamp, guild_id, channel_id, message_id, message) values($1, $2, $3, $4, $5, $6)`, [userId, timestamp, guildId, channelId, messageId, message])
+    }
+
+    public getUserReminders(userId: string): Promise<Reminder[]> {
+      return this.sql(`select * from ${TableNames.REMINDERS} where user_id = $1`, [userId]).then(r => r.rows);
+    }
+
+    public getAllReminders(): Promise<Reminder[]> {
+      return this.sql(`select * from ${TableNames.REMINDERS}`).then(r => r.rows);
+    }
+
+    public deleteReminder(messageId: string) {
+      return this.sql(`delete from ${TableNames.REMINDERS} where message_id = $1`, [messageId])
     }
 }
