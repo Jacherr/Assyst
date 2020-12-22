@@ -92,15 +92,23 @@ setInterval(async () => {
   const allReminders = await bot.database.getAllReminders();
   const upcomingReminders = allReminders.filter((r) => BigInt(r.timestamp) < BigInt(Date.now() + 60000));
   upcomingReminders.forEach(r => {
-    setTimeout(() => {
-      bot.rest.createMessage(r.channel_id, {
-        content: `Reminder: ${r.message}`,
-        messageReference: {
-          guildId: r.guild_id,
-          channelId: r.channel_id,
-          messageId: r.message_id
-        }
-      });
+    setTimeout(async () => {
+      try {
+        await bot.rest.createMessage(r.channel_id, {
+          content: `Reminder: ${r.message}`,
+          messageReference: {
+            guildId: r.guild_id,
+            channelId: r.channel_id,
+            messageId: r.message_id
+          }
+        });
+      } catch(e) {
+        try {
+          await bot.rest.createDm({
+            recipientId: r.user_id
+          }).then(c => c.createMessage(`Reminder: ${r.message}`));
+        } catch {}
+      }
       bot.database.deleteReminder(r.message_id);
     }, parseInt(r.timestamp) - Date.now())
   })
