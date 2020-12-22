@@ -32,7 +32,6 @@ export default class ExecCommand extends BaseAdminCommand {
             new Promise((resolve, reject) => {
                 exec(script, (error, stdout, stderr) => {
                     if (error) reject(new Error(error.message));
-                    if (stderr && !stdout) reject(new Error(stderr));
                     resolve(stdout);
                 })
             }),

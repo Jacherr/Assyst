@@ -6,14 +6,15 @@ export interface CommandArgs {
     args: string
 }
 
-export default class GifCommand extends BaseCommand {
+export default class RemindCommand extends BaseCommand {
     label = 'args'
 
     name = 'remind'
 
     metadata = {
       description: 'Set a reminder',
-      examples: ['2h yeah', '30m 30s yeah']
+      examples: ['2h yeah', '30m 30s yeah'],
+      usage: "[time] <message>"
     }
 
     async run (context: Context, args: CommandArgs) {

@@ -165,3 +165,7 @@ export function flat<T = any>(arr: Array<T>, sizePerElement: number): Array<Arra
   for (let i = 0; i < arr.length; i += sizePerElement) res.push(arr.slice(i, sizePerElement + i));
   return res;
 }
+
+export function formatMessageLink(guildId: string, channelId: string, messageId: string) {
+  return `https://discord.com/channels/${guildId}/${channelId}/${messageId}`
+}
