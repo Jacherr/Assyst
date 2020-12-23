@@ -33,6 +33,8 @@ export default class RemindCommand extends BaseCommand {
         return this.error(context, 'You already have a maximum of 25 reminders set.');
       } else if(userReminders.map(r => r.message_id).includes(context.messageId)) {
         return this.error(context, 'You cannot edit messages to produce multiple reminders.');
+      } else if(userReminders.map(r => parseInt(r.timestamp)).some(t => Math.abs(t - (timestamp + Date.now())) < 15000)) {
+        return this.error(context, 'You cannot create reminders with end times within 15 seconds of each other.');
       }
 
       const endDate = BigInt(Date.now()) + BigInt(timestamp);
