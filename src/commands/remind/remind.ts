@@ -31,6 +31,8 @@ export default class RemindCommand extends BaseCommand {
       const userReminders = await this.assyst.database.getUserReminders(context.userId);
       if(userReminders.length > 25) {
         return this.error(context, 'You already have a maximum of 25 reminders set.');
+      } else if(userReminders.map(r => r.message_id).includes(context.messageId)) {
+        return this.error(context, 'You cannot edit messages to produce multiple reminders.');
       }
 
       const endDate = BigInt(Date.now()) + BigInt(timestamp);
