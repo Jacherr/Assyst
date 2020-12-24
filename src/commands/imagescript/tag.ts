@@ -76,7 +76,7 @@ export default class ImageScriptTagCommand extends BaseFapiCommand {
           output.content += `\n**Image Size**: \`${(response.image.length / 1000 / 1000).toFixed(1)} MB\``;
         }
       }
-  
+
       if (response.text) {
         output.content += `\n**Text**: ${Markup.codeblock(response.text)}`;
       }
@@ -94,7 +94,8 @@ export default class ImageScriptTagCommand extends BaseFapiCommand {
           };
         }
       }
-  
-      return context.editOrReply(output);
+
+      await context.editOrReply(output);
+      this.assyst.database.setImageScriptTagUses(code.name, code.uses + 1)
     }
 }

@@ -6,6 +6,7 @@ import fetch from 'node-fetch';
 import { Markup } from 'detritus-client/lib/utils';
 import { HttpMethods } from 'fapi-client/JS/src/types';
 import { evalUrl } from '../../../config.json';
+import { parseCodeblocks } from '../../utils';
 
 export interface CommandArgs {
     code: string
@@ -23,7 +24,7 @@ export default class EvalCommand extends BaseCommand {
     }
 
     async run (context: Context, args: CommandArgs) {
-      let result = await this.runCode(args.code || 'undefined');
+      let result = await this.runCode(parseCodeblocks(args.code || 'undefined'));
 
       try {
         result = JSON.parse(result);

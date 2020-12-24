@@ -10,3 +10,12 @@ export interface ImageScriptPackage {
     content: string
     owner: string
 }
+
+export interface Reminder {
+    timestamp: string,
+    message: string,
+    guild_id: string,
+    user_id: string,
+    channel_id: string,
+    message_id: string
+  }

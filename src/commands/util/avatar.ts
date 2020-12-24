@@ -31,7 +31,7 @@ export default class AvatarCommand extends BaseCommand {
             user = context.user;
         }
 
-        let avatar = user.avatarUrl;
+        let avatar = user.avatarUrl + '?size=2048';
         let ext = avatar.split('.').pop();
         let buffer = await fetch(avatar).then(x => x.buffer());
 

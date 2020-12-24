@@ -24,7 +24,7 @@ export default class RemindListCommand extends BaseCommand {
             } else {
                 message = r.message;
             }
-            return `In ${formatElapsed(elapsed(parseInt(r.timestamp) - Date.now()))}: [${message}](${formatMessageLink(r.guild_id, r.channel_id, r.message_id)})`
+            return `ID: \`${r.message_id}\`\nIn ${formatElapsed(elapsed(parseInt(r.timestamp) - Date.now()))}: [${message}](${formatMessageLink(r.guild_id, r.channel_id, r.message_id)})\n`
         })
         const pagedReminders = flat(formattedReminders, 10);
         const pages = pagedReminders.map(p => Object({
