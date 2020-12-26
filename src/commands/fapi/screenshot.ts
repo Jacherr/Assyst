@@ -33,9 +33,7 @@ export default class ScreenshotCommand extends BaseFapiCommand {
       const c = await context.rest.fetchChannel(context.channelId);
       const url = await this.getUrlFromChannel(context, args.url);
 
-      if(!url) return this.error(context, 'No URL found.')
-
-      const res = await this.assyst.screenshot(url, c.nsfw, args.wait);
+      const res = await this.assyst.screenshot(url ?? args.url, c.nsfw, args.wait);
 
       return context.editOrReply({
         file: {
