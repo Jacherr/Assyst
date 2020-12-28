@@ -18,4 +18,9 @@ export interface Reminder {
     user_id: string,
     channel_id: string,
     message_id: string
-  }
+}
+
+export interface Gif {
+    buffer: Buffer,
+    keywords: string
+}

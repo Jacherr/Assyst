@@ -1,8 +1,7 @@
 import { Pool, QueryResult } from 'pg';
-import { BaseCollection, BaseCollectionOptions } from 'detritus-client/lib/collections';
 
 import { Assyst } from '../assyst';
-import { ImageScriptTag, ImageScriptPackage, Reminder } from './types';
+import { ImageScriptTag, ImageScriptPackage, Reminder, Gif } from './types';
 
 export interface DatabaseAuth {
     host: string,
@@ -22,6 +21,7 @@ export enum TableNames {
 export class Database {
     private assyst: Assyst;
     private db: Pool
+    private gifs: Gif[] | null = null;
 
     constructor (assyst: Assyst, db: DatabaseAuth) {
       this.assyst = assyst;
@@ -111,5 +111,48 @@ export class Database {
 
     public deleteReminder(messageId: string) {
       return this.sql(`delete from ${TableNames.REMINDERS} where message_id = $1`, [messageId])
+    }
+
+    public addGifToCatalogue(buffer: Buffer, keywords: string) {
+      if(this.gifs) this.gifs.push({
+        buffer,
+        keywords
+      })
+      return this.sql(`insert into gifs(buffer, keywords) values($1, $2)`, [buffer, keywords]);
+    }
+
+    public async fetchGifsFromKeywords(keywords: string[]) {
+      const gifs = await this.fetchAllGifs();
+      const validGifs: Buffer[] = [];
+      gifs.forEach(gif => {
+        const splitKeywords = gif.keywords.split(' ');
+        if(keywords.some(k => splitKeywords.includes(k)) === true) {
+          validGifs.push(gif.buffer);
+        }
+      })
+      return validGifs;
+    }
+
+    public async fetchKeywordsFromKeywords(keywords: string[]) {
+      const gifs = await this.fetchAllGifs();
+      const validKeywords: string[][] = []
+      gifs.forEach(gif => {
+        const splitKeywords = gif.keywords.split(' ');
+        if(keywords.some(k => splitKeywords.includes(k)) === true) {
+          validKeywords.push(splitKeywords)
+        }
+      })
+      return validKeywords;
+    }
+
+    public async fetchAllGifs() {
+      let gifs: Gif[] = [];
+      if(this.gifs) {
+        gifs = this.gifs;
+      } else {
+        gifs = await this.sql('select * from gifs').then(r => r.rows);
+        this.gifs = gifs;
+      }
+      return gifs;
     }
 }
