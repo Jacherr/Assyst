@@ -2,7 +2,6 @@ import { BaseAdminCommand } from '../baseadmincommand';
 import { Context } from 'detritus-client/lib/command';
 
 import { inflate } from 'zlib';
-import { uploadToTsu } from '../../rest/rest';
 
 
 export default class GifAddCommand extends BaseAdminCommand {
@@ -36,7 +35,7 @@ export default class GifAddCommand extends BaseAdminCommand {
                 }
             })
         } else {
-            const url = await uploadToTsu(decompressedBuf, 'image/gif');
+            const url = await this.uploadFile(decompressedBuf, 'image/gif');
             return context.editOrReply(`Keywords: \`${gif.keywords}\`\n${url}`);
         }
     }

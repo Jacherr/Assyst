@@ -6,7 +6,7 @@ import { Assyst } from '../assyst';
 
 import { logWebhooks, admins } from '../../config.json';
 import { EmbedColors } from '../constants';
-import { uploadToTsu } from '../rest/rest';
+import { uploadFile } from '../rest/rest';
 import { Context } from 'detritus-client/lib/command';
 
 export interface CommandMetadata {
@@ -85,7 +85,7 @@ export class BaseCommand extends Command.Command {
   }
 
   async uploadFile (data: any, contentType: string) {
-    return uploadToTsu(data, contentType);
+    return uploadFile(data, contentType);
   }
 
   async userOwnsGuild (context: Context) {

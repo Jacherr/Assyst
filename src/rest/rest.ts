@@ -1,14 +1,14 @@
 import fetch from 'node-fetch';
 
-import { isapiAuth } from '../../config.json';
+import { isapiAuth, filerAuth } from '../../config.json';
 
 export enum Endpoints {
     DISCORD_TENOR_GIF = 'https://discord.com/api/v8/gifs/search?media_format=gif&provider=tenor&locale=en-US&q=:q',
     DISCORD_TENOR_GIF_SUGGESTIONS = 'https://discord.com/api/v8/gifs/suggest?q=:q',
+    FILER = 'https://cdn.jacher.io/',
     ISAPI = 'https://isapi.jacher.io/',
     OCR = 'https://ocr--y21_.repl.co/?url=:url',
-    RUST = 'https://play.rust-lang.org/execute',
-    TSU = 'https://tsu.sh'
+    RUST = 'https://play.rust-lang.org/execute'
 }
 
 export type Serializable = string | number | boolean
@@ -60,10 +60,11 @@ export async function ocrImage(url: string) {
   return fetch(Endpoints.OCR.replace(':url', encodeURIComponent(url))).then(c => c.text());
 }
 
-export async function uploadToTsu (data: any, contentType: string) {
-  return fetch(Endpoints.TSU, {
+export async function uploadFile (data: any, contentType: string) {
+  return fetch(Endpoints.FILER, {
     headers: {
-      'content-type': contentType
+      'content-type': contentType,
+      authorization: filerAuth
     },
     method: 'POST',
     body: data

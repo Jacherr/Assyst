@@ -19,6 +19,7 @@
     "maryjaneurl": "",
     "zx8Token": "",
     "isapiAuth": "",
+    "filerAuth": "",
     "ownerOnly": false,
     "packageWhitelist": [""],
     "admins": [""],
