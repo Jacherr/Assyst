@@ -1,12 +1,14 @@
 import fetch from 'node-fetch';
 
+import { STATUS_CODES } from 'http'
+
 import { isapiAuth, filerAuth } from '../../config.json';
 
 export enum Endpoints {
     DISCORD_TENOR_GIF = 'https://discord.com/api/v8/gifs/search?media_format=gif&provider=tenor&locale=en-US&q=:q',
     DISCORD_TENOR_GIF_SUGGESTIONS = 'https://discord.com/api/v8/gifs/suggest?q=:q',
     FILER = 'https://cdn.jacher.io/',
-    ISAPI = 'https://isapi.jacher.io/',
+    ISAPI = 'http://127.0.0.1:1234',
     OCR = 'https://ocr--y21_.repl.co/?url=:url',
     RUST = 'https://play.rust-lang.org/execute'
 }
@@ -41,8 +43,10 @@ export async function executeImageScript(script: string, inject?: { [key: string
       inject
     })
   }).then(async res => {
-    if(res.status === 400) {
-      throw new Error(await res.text());
+    console.log(res.status);
+    if(res.status !== 200) {
+      if(res.status === 400) throw new Error(await res.text());
+      else throw new Error(`Error ${res.status} (${STATUS_CODES[res.status]})`)
     } else {
       const out: IsapiData = {
         image: res.status === 200 ? await res.buffer() : undefined,
@@ -51,6 +55,7 @@ export async function executeImageScript(script: string, inject?: { [key: string
         wallTime: parseInt(res.headers.get('x-wall-time') as string),
         format: res.headers.get('x-format') ?? undefined
       }
+      console.log(out);
       return out;
     }
   })

@@ -60,7 +60,7 @@ export default class ImageScriptCommand extends BaseImageScriptCommand {
     }
 
     if (response.text) {
-      output.content += `${Markup.codeblock(response.text.slice(0, 1900))}`;
+      output.content += `\n${Markup.codeblock(response.text.slice(0, 1900))}\n`;
     }
 
     if (response.image) {
