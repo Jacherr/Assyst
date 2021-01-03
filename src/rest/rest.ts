@@ -8,7 +8,7 @@ export enum Endpoints {
     DISCORD_TENOR_GIF = 'https://discord.com/api/v8/gifs/search?media_format=gif&provider=tenor&locale=en-US&q=:q',
     DISCORD_TENOR_GIF_SUGGESTIONS = 'https://discord.com/api/v8/gifs/suggest?q=:q',
     FILER = 'https://cdn.jacher.io/',
-    ISAPI = 'http://isapi.jacher.io/',
+    ISAPI = 'https://isapi.jacher.io/',
     OCR = 'https://ocr--y21_.repl.co/?url=:url',
     RUST = 'https://play.rust-lang.org/execute'
 }
