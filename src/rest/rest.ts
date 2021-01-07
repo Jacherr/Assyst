@@ -10,7 +10,8 @@ export enum Endpoints {
     FILER = 'https://cdn.jacher.io/',
     ISAPI = 'https://isapi.jacher.io/',
     OCR = 'https://ocr--y21_.repl.co/?url=:url',
-    RUST = 'https://play.rust-lang.org/execute'
+    RUST = 'https://play.rust-lang.org/execute',
+    BAD_TRANSLATOR = 'http://translate.y21_.repl.co/?text=:text'
 }
 
 export type Serializable = string | number | boolean
@@ -99,4 +100,8 @@ export async function fetchGifs (query: string): Promise<string[]> {
 
 export async function fetchGifSuggestions(query: string) {
   return fetch(Endpoints.DISCORD_TENOR_GIF_SUGGESTIONS.replace(':q', encodeURIComponent(query))).then(x => x.json())
+}
+
+export async function badTranslate(text: string) {
+  return fetch(Endpoints.BAD_TRANSLATOR.replace(':text', encodeURIComponent(text))).then(x => x.text());
 }

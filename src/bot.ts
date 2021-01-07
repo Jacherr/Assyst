@@ -131,6 +131,7 @@ setInterval(async () => {
   });
 
   await bot.run();
+  await bot.initBadTranslator();
   await bot.executeLogWebhook(logWebhooks.shards, `🆗 Shards #(${cluster.shards.map((shard: ShardClient) => shard.shardId).join(', ')}) loaded`);
   bot.database.fetchAllGifs();
 })();

@@ -4,12 +4,13 @@ import { Context, Command } from 'detritus-client/lib/command';
 import { Client } from 'fapi-client';
 import { PaginatorCluster } from 'detritus-pagination';
 
-import { tokens, database, prefixOverride, ownerOnly, admins, channelWhitelist } from '../config.json';
+import { tokens, database, prefixOverride, ownerOnly, admins, channelWhitelist, badtranslator } from '../config.json';
 import { RequestTypes } from 'detritus-client-rest';
 import { Zx8 } from './rest/zx8/zx8';
 import { Maryjane } from './rest/maryjane/maryjane';
 import { Database } from './database/database';
 import { createHash } from 'crypto';
+import BadTranslator from './badtranslator.js';
 
 const errorImages: { [key: string]: string } = {
   fcab5a15e2ee436f8694b9777c3cb08b: 'No DNS records.',
@@ -49,6 +50,11 @@ export class Assyst extends CommandClient {
 
     this.maryjane = new Maryjane();
     this.zx8 = new Zx8();
+  }
+
+  async initBadTranslator() {
+    const controller = new BadTranslator(this, badtranslator);
+    await controller.init();
   }
 
   executeLogWebhook (url: string, options?: string | RequestTypes.ExecuteWebhook) {
