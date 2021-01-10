@@ -9,13 +9,13 @@ import {
 
 export default class BadTranslator {
     private channels: Set<string>;
-    private cachedWebhook: Webhook | null;
+    private cachedWebhook: Map<string, Webhook>;
     private ratelimits: Map<string, number>; // maps user id to timestamp
     private bot: Assyst;
 
     constructor(bot: Assyst, channels: Array<string> | Set<string>) {
         this.bot = bot;
-        this.cachedWebhook = null;
+        this.cachedWebhook = new Map();
         this.ratelimits = new Map();
         this.channels = Array.isArray(channels)
             ? new Set(channels)
@@ -82,13 +82,15 @@ export default class BadTranslator {
     }
 
     private async getWebhook(channelId: string) {
-        if (this.cachedWebhook) return this.cachedWebhook;
+        const cached = this.cachedWebhook.get(channelId);
+        if (cached) return cached;
 
         const webhook: Webhook | undefined = await this.bot.rest.fetchChannelWebhooks(channelId)
             .then((webhooks) => webhooks[0]);
         
         if (webhook) {
-            return this.cachedWebhook = webhook;
+            this.cachedWebhook.set(channelId, webhook);
+            return webhook;
         }
     }
 }
