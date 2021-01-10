@@ -1,15 +1,22 @@
 import { Assyst } from './assyst';
 import { badTranslate } from './rest/rest';
 import { Webhook } from 'detritus-client/lib/structures';
+import {
+    TRANSLATION_RATELIMIT_RESET,
+    MAX_CACHE_SIZE,
+    MAX_MESSAGE_LENGTH
+} from './constants/badtranslator';
 
 export default class BadTranslator {
     private channels: Set<string>;
     private cachedWebhook: Webhook | null;
+    private ratelimits: Map<string, number>; // maps user id to timestamp
     private bot: Assyst;
 
     constructor(bot: Assyst, channels: Array<string> | Set<string>) {
         this.bot = bot;
         this.cachedWebhook = null;
+        this.ratelimits = new Map();
         this.channels = Array.isArray(channels)
             ? new Set(channels)
             : channels;
@@ -17,9 +24,15 @@ export default class BadTranslator {
 
     async init() {
         this.bot.client.on('messageCreate', async ({message}) => {
-            if (!this.channels.has(message.channelId)) return;
-            if (message.content.length === 0 || message.content.length > 500) return; // TODO: delete
-            if (message.author.bot) return;
+            if (!this.channels.has(message.channelId)) return message.delete();
+            if (message.content.length === 0 || message.content.length > MAX_MESSAGE_LENGTH) return message.delete();
+            if (message.author.bot) return message.delete();
+
+            const isRatelimited = this.isRatelimited(message.author.id);
+            if (isRatelimited) {
+                // If user is ratelimited, return early...
+                return message.delete();
+            }
 
             const translation = await badTranslate(message.content);
 
@@ -46,6 +59,27 @@ export default class BadTranslator {
                 username: message.member?.nick || message.author.username || 'Bad Translator'
             });
         });
+    }
+
+    private isRatelimited(userId: string) {
+        const ratelimit = this.ratelimits.get(userId);
+
+        if (ratelimit) {
+            if (Date.now() > ratelimit + TRANSLATION_RATELIMIT_RESET) {
+                this.ratelimits.delete(userId);
+                return false;
+            }
+
+            return true;
+        }
+
+        if (this.ratelimits.size > MAX_CACHE_SIZE) {
+            // This might remove a ratelimit that was just added but it's fine
+            // Ratelimits are only 5s so it doesn't matter if that happens
+            this.ratelimits.delete(this.ratelimits.keys().next().value);
+        }
+        
+        this.ratelimits.set(userId, Date.now());
     }
 
     private async getWebhook(channelId: string) {

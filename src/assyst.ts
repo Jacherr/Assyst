@@ -31,6 +31,7 @@ export class Assyst extends CommandClient {
   public maryjane: Maryjane
   public paginator: PaginatorCluster
   public zx8: Zx8
+  public badTranslator?: BadTranslator
 
   constructor (token: string, options: AssystOptions) {
     super(token, options);
@@ -54,6 +55,7 @@ export class Assyst extends CommandClient {
 
   async initBadTranslator() {
     const controller = new BadTranslator(this, badtranslator);
+    this.badTranslator = controller;
     await controller.init();
   }
 
