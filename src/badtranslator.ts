@@ -1,11 +1,16 @@
 import { Assyst } from './assyst';
 import { badTranslate } from './rest/rest';
-import { Webhook } from 'detritus-client/lib/structures';
+import { Webhook, Message } from 'detritus-client/lib/structures';
 import {
     TRANSLATION_RATELIMIT_RESET,
     MAX_CACHE_SIZE,
-    MAX_MESSAGE_LENGTH
+    MAX_MESSAGE_LENGTH,
+    RATELIMIT_MESSAGE
 } from './constants/badtranslator';
+
+function isRatelimitMessage(message: Message) {
+    return message.author.isMe && message.content.endsWith(RATELIMIT_MESSAGE);
+}
 
 export default class BadTranslator {
     private channels: Set<string>;
@@ -24,14 +29,13 @@ export default class BadTranslator {
 
     async init() {
         this.bot.client.on('messageCreate', async ({message}) => {
-            if (!this.channels.has(message.channelId) || message.author.isWebhook) return;
-            if (message.author.bot && !message.author.isWebhook && !message.author.isMe) return message.delete();
-            if (message.content.length === 0 || message.content.length > MAX_MESSAGE_LENGTH) return message.delete();
+            if (!this.channels.has(message.channelId) || message.author.isWebhook || isRatelimitMessage(message)) return;
+            if (message.content.length === 0 || message.content.length > MAX_MESSAGE_LENGTH || message.author.bot) return message.delete();
 
             const isRatelimited = this.isRatelimited(message.author.id);
             if (isRatelimited) {
                 // If user is ratelimited, return early...
-                message.reply(`<@${message.author.id}> you're sending messages too quickly!`).then(m => setTimeout(() => m.delete(), 5000));
+                message.reply(message.author.mention + RATELIMIT_MESSAGE).then(m => setTimeout(() => m.delete(), 5000));
                 return message.delete();
             }
 
