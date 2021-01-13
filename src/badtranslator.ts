@@ -24,7 +24,7 @@ export default class BadTranslator {
 
     async init() {
         this.bot.client.on('messageCreate', async ({message}) => {
-            if (!this.channels.has(message.channelId)) return;
+            if (!this.channels.has(message.channelId) || message.author.isWebhook) return;
             if (message.author.bot && !message.author.isWebhook && !message.author.isMe) return message.delete();
             if (message.content.length === 0 || message.content.length > MAX_MESSAGE_LENGTH) return message.delete();
 
