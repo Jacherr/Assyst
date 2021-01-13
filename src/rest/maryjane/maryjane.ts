@@ -6,8 +6,8 @@ import { BaseRestClient } from '../baserestclient';
 export const BASE_URL = maryjaneUrl;
 
 export enum Endpoints {
-    GUILD = '/guild/:id',
-    USER = '/user/:id'
+    GUILD = '/guilds/:id',
+    USER = '/users/:id/profile'
 }
 
 export class Maryjane extends BaseRestClient {
