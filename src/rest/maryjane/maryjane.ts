@@ -7,7 +7,8 @@ export const BASE_URL = maryjaneUrl;
 
 export enum Endpoints {
     GUILD = '/guilds/:id',
-    USER = '/users/:id/profile'
+    USER = '/users/:id/profile',
+    BULK_USER = '/users/bulk/:ids'
 }
 
 export class Maryjane extends BaseRestClient {
@@ -21,5 +22,11 @@ export class Maryjane extends BaseRestClient {
 
   public user(id: string): Promise<Types.User> {
     return this.get(this.toEndpointString(Endpoints.USER, { id }))
+  }
+
+  public bulkUser(ids: string[]): Promise<Types.User[]> {
+    return this.get(this.toEndpointString(Endpoints.BULK_USER, {
+      ids: encodeURIComponent(ids.join(','))
+    }));
   }
 }

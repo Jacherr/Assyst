@@ -7,6 +7,7 @@ import {
     MAX_MESSAGE_LENGTH,
     RATELIMIT_MESSAGE
 } from './constants/badtranslator';
+import * as Constants from './constants';
 
 function isRatelimitMessage(message: Message) {
     return message.author.isMe && message.content.endsWith(RATELIMIT_MESSAGE);
@@ -27,6 +28,20 @@ export default class BadTranslator {
             : channels;
     }
 
+    async transformContent(message: Message) {
+        const emojiReplacedContent = message.content.replace(Constants.EMOJI_REGEX, (_, name) => name);
+
+        const userIds = Array.from(emojiReplacedContent.matchAll(Constants.USER_ID))
+            .map(x => x[1]);
+
+        const users = await this.bot.maryjane.bulkUser(userIds)
+            .catch(() => []);
+
+        return emojiReplacedContent.replace(Constants.USER_ID, (match, id) => {
+            return users.find(x => x.id === id)?.username || match;
+        });
+    }
+
     async init() {
         this.bot.client.on('messageCreate', async ({message}) => {
             if (!this.channels.has(message.channelId) || message.author.isWebhook || isRatelimitMessage(message)) return;
@@ -39,7 +54,9 @@ export default class BadTranslator {
                 return message.delete();
             }
 
-            const translation = await badTranslate(message.content);
+            const transformedContent = await this.transformContent(message);
+
+            const translation = await badTranslate(transformedContent);
 
             await message.delete();
 
