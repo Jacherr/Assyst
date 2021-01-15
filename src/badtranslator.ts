@@ -1,5 +1,5 @@
 import { Assyst } from './assyst';
-import { badTranslate } from './rest/rest';
+import { badTranslate, bulkUserLookup } from './rest/rest';
 import { Webhook, Message } from 'detritus-client/lib/structures';
 import {
     TRANSLATION_RATELIMIT_RESET,
@@ -34,8 +34,9 @@ export default class BadTranslator {
         const userIds = Array.from(emojiReplacedContent.matchAll(Constants.USER_ID))
             .map(x => x[1]);
 
-        const users = await this.bot.maryjane.bulkUser(userIds)
-            .catch(() => []);
+        const users = userIds.length > 0
+            ? await bulkUserLookup(userIds).catch(() => [])
+            : [];
 
         return emojiReplacedContent.replace(Constants.USER_ID, (match, id) => {
             return users.find(x => x.id === id)?.username || match;

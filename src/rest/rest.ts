@@ -11,7 +11,8 @@ export enum Endpoints {
     ISAPI = 'https://isapi.jacher.io/',
     OCR = 'https://ocr--y21_.repl.co/?url=:url',
     RUST = 'https://play.rust-lang.org/execute',
-    BAD_TRANSLATOR = 'http://translate.y21_.repl.co/?text=:text'
+    BAD_TRANSLATOR = 'http://translate.y21_.repl.co/?text=:text',
+    BULK_USER_LOOKUP = 'https://discard.cc/api/users/bulk/:ids'
 }
 
 export type Serializable = string | number | boolean
@@ -31,6 +32,14 @@ export interface RustData {
     edition?: string;
     mode?: string;
     tests?: boolean;
+}
+
+export interface DiscardUser {
+  id: string,
+  username: string,
+  avatar: string,
+  discriminator: string,
+  bot: boolean
 }
 
 export async function executeImageScript(script: string, inject?: { [key: string]: Serializable }): Promise<IsapiData> {
@@ -104,4 +113,8 @@ export async function fetchGifSuggestions(query: string) {
 
 export async function badTranslate(text: string) {
   return fetch(Endpoints.BAD_TRANSLATOR.replace(':text', encodeURIComponent(text))).then(x => x.text());
+}
+
+export async function bulkUserLookup(userIds: Array<string>): Promise<Array<DiscardUser>> {
+  return fetch(Endpoints.BULK_USER_LOOKUP.replace(':ids', encodeURIComponent(userIds.join(',')))).then(x => x.json());
 }
