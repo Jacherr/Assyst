@@ -116,5 +116,5 @@ export async function badTranslate(text: string) {
 }
 
 export async function bulkUserLookup(userIds: Array<string>): Promise<Array<DiscardUser>> {
-  return fetch(Endpoints.BULK_USER_LOOKUP.replace(':ids', encodeURIComponent(userIds.join(',')))).then(x => x.json());
+  return fetch(Endpoints.BULK_USER_LOOKUP.replace(':ids', userIds.join(','))).then(x => x.json());
 }
