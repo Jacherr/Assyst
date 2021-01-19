@@ -35,7 +35,7 @@ export default class EvalCommand extends BaseCommand {
     async run (context: Context, args: CommandArgs) {
       let code = parseCodeblocks(args.code) || 'undefined';
       let result = args.ex 
-        ? await this.runCodeExperimental(code).then(x => x.result)
+        ? await this.runCodeExperimental(code)
         : await this.runCode(code);
 
       try {
@@ -68,6 +68,6 @@ export default class EvalCommand extends BaseCommand {
 
     async runCodeExperimental (code: string) {
       return fetch(Endpoints.FAKE_EVAL_EXPERIMENTAL.replace(':code', encodeURIComponent(code)))
-        .then(x => x.json());
+        .then(x => x.text());
     }
 }
