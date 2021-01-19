@@ -12,7 +12,8 @@ export enum Endpoints {
     OCR = 'https://ocr--y21_.repl.co/?url=:url',
     RUST = 'https://play.rust-lang.org/execute',
     BAD_TRANSLATOR = 'http://translate.y21_.repl.co/?text=:text',
-    BULK_USER_LOOKUP = 'https://discard.cc/api/users/bulk/:ids'
+    BULK_USER_LOOKUP = 'https://discard.cc/api/users/bulk/:ids',
+    FAKE_EVAL_EXPERIMENTAL = 'https://js.y21.workers.dev/?code=:code'
 }
 
 export type Serializable = string | number | boolean

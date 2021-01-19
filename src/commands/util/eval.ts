@@ -7,12 +7,21 @@ import { Markup } from 'detritus-client/lib/utils';
 import { HttpMethods } from 'fapi-client/JS/src/types';
 import { evalUrl } from '../../../config.json';
 import { parseCodeblocks } from '../../utils';
+import { Endpoints } from '../../rest/rest';
 
 export interface CommandArgs {
-    code: string
+    code: string,
+    ex: boolean
 }
 
 export default class EvalCommand extends BaseCommand {
+    args = [
+      {
+        name: 'ex',
+        type: Boolean,
+        default: false
+      }
+    ]
     label = 'code'
 
     name = 'eval'
@@ -24,7 +33,10 @@ export default class EvalCommand extends BaseCommand {
     }
 
     async run (context: Context, args: CommandArgs) {
-      let result = await this.runCode(parseCodeblocks(args.code || 'undefined'));
+      let code = parseCodeblocks(args.code) || 'undefined';
+      let result = args.ex 
+        ? await this.runCodeExperimental(code).then(x => x.result)
+        : await this.runCode(code);
 
       try {
         result = JSON.parse(result);
@@ -52,5 +64,10 @@ export default class EvalCommand extends BaseCommand {
       });
       if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
       return res.json().then(json => json.message);
+    }
+
+    async runCodeExperimental (code: string) {
+      return fetch(Endpoints.FAKE_EVAL_EXPERIMENTAL.replace(':code', encodeURIComponent(code)))
+        .then(x => x.json());
     }
 }
