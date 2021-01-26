@@ -29,7 +29,7 @@ export default class AmericaCommand extends BaseCommand {
         return this.error(context, 'No valid URL was found... Please use an attachment or valid image URL');
       }
       await context.triggerTyping();
-      const text = args.url.split(' ')[1] ?? 'when you dont provide any text';
+      const text = args.url.split(' ').slice(1).join(' ') || 'when you dont provide any text';
       const out = await fetch('https://wsi.jacher.io/caption?text=' + encodeURIComponent(text), { method: 'POST', headers: { authorization: '0192837465' }, body: await context.rest.request(url) });
       if (out.status !== 200) {
         return this.error(context, await out.text());
