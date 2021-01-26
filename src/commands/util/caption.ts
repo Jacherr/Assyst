@@ -30,7 +30,7 @@ export default class AmericaCommand extends BaseCommand {
       }
       await context.triggerTyping();
       const text = args.url.split(' ')[1] ?? 'when you dont provide any text';
-      const out = await fetch('http://127.0.0.1:3030/caption?text=' + encodeURIComponent(text), { method: 'POST', headers: { authorization: 'sex' }, body: await context.rest.request(url) });
+      const out = await fetch('https://wsi.jacher.io/caption?text=' + encodeURIComponent(text), { method: 'POST', headers: { authorization: '0192837465' }, body: await context.rest.request(url) });
       if (out.status !== 200) {
         return this.error(context, await out.text());
       }
