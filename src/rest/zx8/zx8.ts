@@ -17,20 +17,20 @@ export enum Endpoints {
 }
 
 export class Zx8 extends BaseRestClient {
-  constructor() {
+  constructor () {
     super(API_URL);
   }
 
-  public eval(nodeId: number, code: string) {
+  public eval (nodeId: number, code: string) {
     return this.post(this.toEndpointString(Endpoints.EVAL, {
       node: String(nodeId)
     }),
     {
       authorization: zx8Token
-    }, 
+    },
     {
       code
-    })
+    });
   }
 
   public info (): Promise<Types.InfoResult> {
@@ -81,7 +81,7 @@ export class Zx8 extends BaseRestClient {
     });
   }
 
-  public recentIndexes(): Promise<Types.SearchResultEntry[]> {
+  public recentIndexes (): Promise<Types.SearchResultEntry[]> {
     return this.get(Endpoints.RECENT);
   }
 

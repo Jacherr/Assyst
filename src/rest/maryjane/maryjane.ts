@@ -11,15 +11,15 @@ export enum Endpoints {
 }
 
 export class Maryjane extends BaseRestClient {
-  constructor() {
-    super(BASE_URL)
+  constructor () {
+    super(BASE_URL);
   }
 
-  public guild(id: string): Promise<Types.Guild> {
-    return this.get(this.toEndpointString(Endpoints.GUILD, { id }))
+  public guild (id: string): Promise<Types.Guild> {
+    return this.get(this.toEndpointString(Endpoints.GUILD, { id }));
   }
 
-  public user(id: string): Promise<Types.User> {
-    return this.get(this.toEndpointString(Endpoints.USER, { id }))
+  public user (id: string): Promise<Types.User> {
+    return this.get(this.toEndpointString(Endpoints.USER, { id }));
   }
 }

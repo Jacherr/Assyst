@@ -1,3 +1,5 @@
+/* global BigInt */
+
 import { GatewayIntents, SocketEvents } from 'detritus-client-socket/lib/constants';
 import { ActivityTypes, PresenceStatuses, CommandRatelimitTypes, ClientEvents } from 'detritus-client/lib/constants';
 
@@ -104,7 +106,7 @@ setInterval(async () => {
             messageId: r.message_id
           }
         });
-      } catch(e) {
+      } catch (e) {
         try {
           await bot.rest.createDm({
             recipientId: r.user_id
@@ -112,8 +114,8 @@ setInterval(async () => {
         } catch {}
       }
       bot.database.deleteReminder(r.message_id);
-    }, parseInt(r.timestamp) - Date.now())
-  })
+    }, parseInt(r.timestamp) - Date.now());
+  });
 }, 15000);
 
 (async () => {
