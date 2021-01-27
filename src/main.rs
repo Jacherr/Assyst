@@ -69,14 +69,13 @@ async fn main() {
     tokio::spawn(async move { spawned_cluster.up().await });
 
     let http = HttpClient::new(&token);
+    let config = Config::new();
     let database = database::Database::new(
         2,
-        "postgres://postgres:150baea3da60388a09d1c4fbcaf058c4@161.97.104.129:63985/assyst"
-            .to_owned(),
+        config.database.to_url()
     )
     .await
     .unwrap();
-    let config = Config::new();
 
     let assyst = Arc::new(Assyst {
         config,
