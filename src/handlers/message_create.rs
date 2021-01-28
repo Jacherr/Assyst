@@ -1,13 +1,19 @@
 use twilight_model::gateway::payload::MessageCreate;
 use std::sync::Arc;
+use std::error::Error;
 use crate::Assyst;
 
 pub async fn handle(
     assyst: Arc<Assyst>,
     message: Box<MessageCreate>
-) {
-   if !should_handle_message(&assyst, &message).await { return };
-   
+) -> Result<(), Box<dyn Error + Send + Sync>> {
+   //if !should_handle_message(&assyst, &message).await { return };
+   if message.content == "!!sex" {
+       assyst.http.create_message(message.channel_id)
+            .content("cock")?
+            .await?;
+   };
+   Ok(())
 }
 
 async fn should_handle_message(

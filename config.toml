@@ -1,1 +1,8 @@
 default_prefix = "a-"
+
+[database]
+  host = "161.97.104.129"
+  username = "assyst"
+  password = "150baea3da60388a09d1c4fbcaf058c4"
+  database = "assyst"
+  port = 63985
