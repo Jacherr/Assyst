@@ -16,3 +16,5 @@ sqlx = { version = "0.4.2", features = [ "postgres", "runtime-tokio-rustls" ] }
 serde = "1.0.123"
 toml = "0.5.8"
 dotenv = "0.15.0"
+async-trait = "0.1.42"
+lazy_static = "1.4.0"
