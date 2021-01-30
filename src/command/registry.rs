@@ -27,8 +27,9 @@ impl CommandRegistry {
         }
     }
 
-    pub async fn execute_command(&self, parsed_command: ParsedCommand) {
-
+    pub async fn execute_command(&self, parsed_command: ParsedCommand, context: Context) {
+        let command_run = self.command_runs.get(&parsed_command.calling_name).unwrap();
+        command_run(context, parsed_command.args).await;
     }
 
     pub fn get_command_from_name_or_alias(&self, name: &str) -> Option<&'static Command> {

@@ -12,14 +12,20 @@ pub enum CommandAvailability {
     GuildOwner,
     Private
 }
+#[derive(Debug)]
+pub struct CommandParseError {
+    error: String,
+    should_reply: bool
+}
 
 pub struct CommandMetadata {
     pub description: Box<str>,
     pub examples: Vec<Box<str>>,
     pub usage: Box<str>
 }
+#[derive(Debug)]
 pub struct ParsedCommand {
-    pub args: Vec<Box<str>>,
+    pub args: Vec<String>,
     pub calling_name: Box<str>
 }
 pub struct Command {
