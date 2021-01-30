@@ -10,6 +10,13 @@ pub struct Context {
     message: Message
 }
 impl Context {
+    pub fn new(assyst: Arc<Assyst>, message: Message) -> Self {
+        Context {
+            assyst,
+            message
+        }
+    }
+
     pub async fn reply(&self, message_builder: MessageBuilder) -> Result<Message, Box<dyn Error>> {
         let mut create_message = self.assyst.http.create_message(self.message.channel_id);
         if let Some(attachment) = message_builder.attachment {

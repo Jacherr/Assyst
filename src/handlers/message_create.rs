@@ -7,7 +7,7 @@ pub async fn handle(
     message: Box<MessageCreate>
 ) -> () {
    if !should_handle_message(&assyst, &message).await { return };
-   assyst.command_client.handle_command(message.0).await;
+   assyst.handle_command(message.0).await;
 }
 
 async fn should_handle_message(
