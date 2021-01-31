@@ -39,6 +39,8 @@ async fn main() {
 
     while let Some((_, event)) = events.next().await {
         let assyst_clone = assyst.clone();
-        tokio::spawn(async move { handle_event(assyst_clone, event).await });
+        tokio::spawn(async move { 
+            handle_event(assyst_clone, event).await;
+        });
     }
 }

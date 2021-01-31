@@ -1,11 +1,15 @@
-use super::context::Context;
-
+use bytes::Bytes;
 pub enum Argument {
     String,
-    ImageAny,
+    ImageUrl,
+    ImageBuffer,
     StringRemaining
 }
-
+#[derive(Debug)]
+pub enum ParsedArgument {
+    Text(String),
+    Binary(Bytes)
+}
 pub enum CommandAvailability {
     Public,
     RequiresPermission(u16),
@@ -14,10 +18,17 @@ pub enum CommandAvailability {
 }
 #[derive(Debug)]
 pub struct CommandParseError {
-    error: String,
-    should_reply: bool
+    pub error: String,
+    pub should_reply: bool
 }
-
+impl CommandParseError {
+    pub fn with_reply(text: String) -> Self {
+        CommandParseError {
+            error: text,
+            should_reply: true
+        }
+    }
+}
 pub struct CommandMetadata {
     pub description: Box<str>,
     pub examples: Vec<Box<str>>,
@@ -25,9 +36,15 @@ pub struct CommandMetadata {
 }
 #[derive(Debug)]
 pub struct ParsedCommand {
-    pub args: Vec<String>,
+    pub args: Vec<ParsedArgument>,
     pub calling_name: Box<str>
 }
+
+pub struct ParsedArgumentResult {
+    should_increment_index: bool,
+    value: ParsedArgument
+}
+
 pub struct Command {
     pub aliases: Vec<Box<str>>,
     pub args: Vec<Argument>,

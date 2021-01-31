@@ -1,4 +1,4 @@
-use twilight_model::channel::Message;
+use twilight_model::channel::{Message, embed::Embed};
 use std::error::Error;
 
 use crate::Assyst;
@@ -30,5 +30,9 @@ impl Context {
         };
         let result = create_message.await?;
         Ok(result)
+    }
+
+    pub async fn reply_err(&self, content: &str) -> Result<Message, Box<dyn Error>> {
+        self.reply(MessageBuilder::new().content(&format!(":warning: `{}`", content)).clone()).await
     }
 }
