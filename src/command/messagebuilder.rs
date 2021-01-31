@@ -21,18 +21,8 @@ impl MessageBuilder {
         }
     }
 
-    pub fn attachment(&mut self, attachment: Attachment) -> &mut Self {
-        self.attachment = Some(attachment);
-        self
-    }
-
     pub fn content(&mut self, content: &str) -> &mut Self {
         self.content = Some(box_str!(content));
-        self
-    }
-
-    pub fn embed(&mut self, embed: Embed) -> &mut Self {
-        self.embed = Some(embed);
         self
     }
 }
