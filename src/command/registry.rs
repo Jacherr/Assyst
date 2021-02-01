@@ -1,5 +1,5 @@
 use super::command::{Command, ParsedArgument, ParsedCommand};
-use super::categories::misc::*;
+use super::categories::{misc::*, image::*};
 use std::{collections::HashMap, pin::Pin};
 use crate::{box_str, command::context::Context};
 use std::future::Future;
@@ -49,6 +49,7 @@ impl CommandRegistry {
 
     pub fn register_commands(&mut self) {
         register_command!(self, PING_COMMAND, run_ping_command);
-        register_command!(self, TEST_COMMAND, run_test_command);
+        register_command!(self, ENLARGE_COMMAND, run_enlarge_command);
+        register_command!(self, CAPTION_COMMAND, run_caption_command);
     }
 }
