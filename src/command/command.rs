@@ -41,8 +41,22 @@ pub struct ParsedCommand {
 }
 
 pub struct ParsedArgumentResult {
-    should_increment_index: bool,
-    value: ParsedArgument
+    pub should_increment_index: bool,
+    pub value: ParsedArgument
+}
+impl ParsedArgumentResult {
+    pub fn increment(value: ParsedArgument) -> Self {
+        ParsedArgumentResult {
+            should_increment_index: true,
+            value
+        }
+    }
+    pub fn no_increment(value: ParsedArgument) -> Self {
+        ParsedArgumentResult {
+            should_increment_index: false,
+            value
+        }
+    }
 }
 
 pub struct Command {
@@ -60,5 +74,25 @@ impl Command {
         }
         new_vec.push(&self.name);
         new_vec
+    }
+}
+
+pub mod force_as {
+    use bytes::Bytes;
+
+    use super::ParsedArgument;
+
+    pub fn image_buffer(argument: &ParsedArgument) -> &Bytes {
+        match argument {
+            ParsedArgument::Binary(data) => data,
+            _ => panic!("expected buffer argument")
+        }
+    }
+
+    pub fn text(argument: &ParsedArgument) -> &str {
+        match argument {
+            ParsedArgument::Text(data) => data,
+            _ => panic!("expected text argument")
+        }
     }
 }

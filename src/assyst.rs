@@ -1,6 +1,4 @@
-use crate::command::command::{
-    Argument, Command, CommandParseError, ParsedArgument, ParsedCommand,
-};
+use crate::command::command::{Argument, Command, CommandParseError, ParsedArgument, ParsedArgumentResult, ParsedCommand};
 use crate::database::Database;
 use crate::{
     command::{context::Context, registry::CommandRegistry},
@@ -129,71 +127,48 @@ impl Assyst {
             Some(c) => c,
             None => return Ok(None),
         };
-        let mut args: Vec<&str> = content.split_whitespace().collect();
-        let mut parsed_args: Vec<ParsedArgument> = vec![];
-        args.remove(0);
-        let mut index = 0;
-        for arg in &command.args {
-            match arg {
-                Argument::ImageUrl => {
-                    let argument_to_pass = if args.len() <= index { "" } else { args[index] };
-                    let try_url = self.parse_image_argument_as_url(message, argument_to_pass).await;
-                    if try_url == None {
-                        return Err(CommandParseError::with_reply("This command expects an image as an argument, but no image could be found.".to_owned()))
-                    } else {
-                        parsed_args.push(ParsedArgument::Text(try_url.unwrap()));
-                    }
-                },
-                Argument::ImageBuffer => {
-                    let argument_to_pass = if args.len() <= index { "" } else { args[index] };
-                    let try_url = self.parse_image_argument_as_bytes(message, argument_to_pass).await;
-                    if try_url == None {
-                        return Err(CommandParseError::with_reply("This command expects an image as an argument, but no image could be found.".to_owned()))
-                    } else {
-                        parsed_args.push(ParsedArgument::Binary(try_url.unwrap()));
-                    }
-                },
-                Argument::String => {
-                    parsed_args.push(ParsedArgument::Text(args[index].to_owned()));
-                    index += 1;
-                },
-                _ => {}
-            }
-        }
+        let parsed_args = self.parse_arguments(&message, &command).await?;
         Ok(Some(ParsedCommand {
             calling_name: command.name.clone(),
             args: parsed_args,
         }))
     }
 
-    pub async fn parse_image_argument_as_bytes(
-        &self,
-        message: &Message,
-        argument: &str
-    ) -> Option<Bytes> {
-        let result = self
-            .parse_image_argument(message, argument, &Argument::ImageBuffer)
-            .await?;
-        if let ParsedArgument::Binary(t) = result {
-            Some(t)
-        } else {
-            None
-        }
-    }
-
-    pub async fn parse_image_argument_as_url(
-        &self,
-        message: &Message,
-        argument: &str
-    ) -> Option<String> {
-        let result = self
-            .parse_image_argument(message, argument, &Argument::ImageUrl)
-            .await?;
-        if let ParsedArgument::Text(t) = result {
-            Some(t)
-        } else {
-            None
-        }
+    async fn parse_arguments(&self, message: &Message, command: &Command) -> Result<Vec<ParsedArgument>, CommandParseError> {
+        let content = &message.content;
+        let mut args: Vec<&str> = content.split_whitespace().collect();
+        let mut parsed_args: Vec<ParsedArgument> = vec![];
+        args.remove(0);
+        let mut index = 0;
+        for arg in &command.args {
+            match arg {
+                Argument::ImageUrl | Argument::ImageBuffer => {
+                    let argument_to_pass = if args.len() <= index { "" } else { args[index] };
+                    let try_result = self.parse_image_argument(message, argument_to_pass, arg).await;
+                    if let Some(result) = try_result {
+                        parsed_args.push(result.value);
+                        if result.should_increment_index { index += 1 };
+                    } else {
+                        return Err(CommandParseError::with_reply("This command expects an image as an argument, but no image could be found.".to_owned()))
+                    }
+                },
+                Argument::String => {
+                    if args.len() <= index {
+                        return Err(CommandParseError::with_reply("This command expects a text argument that was not provided.".to_owned()))
+                    }
+                    parsed_args.push(ParsedArgument::Text(args[index].to_owned()));
+                    index += 1;
+                },
+                Argument::StringRemaining => {
+                    if args.len() <= index {
+                        return Err(CommandParseError::with_reply("This command expects a text argument that was not provided.".to_owned()))
+                    }
+                    parsed_args.push(ParsedArgument::Text(args[index..].join(" ")));
+                    break;
+                }
+            }
+        };
+        Ok(parsed_args)
     }
 
     async fn parse_image_argument(
@@ -201,7 +176,7 @@ impl Assyst {
         message: &Message,
         argument: &str,
         return_as: &Argument
-    ) -> Option<ParsedArgument> {
+    ) -> Option<ParsedArgumentResult> {
         let emoji_url = self.validate_emoji_url(argument).await?;
         return match return_as {
             Argument::ImageBuffer => {
@@ -210,10 +185,18 @@ impl Assyst {
                     None
                 } else {
                     let bytes = result.bytes().await.ok()?;
-                    Some(ParsedArgument::Binary(bytes))
+                    Some(
+                        ParsedArgumentResult::increment(
+                            ParsedArgument::Binary(bytes)
+                        )
+                    )
                 }
             }
-            Argument::ImageUrl => Some(ParsedArgument::Text(emoji_url)),
+            Argument::ImageUrl => Some(
+                ParsedArgumentResult::increment(
+                    ParsedArgument::Text(emoji_url)
+                )
+            ),
             _ => panic!("return_as must be imageurl or imagebuffer"),
         };
     }
@@ -225,7 +208,8 @@ impl Assyst {
             .and_then(|id| Some(id.as_str()))
             .and_then(|id| id.parse::<u64>().ok())?;
 
-        let emoji_url = format!("https://cdn.discordapp.com/emojis/{}", emoji_id);
+        let format = if argument.starts_with("<a") { "gif" } else { "png" };
+        let emoji_url = format!("https://cdn.discordapp.com/emojis/{}.{}", emoji_id, format);
 
         return Some(emoji_url);
     }
