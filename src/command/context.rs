@@ -1,4 +1,4 @@
-use twilight_model::channel::{Message, embed::Embed};
+use twilight_model::channel::Message;
 use std::error::Error;
 
 use crate::Assyst;
