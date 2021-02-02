@@ -37,7 +37,7 @@ pub struct CommandMetadata {
 #[derive(Debug)]
 pub struct ParsedCommand {
     pub args: Vec<ParsedArgument>,
-    pub calling_name: Box<str>
+    pub calling_name: &'static str
 }
 
 pub struct ParsedArgumentResult {
