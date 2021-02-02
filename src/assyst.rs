@@ -47,11 +47,6 @@ impl Config {
     }
 }
 
-struct CommandArgs {
-    command: Box<str>,
-    args: Vec<Box<str>>,
-}
-
 pub fn get_command_and_args<'a>(content: &'a str, prefix: &str) -> Option<(&'a str, Vec<&'a str>)> {
     return if !content.starts_with(&prefix) || content.len() == prefix.len() {
         None
@@ -166,7 +161,7 @@ impl Assyst {
         &self,
         message: &Message,
         command: &Command,
-        mut args: Vec<&str>,
+        args: Vec<&str>,
     ) -> Result<Vec<ParsedArgument>, CommandParseError> {
         let mut parsed_args: Vec<ParsedArgument> = vec![];
         let mut index = 0;

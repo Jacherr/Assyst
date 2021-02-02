@@ -6,8 +6,8 @@ use std::sync::Arc;
 
 use super::messagebuilder::MessageBuilder;
 pub struct Context {
-    assyst: Arc<Assyst>,
-    message: Message
+    pub assyst: Arc<Assyst>,
+    pub message: Message
 }
 impl Context {
     pub fn new(assyst: Arc<Assyst>, message: Message) -> Self {
