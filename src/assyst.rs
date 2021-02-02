@@ -1,17 +1,22 @@
-use crate::command::command::{Argument, Command, CommandParseError, ParsedArgument, ParsedArgumentResult, ParsedCommand};
 use crate::database::Database;
+use crate::{
+    box_str,
+    command::command::{
+        Argument, Command, CommandParseError, ParsedArgument, ParsedArgumentResult, ParsedCommand,
+    },
+};
 use crate::{
     command::{context::Context, registry::CommandRegistry},
     util::regexes,
 };
-use bytes::Bytes;
 use reqwest::{Client as ReqwestClient, StatusCode};
 use serde::Deserialize;
-use tokio::sync::RwLock;
-use std::sync::Arc;
+use std::borrow::Cow;
+use std::{borrow::Borrow, sync::Arc};
 use std::{fs::read_to_string, time::Instant};
 use twilight_http::Client as HttpClient;
 use twilight_model::channel::Message;
+use twilight_model::id::UserId;
 
 #[derive(Clone, Deserialize)]
 struct DatabaseInfo {
@@ -33,6 +38,7 @@ impl DatabaseInfo {
 pub struct Config {
     database: DatabaseInfo,
     pub default_prefix: Box<str>,
+    pub prefix_override: Box<str>,
 }
 impl Config {
     fn new() -> Self {
@@ -41,11 +47,20 @@ impl Config {
     }
 }
 
-pub fn get_command_name_from<'a>(content: &'a str, prefix: &str) -> Option<&'a str> {
+struct CommandArgs {
+    command: Box<str>,
+    args: Vec<Box<str>>,
+}
+
+pub fn get_command_and_args<'a>(content: &'a str, prefix: &str) -> Option<(&'a str, Vec<&'a str>)> {
     return if !content.starts_with(&prefix) || content.len() == prefix.len() {
         None
     } else {
-        Some(&content.split_whitespace().collect::<Vec<&str>>()[0][prefix.len()..])
+        let raw = &content[prefix.len()..].trim_start();
+        let mut args = raw.split_whitespace().collect::<Vec<_>>();
+        let cmd = args[0];
+        args.remove(0);
+        Some((cmd, args))
     };
 }
 
@@ -73,18 +88,26 @@ impl Assyst {
     }
 
     pub async fn handle_command(self: &Arc<Self>, message: Message) -> Result<(), String> {
-        let try_prefix = self
-            .database
-            .get_or_set_prefix_for(message.guild_id.unwrap().0, &self.config.default_prefix)
-            .await
-            .map_err(|err| err.to_string())?;
         let prefix;
+        if self.config.prefix_override == box_str!("") {
+            let try_prefix = self
+                .database
+                .get_or_set_prefix_for(message.guild_id.unwrap().0, &self.config.default_prefix)
+                .await
+                .map_err(|err| err.to_string())?;
 
-        match try_prefix {
-            Some(p) => {
-                prefix = p;
-            }
-            None => return Ok(()),
+            match try_prefix {
+                Some(p) => {
+                    prefix = p;
+                }
+                None => return Ok(()),
+            };
+        } else {
+            prefix = Cow::Borrowed(&self.config.prefix_override);
+        };
+
+        if !message.content.starts_with(prefix.borrow() as &str) {
+            return Ok(());
         };
 
         let t_command = self.parse_command(&message, &prefix).await;
@@ -104,6 +127,7 @@ impl Assyst {
                 return Ok(());
             }
         };
+
         let context_clone = context.clone();
         let command_result = self.registry.execute_command(command, context_clone).await;
         match command_result {
@@ -121,53 +145,69 @@ impl Assyst {
         prefix: &str,
     ) -> Result<Option<ParsedCommand>, CommandParseError> {
         let content = &message.content;
-        let command_name = get_command_name_from(&content, &prefix).unwrap_or("");
-        let try_command = self.registry.get_command_from_name_or_alias(command_name);
+        let command_details = get_command_and_args(&content, &prefix).unwrap_or(("", vec![]));
+        let try_command = self
+            .registry
+            .get_command_from_name_or_alias(&command_details.0.to_ascii_lowercase());
         let command = match try_command {
             Some(c) => c,
             None => return Ok(None),
         };
-        let parsed_args = self.parse_arguments(&message, &command).await?;
+        let parsed_args = self
+            .parse_arguments(&message, &command, command_details.1)
+            .await?;
         Ok(Some(ParsedCommand {
             calling_name: command.name.clone(),
             args: parsed_args,
         }))
     }
 
-    async fn parse_arguments(&self, message: &Message, command: &Command) -> Result<Vec<ParsedArgument>, CommandParseError> {
-        let content = &message.content;
-        let mut args: Vec<&str> = content.split_whitespace().collect();
+    async fn parse_arguments(
+        &self,
+        message: &Message,
+        command: &Command,
+        mut args: Vec<&str>,
+    ) -> Result<Vec<ParsedArgument>, CommandParseError> {
         let mut parsed_args: Vec<ParsedArgument> = vec![];
-        args.remove(0);
         let mut index = 0;
         for arg in &command.args {
             match arg {
                 Argument::ImageUrl | Argument::ImageBuffer => {
                     let argument_to_pass = if args.len() <= index { "" } else { args[index] };
-                    let try_result = self.parse_image_argument(message, argument_to_pass, arg).await;
+                    let try_result = self
+                        .parse_image_argument(message, argument_to_pass, arg)
+                        .await;
                     if let Some(result) = try_result {
                         parsed_args.push(result.value);
-                        if result.should_increment_index { index += 1 };
+                        if result.should_increment_index {
+                            index += 1
+                        };
                     } else {
-                        return Err(CommandParseError::with_reply("This command expects an image as an argument, but no image could be found.".to_owned()))
+                        return Err(CommandParseError::with_reply("This command expects an image as an argument, but no image could be found.".to_owned()));
                     }
-                },
+                }
                 Argument::String => {
                     if args.len() <= index {
-                        return Err(CommandParseError::with_reply("This command expects a text argument that was not provided.".to_owned()))
+                        return Err(CommandParseError::with_reply(
+                            "This command expects a text argument that was not provided."
+                                .to_owned(),
+                        ));
                     }
                     parsed_args.push(ParsedArgument::Text(args[index].to_owned()));
                     index += 1;
-                },
+                }
                 Argument::StringRemaining => {
                     if args.len() <= index {
-                        return Err(CommandParseError::with_reply("This command expects a text argument that was not provided.".to_owned()))
+                        return Err(CommandParseError::with_reply(
+                            "This command expects a text argument that was not provided."
+                                .to_owned(),
+                        ));
                     }
                     parsed_args.push(ParsedArgument::Text(args[index..].join(" ")));
                     break;
                 }
             }
-        };
+        }
         Ok(parsed_args)
     }
 
@@ -175,42 +215,121 @@ impl Assyst {
         &self,
         message: &Message,
         argument: &str,
-        return_as: &Argument
+        return_as: &Argument,
     ) -> Option<ParsedArgumentResult> {
-        let emoji_url = self.validate_emoji_url(argument).await?;
-        return match return_as {
+        let mut should_increment = true;
+        let mut try_url = self.validate_emoji_argument(argument).await;
+        if try_url.is_none() {
+            try_url = self.validate_user_argument(argument).await
+        };
+        if try_url.is_none() {
+            try_url = self.validate_message_attachment(message);
+            if try_url.is_some() {
+                should_increment = false
+            };
+        };
+        if try_url.is_none() {
+            try_url = self.validate_previous_message_attachment(message).await;
+            if try_url.is_some() {
+                should_increment = false
+            };
+        };
+
+        let url = if let Some(u) = try_url {
+            u
+        } else {
+            return None;
+        };
+
+        match return_as {
             Argument::ImageBuffer => {
-                let result = self.reqwest_client.get(&emoji_url).send().await.ok()?;
+                let result = self.reqwest_client.get(&url).send().await.ok()?;
                 if result.status() != StatusCode::OK {
                     None
                 } else {
                     let bytes = result.bytes().await.ok()?;
-                    Some(
-                        ParsedArgumentResult::increment(
-                            ParsedArgument::Binary(bytes)
-                        )
-                    )
+                    let parsed_argument_result = match should_increment {
+                        true => ParsedArgumentResult::increment(ParsedArgument::Binary(bytes)),
+                        false => ParsedArgumentResult::no_increment(ParsedArgument::Binary(bytes)),
+                    };
+                    Some(parsed_argument_result)
                 }
             }
-            Argument::ImageUrl => Some(
-                ParsedArgumentResult::increment(
-                    ParsedArgument::Text(emoji_url)
-                )
-            ),
+            Argument::ImageUrl => {
+                let parsed_argument_result = match should_increment {
+                    true => ParsedArgumentResult::increment(ParsedArgument::Text(url)),
+                    false => ParsedArgumentResult::no_increment(ParsedArgument::Text(url)),
+                };
+                Some(parsed_argument_result)
+            }
             _ => panic!("return_as must be imageurl or imagebuffer"),
-        };
+        }
     }
 
-    async fn validate_emoji_url(&self, argument: &str) -> Option<String> {
+    async fn validate_emoji_argument(&self, argument: &str) -> Option<String> {
         let emoji_id = regexes::CUSTOM_EMOJI
             .captures(argument)
             .and_then(|emoji_id_capture| emoji_id_capture.get(1))
             .and_then(|id| Some(id.as_str()))
             .and_then(|id| id.parse::<u64>().ok())?;
 
-        let format = if argument.starts_with("<a") { "gif" } else { "png" };
+        let format = if argument.starts_with("<a") {
+            "gif"
+        } else {
+            "png"
+        };
         let emoji_url = format!("https://cdn.discordapp.com/emojis/{}.{}", emoji_id, format);
 
         return Some(emoji_url);
+    }
+
+    fn validate_message_attachment(&self, message: &Message) -> Option<String> {
+        Some(message.attachments.first()?.proxy_url.clone())
+    }
+
+    async fn validate_previous_message_attachment(&self, message: &Message) -> Option<String> {
+        let messages = self.http.channel_messages(message.channel_id).await.ok()?;
+        let message_attachment_urls: Vec<Option<&String>> = messages.iter().map(|message| {
+            let embed = message
+                .embeds
+                .first()?;
+            let image_proxy_url = embed.image.as_ref()
+                .and_then(|image| image.proxy_url.as_ref());
+            if let Some(_) = image_proxy_url { return image_proxy_url };
+            let thumbnail_proxy_url = embed.thumbnail.as_ref()
+                .and_then(|thumbnail| thumbnail.proxy_url.as_ref());
+            thumbnail_proxy_url
+        }).collect();
+        let attachment_url = message_attachment_urls.iter().find(|attachment| attachment.is_some())?
+            .and_then(|x| Some(x.clone()));
+        attachment_url
+    }
+
+    async fn validate_user_argument(&self, argument: &str) -> Option<String> {
+        let user_id = regexes::USER_MENTION
+            .captures(argument)
+            .and_then(|user_id_capture| user_id_capture.get(1))
+            .and_then(|id| Some(id.as_str()))
+            .and_then(|id| id.parse::<u64>().ok())?;
+
+        let user = self.http.user(UserId::from(user_id)).await.ok()??;
+        let avatar_hash = user.avatar;
+        match avatar_hash {
+            Some(hash) => {
+                let format = if hash.starts_with("a_") { "gif" } else { "png" };
+                Some(format!(
+                    "https://cdn.discordapp.com/avatars/{}/{}.{}",
+                    user_id, hash, format
+                ))
+            }
+            None => {
+                let discrim = user.discriminator.parse::<u16>().ok()?;
+                let avatar_number = discrim % 5;
+                Some(format!(
+                    "https://cdn.discordapp.com/embed/avatars/{}.png",
+                    avatar_number
+                ))
+            }
+        }
     }
 }

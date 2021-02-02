@@ -13,7 +13,7 @@ pub mod regexes {
 
     lazy_static!{
         pub static ref CUSTOM_EMOJI: Regex = Regex::new(r"<a?:\w+:(\d{16,20})>").unwrap();
-        pub static ref USER_MENTION: Regex = Regex::new(r"<!?@(\d{16,20})>").unwrap();
+        pub static ref USER_MENTION: Regex = Regex::new(r"<@!?(\d{16,20})>").unwrap();
     }
 }
 
