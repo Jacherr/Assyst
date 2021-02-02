@@ -82,7 +82,7 @@ pub mod force_as {
 
     use super::ParsedArgument;
 
-    pub fn image_buffer(argument: &ParsedArgument) -> &Bytes {
+    pub fn image_buffer(argument: ParsedArgument) -> Bytes {
         match argument {
             ParsedArgument::Binary(data) => data,
             _ => panic!("expected buffer argument")
