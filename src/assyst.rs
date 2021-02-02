@@ -1,6 +1,5 @@
 use crate::database::Database;
 use crate::{
-    box_str,
     command::command::{
         Argument, Command, CommandParseError, ParsedArgument, ParsedArgumentResult, ParsedCommand,
     },
@@ -13,7 +12,7 @@ use reqwest::{Client as ReqwestClient, StatusCode};
 use serde::Deserialize;
 use std::borrow::Cow;
 use std::{borrow::Borrow, sync::Arc};
-use std::{fs::read_to_string, time::Instant};
+use std::fs::read_to_string;
 use twilight_http::Client as HttpClient;
 use twilight_model::channel::Message;
 use twilight_model::id::UserId;
@@ -84,7 +83,7 @@ impl Assyst {
 
     pub async fn handle_command(self: &Arc<Self>, message: Message) -> Result<(), String> {
         let prefix;
-        if self.config.prefix_override == box_str!("") {
+        if self.config.prefix_override.len() == 0 {
             let try_prefix = self
                 .database
                 .get_or_set_prefix_for(message.guild_id.unwrap().0, &self.config.default_prefix)
@@ -152,7 +151,7 @@ impl Assyst {
             .parse_arguments(&message, &command, command_details.1)
             .await?;
         Ok(Some(ParsedCommand {
-            calling_name: command.name.clone(),
+            calling_name: &command.name,
             args: parsed_args,
         }))
     }
@@ -230,11 +229,7 @@ impl Assyst {
             };
         };
 
-        let url = if let Some(u) = try_url {
-            u
-        } else {
-            return None;
-        };
+        let url = try_url?;
 
         match return_as {
             Argument::ImageBuffer => {
@@ -288,16 +283,15 @@ impl Assyst {
             let embed = message
                 .embeds
                 .first()?;
-            let image_proxy_url = embed.image.as_ref()
-                .and_then(|image| image.proxy_url.as_ref());
-            if let Some(_) = image_proxy_url { return image_proxy_url };
-            let thumbnail_proxy_url = embed.thumbnail.as_ref()
-                .and_then(|thumbnail| thumbnail.proxy_url.as_ref());
-            thumbnail_proxy_url
+
+            embed.image
+                .as_ref()
+                .and_then(|img| img.proxy_url.as_ref())
+                .or_else(|| embed.thumbnail.as_ref().and_then(|thumbnail| thumbnail.proxy_url.as_ref()))
         }).collect();
-        let attachment_url = message_attachment_urls.iter().find(|attachment| attachment.is_some())?
-            .and_then(|x| Some(x.clone()));
-        attachment_url
+
+        message_attachment_urls.iter().find(|attachment| attachment.is_some())?
+            .and_then(|x| Some(x.clone()))
     }
 
     async fn validate_user_argument(&self, argument: &str) -> Option<String> {
