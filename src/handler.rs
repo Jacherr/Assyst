@@ -5,7 +5,7 @@ use std::sync::Arc;
 pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
     match event {
         Event::MessageCreate(message) => {
-            message_create::handle(assyst.clone(), message).await;
+            message_create::handle(assyst, message).await;
         }
         Event::ShardConnected(d) => {
             println!("Shard {}: READY", d.shard_id);

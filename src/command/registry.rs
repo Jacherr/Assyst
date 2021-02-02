@@ -1,7 +1,7 @@
 use super::command::{Command, ParsedArgument, ParsedCommand};
 use super::categories::{misc::*, image::*};
 use std::{collections::HashMap, pin::Pin};
-use crate::{box_str, command::context::Context};
+use crate::command::context::Context;
 use std::future::Future;
 use std::sync::Arc;
 
@@ -11,15 +11,21 @@ pub type CommandRun = Box<dyn Fn(Arc<Context>, Vec<ParsedArgument>) -> CommandRe
 
 macro_rules! register_command {
     ($self:expr, $command:expr, $run_fn:expr) => {{
-        $self.commands.insert($command.name.clone(), &*$command);
-        $self.command_runs.insert($command.name.clone(), Box::new(move |context, args| Box::pin($run_fn(context, args))));
+        // Registering the same command for each alias is fine because it will point to the same object
+        for alias in &$command.aliases {
+            $self.commands.insert(alias, &*$command);
+        }
+
+        $self.commands.insert(&$command.name, &*$command);
+        $self.command_runs.insert(&$command.name, Box::new(move |context, args| Box::pin($run_fn(context, args))));
     }}
 }
 
 pub struct CommandRegistry {
-    pub command_runs: HashMap<Box<str>, CommandRun>,
-    pub commands: HashMap<Box<str>, &'static Command>
+    pub command_runs: HashMap<&'static str, CommandRun>,
+    pub commands: HashMap<&'static str, &'static Command>
 }
+
 impl CommandRegistry {
     pub fn new() -> Self {
         CommandRegistry {
@@ -29,22 +35,12 @@ impl CommandRegistry {
     }
 
     pub async fn execute_command(&self, parsed_command: ParsedCommand, context: Arc<Context>) -> Result<(), String> {
-        let command_run = self.command_runs.get(&parsed_command.calling_name).unwrap();
+        let command_run = self.command_runs.get(parsed_command.calling_name).unwrap();
         command_run(context, parsed_command.args).await
     }
 
     pub fn get_command_from_name_or_alias(&self, name: &str) -> Option<&'static Command> {
-        let command = self.commands.get(&box_str!(name));
-        return match command {
-            Some(c) => Some(*c),
-            None => {
-                let valid_command = self.commands.values().find(|c| (**c).names().contains(&name));
-                match valid_command {
-                    Some(c) => Some(*c),
-                    None => None
-                }
-            }
-        }
+        self.commands.get(name).and_then(|command| Some(*command))
     }
 
     pub fn register_commands(&mut self) {
