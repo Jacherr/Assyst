@@ -4,6 +4,7 @@ mod handler;
 mod handlers;
 mod util;
 mod assyst;
+mod rest;
 
 use dotenv::dotenv;
 use futures::stream::StreamExt;
