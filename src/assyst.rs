@@ -1,4 +1,4 @@
-use crate::database::Database;
+use crate::{caching::{Replies, Reply}, database::Database};
 use crate::{
     command::command::{
         Argument, Command, CommandParseError, ParsedArgument, ParsedArgumentResult, ParsedCommand,
@@ -10,6 +10,7 @@ use crate::{
 };
 use reqwest::{Client as ReqwestClient, StatusCode};
 use serde::Deserialize;
+use tokio::sync::RwLock;
 use std::borrow::Cow;
 use std::{borrow::Borrow, sync::Arc};
 use std::fs::read_to_string;
@@ -59,10 +60,11 @@ pub fn get_command_and_args<'a>(content: &'a str, prefix: &str) -> Option<(&'a s
 }
 
 pub struct Assyst {
-    pub registry: CommandRegistry,
     pub config: Config,
     pub database: Database,
     pub http: HttpClient,
+    pub registry: CommandRegistry,
+    pub replies: RwLock<Replies>,
     pub reqwest_client: ReqwestClient,
 }
 impl Assyst {
@@ -71,17 +73,19 @@ impl Assyst {
         let config = Config::new();
         let database = Database::new(2, config.database.to_url()).await.unwrap();
         let mut assyst = Assyst {
-            registry: CommandRegistry::new(),
             config,
             database,
             http,
+            registry: CommandRegistry::new(),
+            replies: RwLock::new(Replies::new()),
             reqwest_client: ReqwestClient::new(),
         };
         assyst.registry.register_commands();
         assyst
     }
 
-    pub async fn handle_command(self: &Arc<Self>, message: Message) -> Result<(), String> {
+    pub async fn handle_command(self: &Arc<Self>, _message: Message) -> Result<(), String> {
+        let message = Arc::new(_message);
         let prefix;
         if self.config.prefix_override.len() == 0 {
             let try_prefix = self
@@ -104,8 +108,10 @@ impl Assyst {
             return Ok(());
         };
 
+        let reply = self.replies.write().await.get_or_set_reply(Reply::new(message.clone()));
+
         let t_command = self.parse_command(&message, &prefix).await;
-        let context = Arc::new(Context::new(self.clone(), message));
+        let context = Arc::new(Context::new(self.clone(), message.clone()));
         let command = match t_command {
             Ok(res) => match res {
                 Some(c) => c,
@@ -280,14 +286,14 @@ impl Assyst {
     async fn validate_previous_message_attachment(&self, message: &Message) -> Option<String> {
         let messages = self.http.channel_messages(message.channel_id).await.ok()?;
         let message_attachment_urls: Vec<Option<&String>> = messages.iter().map(|message| {
-            let embed = message
-                .embeds
-                .first()?;
-
-            embed.image
-                .as_ref()
-                .and_then(|img| img.proxy_url.as_ref())
-                .or_else(|| embed.thumbnail.as_ref().and_then(|thumbnail| thumbnail.proxy_url.as_ref()))
+            if let Some(embed) = message.embeds.first() {
+                embed.image
+                    .as_ref()
+                    .and_then(|img| img.proxy_url.as_ref())
+                    .or_else(|| embed.thumbnail.as_ref().and_then(|thumbnail| thumbnail.proxy_url.as_ref()))
+            } else {
+                Some(&message.attachments.first()?.proxy_url)
+            }
         }).collect();
 
         message_attachment_urls.iter().find(|attachment| attachment.is_some())?
