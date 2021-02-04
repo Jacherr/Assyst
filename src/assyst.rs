@@ -1,4 +1,4 @@
-use crate::{caching::{Replies, Reply}, database::Database};
+use crate::{caching::{Replies, Reply}, command::context::Metrics, database::Database};
 use crate::{
     command::command::{
         Argument, Command, CommandParseError, ParsedArgument, ParsedArgumentResult, ParsedCommand,
@@ -11,7 +11,7 @@ use crate::{
 use reqwest::{Client as ReqwestClient, StatusCode};
 use serde::Deserialize;
 use tokio::sync::RwLock;
-use std::borrow::Cow;
+use std::{borrow::Cow, time::Instant};
 use std::{borrow::Borrow, sync::Arc};
 use std::fs::read_to_string;
 use twilight_http::Client as HttpClient;
@@ -85,6 +85,7 @@ impl Assyst {
     }
 
     pub async fn handle_command(self: &Arc<Self>, _message: Message) -> Result<(), String> {
+        let start = Instant::now();
         let message = Arc::new(_message);
         let prefix;
         if self.config.prefix_override.len() == 0 {
@@ -111,7 +112,10 @@ impl Assyst {
         let reply = self.replies.write().await.get_or_set_reply(Reply::new(message.clone()));
 
         let t_command = self.parse_command(&message, &prefix).await;
-        let context = Arc::new(Context::new(self.clone(), message.clone()));
+        let metrics = Metrics {
+            processing_time_start: start
+        };
+        let context = Arc::new(Context::new(self.clone(), message.clone(), metrics));
         let command = match t_command {
             Ok(res) => match res {
                 Some(c) => c,

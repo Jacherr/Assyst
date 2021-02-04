@@ -47,5 +47,6 @@ impl CommandRegistry {
         register_command!(self, PING_COMMAND, run_ping_command);
         register_command!(self, ENLARGE_COMMAND, run_enlarge_command);
         register_command!(self, CAPTION_COMMAND, run_caption_command);
+        register_command!(self, REVERSE_COMMAND, run_reverse_command);
     }
 }
