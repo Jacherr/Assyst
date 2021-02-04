@@ -66,16 +66,6 @@ pub struct Command {
     pub metadata: CommandMetadata,
     pub name: Box<str>
 }
-impl Command {
-    pub fn names(&self) -> Vec<&str> {
-        let mut new_vec: Vec<&str> = Vec::with_capacity(self.aliases.len() + 1);
-        for alias in &self.aliases {
-            new_vec.push(&alias);
-        }
-        new_vec.push(&self.name);
-        new_vec
-    }
-}
 
 pub mod force_as {
     use bytes::Bytes;
