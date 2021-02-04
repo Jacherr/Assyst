@@ -12,7 +12,7 @@ twilight-http = "0.3"
 twilight-model = "0.3"
 tokio = { version = "1.0", features = ["full"] }
 futures = "0.3.12"
-sqlx = { git = "https://github.com/launchbadge/sqlx", branch = "master", features = [ "postgres", "runtime-tokio-rustls" ] }
+sqlx = { version = "0.5.1", features = [ "postgres", "runtime-tokio-rustls" ] }
 serde = "1.0.123"
 toml = "0.5.8"
 dotenv = "0.15.0"

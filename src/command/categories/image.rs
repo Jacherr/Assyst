@@ -8,7 +8,7 @@ lazy_static!{
     pub static ref CAPTION_COMMAND: Command = Command {
         aliases: vec![],
         args: vec![Argument::ImageBuffer, Argument::StringRemaining],
-        availability: CommandAvailability::Private,
+        availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!("add a caption to an image"),
             examples: vec![],
@@ -16,12 +16,41 @@ lazy_static!{
         },
         name: box_str!("caption")
     };
+
+    pub static ref REVERSE_COMMAND: Command = Command {
+        aliases: vec![],
+        args: vec![Argument::ImageBuffer],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: box_str!("reverse a gif"),
+            examples: vec![],
+            usage: box_str!("[image]")
+        },
+        name: box_str!("reverse")
+    };
 }
 
 pub async fn run_caption_command(context: Arc<Context>, mut args: Vec<ParsedArgument>) -> CommandResult {
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let text = force_as::text(&args[0]);
     let result = wsi::caption(&context.assyst.reqwest_client, image, text).await
+        .map_err(|err| {
+            match err {
+                RequestError::Reqwest(e) => e.to_string(),
+                RequestError::Wsi(e) => format!("Error {}: {}", e.code, e.message)
+            }
+        })?;
+    let format = get_buffer_filetype(&result)
+        .unwrap_or_else(|| "png");
+    context.reply(MessageBuilder::new().attachment(&format!("caption.{}", format), result.to_vec()).clone())
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub async fn run_reverse_command(context: Arc<Context>, mut args: Vec<ParsedArgument>) -> CommandResult {
+    let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let result = wsi::reverse(&context.assyst.reqwest_client, image).await
         .map_err(|err| {
             match err {
                 RequestError::Reqwest(e) => e.to_string(),

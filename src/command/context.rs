@@ -1,19 +1,26 @@
 use twilight_model::channel::Message;
-use std::error::Error;
+use std::{error::Error, time::Instant};
 
 use crate::Assyst;
 use std::sync::Arc;
 
 use super::messagebuilder::MessageBuilder;
+
+pub struct Metrics {
+    pub processing_time_start: Instant
+}
+
 pub struct Context {
     pub assyst: Arc<Assyst>,
-    pub message: Arc<Message>
+    pub message: Arc<Message>,
+    pub metrics: Metrics
 }
 impl Context {
-    pub fn new(assyst: Arc<Assyst>, message: Arc<Message>) -> Self {
+    pub fn new(assyst: Arc<Assyst>, message: Arc<Message>, metrics: Metrics) -> Self {
         Context {
             assyst,
-            message
+            message,
+            metrics
         }
     }
 
