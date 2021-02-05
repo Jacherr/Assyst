@@ -320,7 +320,7 @@ impl Assyst {
             Some(hash) => {
                 let format = if hash.starts_with("a_") { "gif" } else { "png" };
                 Some(format!(
-                    "https://cdn.discordapp.com/avatars/{}/{}.{}",
+                    "https://cdn.discordapp.com/avatars/{}/{}.{}?size=1024",
                     user_id, hash, format
                 ))
             }
