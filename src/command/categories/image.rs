@@ -28,6 +28,18 @@ lazy_static!{
         },
         name: box_str!("reverse")
     };
+
+    pub static ref SPIN_COMMAND: Command = Command {
+        aliases: vec![],
+        args: vec![Argument::ImageBuffer],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: box_str!("spin an image"),
+            examples: vec![],
+            usage: box_str!("[image]")
+        },
+        name: box_str!("spin")
+    };
 }
 
 pub async fn run_caption_command(context: Arc<Context>, mut args: Vec<ParsedArgument>) -> CommandResult {
@@ -59,7 +71,24 @@ pub async fn run_reverse_command(context: Arc<Context>, mut args: Vec<ParsedArgu
         })?;
     let format = get_buffer_filetype(&result)
         .unwrap_or_else(|| "png");
-    context.reply(MessageBuilder::new().attachment(&format!("caption.{}", format), result.to_vec()).clone())
+    context.reply(MessageBuilder::new().attachment(&format!("reverse.{}", format), result.to_vec()).clone())
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub async fn run_spin_command(context: Arc<Context>, mut args: Vec<ParsedArgument>) -> CommandResult {
+    let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let result = wsi::spin(&context.assyst.reqwest_client, image).await
+        .map_err(|err| {
+            match err {
+                RequestError::Reqwest(e) => e.to_string(),
+                RequestError::Wsi(e) => format!("Error {}: {}", e.code, e.message)
+            }
+        })?;
+    let format = get_buffer_filetype(&result)
+        .unwrap_or_else(|| "png");
+    context.reply(MessageBuilder::new().attachment(&format!("spin.{}", format), result.to_vec()).clone())
         .await
         .map_err(|e| e.to_string())?;
     Ok(())

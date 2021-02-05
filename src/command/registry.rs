@@ -4,6 +4,8 @@ use std::{collections::HashMap, pin::Pin};
 use crate::command::context::Context;
 use std::future::Future;
 use std::sync::Arc;
+use futures::lock;
+use tokio::{sync::{Mutex, oneshot}, time::{sleep, Duration}};
 
 pub type CommandResult = Result<(), String>;
 pub type CommandResultOuter = Pin<Box<dyn Future<Output = CommandResult> + Send>>;
@@ -35,8 +37,24 @@ impl CommandRegistry {
     }
 
     pub async fn execute_command(&self, parsed_command: ParsedCommand, context: Arc<Context>) -> Result<(), String> {
+        let command_processed = Arc::new(Mutex::new(false));
+        
+        let command_processed_c = command_processed.clone();
+        let context_c = context.clone();
+
+        tokio::spawn(async move {
+            sleep(Duration::from_secs(2)).await;
+            let lock = *command_processed_c.lock().await;
+            if lock == false {
+                context_c.assyst.http.create_typing_trigger(context_c.message.channel_id).await;
+            }
+        });
+
         let command_run = self.command_runs.get(parsed_command.calling_name).unwrap();
-        command_run(context, parsed_command.args).await
+        let result = command_run(context, parsed_command.args).await;
+        let mut lock = command_processed.lock().await;
+        *lock = true;
+        result
     }
 
     pub fn get_command_from_name_or_alias(&self, name: &str) -> Option<&'static Command> {
@@ -48,5 +66,6 @@ impl CommandRegistry {
         register_command!(self, ENLARGE_COMMAND, run_enlarge_command);
         register_command!(self, CAPTION_COMMAND, run_caption_command);
         register_command!(self, REVERSE_COMMAND, run_reverse_command);
+        register_command!(self, SPIN_COMMAND, run_spin_command);
     }
 }
