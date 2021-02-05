@@ -1,3 +1,5 @@
+use std::{convert::TryInto, time::{SystemTime, UNIX_EPOCH}};
+
 use bytes::Bytes;
 
 #[macro_export]
@@ -39,4 +41,13 @@ pub fn get_buffer_filetype(buffer: &Bytes) -> Option<&'static str> {
             None
         }
     }
+}
+
+pub fn get_current_millis() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_millis()
+        .try_into()
+        .expect("Couldn't fit timestamp (u128) into i64")
 }

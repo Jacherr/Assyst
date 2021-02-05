@@ -86,3 +86,16 @@ pub mod force_as {
         }
     }
 }
+
+pub mod must {
+    use super::ParsedArgument;
+
+    pub fn either<'a>(actual: &ParsedArgument, options: &'a [&'a str]) -> Result<&'a &'a str, String> {
+        let as_string = match actual {
+            ParsedArgument::Text(data) => data,
+            _ => return Err("expected text argument".to_owned())
+        };
+
+        options.iter().find(|&&option| option == as_string).ok_or("argument not found in options".to_owned())
+    }
+}

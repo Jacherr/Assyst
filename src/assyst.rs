@@ -1,4 +1,4 @@
-use crate::{caching::{Replies, Reply}, command::context::Metrics, database::Database};
+use crate::{badtranslator, caching::{Replies, Reply}, command::context::Metrics, database::Database};
 use crate::{
     command::command::{
         Argument, Command, CommandParseError, ParsedArgument, ParsedArgumentResult, ParsedCommand,
@@ -8,6 +8,7 @@ use crate::{
     command::{context::Context, registry::CommandRegistry},
     util::regexes,
 };
+use crate::badtranslator::BadTranslator;
 use reqwest::{Client as ReqwestClient, StatusCode};
 use serde::Deserialize;
 use tokio::sync::RwLock;
@@ -66,6 +67,7 @@ pub struct Assyst {
     pub registry: CommandRegistry,
     pub replies: RwLock<Replies>,
     pub reqwest_client: ReqwestClient,
+    pub badtranslator: BadTranslator
 }
 impl Assyst {
     pub async fn new(token: &str) -> Self {
@@ -76,6 +78,7 @@ impl Assyst {
             config,
             database,
             http,
+            badtranslator: BadTranslator::new(),
             registry: CommandRegistry::new(),
             replies: RwLock::new(Replies::new()),
             reqwest_client: ReqwestClient::new(),
