@@ -1,5 +1,5 @@
 default_prefix = "a-"
-prefix_override = ">>"
+prefix_override = "<"
 
 [database]
   host = "161.97.104.129"

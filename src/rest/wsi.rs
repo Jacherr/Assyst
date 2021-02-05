@@ -7,6 +7,7 @@ const API_BASE: &str = "https://wsi.jacher.io";
 mod routes {
     pub const CAPTION: &str = "/caption";
     pub const REVERSE: &str = "/reverse";
+    pub const SPIN: &str = "/spin";
 }
 #[derive(Deserialize)]
 pub struct WsiError {
@@ -45,4 +46,8 @@ pub async fn caption(client: &reqwest::Client, image: Bytes, text: &str) -> Resu
 
 pub async fn reverse(client: &reqwest::Client, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(client, routes::REVERSE, image, &[]).await
+}
+
+pub async fn spin(client: &reqwest::Client, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(client, routes::SPIN, image, &[]).await
 }
