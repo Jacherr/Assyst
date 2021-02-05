@@ -6,6 +6,7 @@ mod util;
 mod assyst;
 mod rest;
 mod caching;
+mod badtranslator;
 
 use dotenv::dotenv;
 use futures::stream::StreamExt;

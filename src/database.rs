@@ -2,6 +2,9 @@ use std::{borrow::Cow, collections::HashMap};
 
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use tokio::sync::RwLock;
+use futures::StreamExt;
+
+use crate::badtranslator::ChannelCache;
 
 macro_rules! generate_query_task {
     ($query:expr, $pool:expr, $ret:tt, $($v:expr),+) => {{
@@ -95,5 +98,30 @@ impl Database {
             guild_id as i64,
             prefix
         )
+    }
+
+    pub async fn get_bt_channels(&self) -> Result<ChannelCache, sqlx::Error> {
+        let query = "SELECT id FROM bt_channels";
+
+        let mut channels: ChannelCache = HashMap::new();
+
+        let mut rows = sqlx::query_as::<_, (i64,)>(query)
+            .fetch(&self.pool);
+
+        while let Some(Ok(row)) = rows.next().await {
+            channels.insert(row.0 as u64, None);
+        }
+
+        Ok(channels)
+    }
+
+    pub async fn delete_bt_channel(&self, id: u64) -> Result<(), sqlx::Error> {
+        let query = "DELETE FROM bt_channels WHERE id = $1";
+
+        sqlx::query(query)
+            .bind(id as i64)
+            .execute(&self.pool)
+            .await
+            .and_then(|_| Ok(()))
     }
 }
