@@ -2,6 +2,7 @@ import { BaseFapiCommand } from '../basefapicommand';
 import { Command } from 'detritus-client';
 import { parseCodeblocks } from '../../utils';
 import { Markup } from 'detritus-client/lib/utils';
+import { runCode } from '../../rest/rest';
 
 export interface CommandArgs {
     code: string,
@@ -32,10 +33,8 @@ export default class RextesterCommand extends BaseFapiCommand {
     async run (context: Command.Context, args: CommandArgs) {
         const code = parseCodeblocks(args.code);
 
-        let result = await this.fapi.rexTester(args.lang, code).then((a: string | undefined) => a?.toString());
+        let result = await runCode(args.lang, code);
 
-        return context.reply(Markup.codeblock(result ?? 'Empty response', {
-            language: args.lang
-        }));
+        return context.reply(Markup.codeblock(result, { language: args.lang }));
     }
 }

@@ -1,3 +1,5 @@
+import * as rextester from '../constants/rextester';
+
 import fetch from 'node-fetch';
 
 import { STATUS_CODES } from 'http'
@@ -118,4 +120,21 @@ export async function badTranslate(text: string) {
 
 export async function bulkUserLookup(userIds: Array<string>): Promise<Array<DiscardUser>> {
   return fetch(Endpoints.BULK_USER_LOOKUP.replace(':ids', userIds.join(','))).then(x => x.json());
+}
+
+export async function runCode(lang: string, code: string): Promise<string> {
+  const langCode = rextester.LANGUAGES.get(lang);
+  if (!langCode) return 'Language not found';
+
+  return fetch(`${rextester.HOST}?LanguageChoice=${langCode}`, {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'LanguageChoice': String(langCode)
+    },
+    body: JSON.stringify({
+        Program: code,
+        CompilerArgs: '-o a.out source_file.c'
+    })
+  }).then(x => x.json()).then(x => x.Errors ?? x.Result ?? "Empty result");
 }
