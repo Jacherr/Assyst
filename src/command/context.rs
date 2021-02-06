@@ -40,6 +40,6 @@ impl Context {
     }
 
     pub async fn reply_err(&self, content: &str) -> Result<Message, Box<dyn Error>> {
-        self.reply(MessageBuilder::new().content(&format!(":warning: `{}`", content)).clone()).await
+        self.reply(MessageBuilder::new().content(&format!(":warning: `{}`", content.replace("`", "'"))).clone()).await
     }
 }

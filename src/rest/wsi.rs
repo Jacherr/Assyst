@@ -2,7 +2,7 @@ use bytes::Bytes;
 use reqwest::Error;
 use serde::Deserialize;
 
-const API_BASE: &str = "https://wsi.jacher.io";
+const API_BASE: &str = "http://127.0.0.1:3030";
 
 mod routes {
     pub const CAPTION: &str = "/caption";
@@ -23,7 +23,7 @@ pub enum RequestError {
 pub async fn request_bytes(client: &reqwest::Client, route: &str, image: Bytes, query: &[(&str, &str)]) -> Result<Bytes, RequestError> {
     let result = client
         .post(&format!("{}{}", API_BASE, route))
-        .header(reqwest::header::AUTHORIZATION, "0192837465")
+        .header(reqwest::header::AUTHORIZATION, "sex")
         .query(query)
         .body(image)
         .send()
