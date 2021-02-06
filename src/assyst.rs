@@ -1,20 +1,23 @@
-use crate::{badtranslator, caching::{Replies, Reply}, command::context::Metrics, database::Database};
+use crate::badtranslator::BadTranslator;
+use crate::command::command::{
+    Argument, Command, CommandParseError, ParsedArgument, ParsedArgumentResult, ParsedCommand,
+};
 use crate::{
-    command::command::{
-        Argument, Command, CommandParseError, ParsedArgument, ParsedArgumentResult, ParsedCommand,
-    },
+    badtranslator,
+    caching::{Replies, Reply},
+    command::context::Metrics,
+    database::Database,
 };
 use crate::{
     command::{context::Context, registry::CommandRegistry},
     util::regexes,
 };
-use crate::badtranslator::BadTranslator;
 use reqwest::{Client as ReqwestClient, StatusCode};
 use serde::Deserialize;
-use tokio::sync::RwLock;
-use std::{borrow::Cow, time::Instant};
-use std::{borrow::Borrow, sync::Arc};
 use std::fs::read_to_string;
+use std::{borrow::Borrow, sync::Arc};
+use std::{borrow::Cow, time::Instant};
+use tokio::sync::RwLock;
 use twilight_http::Client as HttpClient;
 use twilight_model::channel::Message;
 use twilight_model::id::UserId;
@@ -67,7 +70,7 @@ pub struct Assyst {
     pub registry: CommandRegistry,
     pub replies: RwLock<Replies>,
     pub reqwest_client: ReqwestClient,
-    pub badtranslator: BadTranslator
+    pub badtranslator: BadTranslator,
 }
 impl Assyst {
     pub async fn new(token: &str) -> Self {
@@ -112,11 +115,15 @@ impl Assyst {
             return Ok(());
         };
 
-        let reply = self.replies.write().await.get_or_set_reply(Reply::new(message.clone()));
+        let reply = self
+            .replies
+            .write()
+            .await
+            .get_or_set_reply(Reply::new(message.clone()));
 
         let t_command = self.parse_command(&message, &prefix).await;
         let metrics = Metrics {
-            processing_time_start: start
+            processing_time_start: start,
         };
         let context = Arc::new(Context::new(self.clone(), message.clone(), metrics));
         let command = match t_command {
@@ -230,6 +237,9 @@ impl Assyst {
             try_url = self.validate_user_argument(argument).await
         };
         if try_url.is_none() {
+            try_url = self.validate_url_argument(argument)
+        };
+        if try_url.is_none() {
             try_url = self.validate_message_attachment(message);
             if try_url.is_some() {
                 should_increment = false
@@ -242,7 +252,15 @@ impl Assyst {
             };
         };
 
-        let url = try_url?;
+        let mut url = try_url?;
+        if url.starts_with("https://tenor.com/view/") {
+            let page = self.reqwest_client.get(&url).send().await.ok()?;
+            let page_html = page.text().await.ok()?;
+            let gif_url = regexes::TENOR_GIF
+                .find(&page_html)
+                .and_then(|url| Some(url.as_str()))?;
+            url = gif_url.to_owned();
+        };
 
         match return_as {
             Argument::ImageBuffer => {
@@ -292,19 +310,40 @@ impl Assyst {
 
     async fn validate_previous_message_attachment(&self, message: &Message) -> Option<String> {
         let messages = self.http.channel_messages(message.channel_id).await.ok()?;
-        let message_attachment_urls: Vec<Option<&String>> = messages.iter().map(|message| {
-            if let Some(embed) = message.embeds.first() {
-                embed.image
-                    .as_ref()
-                    .and_then(|img| img.proxy_url.as_ref())
-                    .or_else(|| embed.thumbnail.as_ref().and_then(|thumbnail| thumbnail.proxy_url.as_ref()))
-            } else {
-                Some(&message.attachments.first()?.proxy_url)
-            }
-        }).collect();
+        let message_attachment_urls: Vec<Option<&String>> = messages
+            .iter()
+            .map(|message| {
+                if let Some(embed) = message.embeds.first() {
+                    embed.url.as_ref().or_else(|| {
+                        embed
+                            .image
+                            .as_ref()
+                            .and_then(|img| img.proxy_url.as_ref())
+                            .or_else(|| {
+                                embed
+                                    .thumbnail
+                                    .as_ref()
+                                    .and_then(|thumbnail| thumbnail.proxy_url.as_ref())
+                            })
+                    })
+                } else {
+                    Some(&message.attachments.first()?.proxy_url)
+                }
+            })
+            .collect();
 
-        message_attachment_urls.iter().find(|attachment| attachment.is_some())?
+        message_attachment_urls
+            .iter()
+            .find(|attachment| attachment.is_some())?
             .and_then(|x| Some(x.clone()))
+    }
+
+    fn validate_url_argument(&self, argument: &str) -> Option<String> {
+        if regexes::URL.is_match(argument) {
+            Some(argument.to_owned())
+        } else {
+            None
+        }
     }
 
     async fn validate_user_argument(&self, argument: &str) -> Option<String> {
