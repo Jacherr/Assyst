@@ -104,7 +104,7 @@ impl BadTranslator {
 
         let webhook = webhooks
             .iter()
-            .find(|webhook| webhook.name == Some("Bad Translator".to_owned()))?;
+            .next();
 
         let mut cache = self.channels.write().await;
         cache.insert(id.0, Some(webhook.clone()));
