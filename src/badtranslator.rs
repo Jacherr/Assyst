@@ -104,7 +104,7 @@ impl BadTranslator {
 
         let webhook = webhooks
             .iter()
-            .next();
+            .next()?;
 
         let mut cache = self.channels.write().await;
         cache.insert(id.0, Some(webhook.clone()));
