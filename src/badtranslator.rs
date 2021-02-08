@@ -139,7 +139,7 @@ impl BadTranslator {
             return
         }
 
-        if message_len == 0 || message_len >= constants::MAX_MESSAGE_LEN || message.author.bot {
+        if message_len == 0 || message_len >= constants::MAX_MESSAGE_LEN {
             let _ = assyst.http.delete_message(message.channel_id, message.id).await;
             return
         }
