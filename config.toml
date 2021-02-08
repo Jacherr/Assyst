@@ -1,5 +1,7 @@
 default_prefix = "a-"
 prefix_override = "<"
+wsi_url = "http://127.0.0.1:3030"
+wsi_auth = "sex"
 
 [database]
   host = "161.97.104.129"

@@ -7,3 +7,4 @@ config.json
 #Added by cargo
 
 /target
+config.toml

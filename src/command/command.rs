@@ -28,6 +28,13 @@ impl CommandParseError {
             should_reply: true
         }
     }
+
+    pub fn without_reply(text: String) -> Self {
+        CommandParseError {
+            error: text,
+            should_reply: false
+        }
+    }
 }
 pub struct CommandMetadata {
     pub description: Box<str>,
