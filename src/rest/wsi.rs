@@ -51,3 +51,10 @@ pub async fn reverse(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, Request
 pub async fn spin(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::SPIN, image, &[]).await
 }
+
+pub fn format_err(err: RequestError) -> String {
+    match err {
+        RequestError::Reqwest(e) => e.to_string(),
+        RequestError::Wsi(e) => format!("Error {}: {}", e.code, e.message)
+    }
+}

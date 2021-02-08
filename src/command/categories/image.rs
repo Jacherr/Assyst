@@ -46,12 +46,7 @@ pub async fn run_caption_command(context: Arc<Context>, mut args: Vec<ParsedArgu
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let text = force_as::text(&args[0]);
     let result = wsi::caption(context.assyst.clone(), image, text).await
-        .map_err(|err| {
-            match err {
-                RequestError::Reqwest(e) => e.to_string(),
-                RequestError::Wsi(e) => format!("Error {}: {}", e.code, e.message)
-            }
-        })?;
+        .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result)
         .unwrap_or_else(|| "png");
     context.reply_with_image(format, result)
@@ -63,12 +58,7 @@ pub async fn run_caption_command(context: Arc<Context>, mut args: Vec<ParsedArgu
 pub async fn run_reverse_command(context: Arc<Context>, mut args: Vec<ParsedArgument>) -> CommandResult {
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let result = wsi::reverse(context.assyst.clone(), image).await
-        .map_err(|err| {
-            match err {
-                RequestError::Reqwest(e) => e.to_string(),
-                RequestError::Wsi(e) => format!("Error {}: {}", e.code, e.message)
-            }
-        })?;
+        .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result)
         .unwrap_or_else(|| "png");
     context.reply_with_image(format, result)
@@ -80,12 +70,7 @@ pub async fn run_reverse_command(context: Arc<Context>, mut args: Vec<ParsedArgu
 pub async fn run_spin_command(context: Arc<Context>, mut args: Vec<ParsedArgument>) -> CommandResult {
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let result = wsi::spin(context.assyst.clone(), image).await
-        .map_err(|err| {
-            match err {
-                RequestError::Reqwest(e) => e.to_string(),
-                RequestError::Wsi(e) => format!("Error {}: {}", e.code, e.message)
-            }
-        })?;
+        .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result)
         .unwrap_or_else(|| "png");
     context.reply_with_image(format, result)
