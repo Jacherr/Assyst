@@ -54,7 +54,7 @@ pub async fn run_caption_command(context: Arc<Context>, mut args: Vec<ParsedArgu
         })?;
     let format = get_buffer_filetype(&result)
         .unwrap_or_else(|| "png");
-    context.reply(MessageBuilder::new().attachment(&format!("caption.{}", format), result.to_vec()).clone())
+    context.reply_with_image(format, result)
         .await
         .map_err(|e| e.to_string())?;
     Ok(())
@@ -71,7 +71,7 @@ pub async fn run_reverse_command(context: Arc<Context>, mut args: Vec<ParsedArgu
         })?;
     let format = get_buffer_filetype(&result)
         .unwrap_or_else(|| "png");
-    context.reply(MessageBuilder::new().attachment(&format!("reverse.{}", format), result.to_vec()).clone())
+    context.reply_with_image(format, result)
         .await
         .map_err(|e| e.to_string())?;
     Ok(())
