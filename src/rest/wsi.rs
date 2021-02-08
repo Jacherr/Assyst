@@ -1,8 +1,8 @@
 use bytes::Bytes;
 use reqwest::Error;
 use serde::Deserialize;
-
-const API_BASE: &str = "https://wsi.jacher.io";
+use crate::assyst::Assyst;
+use std::sync::Arc;
 
 mod routes {
     pub const CAPTION: &str = "/caption";
@@ -20,10 +20,10 @@ pub enum RequestError {
     Wsi(WsiError)
 }
 
-pub async fn request_bytes(client: &reqwest::Client, route: &str, image: Bytes, query: &[(&str, &str)]) -> Result<Bytes, RequestError> {
-    let result = client
-        .post(&format!("{}{}", API_BASE, route))
-        .header(reqwest::header::AUTHORIZATION, "0192837465")
+pub async fn request_bytes(assyst: Arc<Assyst>, route: &str, image: Bytes, query: &[(&str, &str)]) -> Result<Bytes, RequestError> {
+    let result = assyst.reqwest_client
+        .post(&format!("{}{}", assyst.config.wsi_url, route))
+        .header(reqwest::header::AUTHORIZATION, assyst.config.wsi_auth.as_ref())
         .query(query)
         .body(image)
         .send()
@@ -40,14 +40,14 @@ pub async fn request_bytes(client: &reqwest::Client, route: &str, image: Bytes, 
     }
 }
 
-pub async fn caption(client: &reqwest::Client, image: Bytes, text: &str) -> Result<Bytes, RequestError> {
-    request_bytes(client, routes::CAPTION, image, &[("text", text)]).await
+pub async fn caption(assyst: Arc<Assyst>, image: Bytes, text: &str) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::CAPTION, image, &[("text", text)]).await
 }
 
-pub async fn reverse(client: &reqwest::Client, image: Bytes) -> Result<Bytes, RequestError> {
-    request_bytes(client, routes::REVERSE, image, &[]).await
+pub async fn reverse(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::REVERSE, image, &[]).await
 }
 
-pub async fn spin(client: &reqwest::Client, image: Bytes) -> Result<Bytes, RequestError> {
-    request_bytes(client, routes::SPIN, image, &[]).await
+pub async fn spin(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::SPIN, image, &[]).await
 }

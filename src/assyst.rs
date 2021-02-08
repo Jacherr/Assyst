@@ -1,4 +1,3 @@
-use crate::badtranslator::BadTranslator;
 use crate::command::command::{
     Argument, Command, CommandParseError, ParsedArgument, ParsedArgumentResult, ParsedCommand,
 };
@@ -8,6 +7,7 @@ use crate::{
     command::context::Metrics,
     database::Database,
 };
+use crate::{badtranslator::BadTranslator, command::command::CommandAvailability};
 use crate::{
     command::{context::Context, registry::CommandRegistry},
     util::regexes,
@@ -21,7 +21,6 @@ use tokio::sync::RwLock;
 use twilight_http::Client as HttpClient;
 use twilight_model::channel::Message;
 use twilight_model::id::UserId;
-
 #[derive(Clone, Deserialize)]
 struct DatabaseInfo {
     username: Box<str>,
@@ -43,6 +42,8 @@ pub struct Config {
     database: DatabaseInfo,
     pub default_prefix: Box<str>,
     pub prefix_override: Box<str>,
+    pub wsi_url: Box<str>,
+    pub wsi_auth: Box<str>
 }
 impl Config {
     fn new() -> Self {
@@ -86,6 +87,7 @@ impl Assyst {
             replies: RwLock::new(Replies::new()),
             reqwest_client: ReqwestClient::new(),
         };
+        assyst.badtranslator.disable().await;
         assyst.registry.register_commands();
         assyst
     }
@@ -115,17 +117,25 @@ impl Assyst {
             return Ok(());
         };
 
-        let reply = self
-            .replies
-            .write()
-            .await
-            .get_or_set_reply(Reply::new(message.clone()));
+        let mut replies = self.replies.write().await;
+        let reply = replies.get_or_set_reply(Reply::new(message.clone())).clone();
+        
+        let mut reply_lock = reply.lock().await;
+        if reply_lock.has_expired() || reply_lock.in_use { return Ok(()) };
+        reply_lock.in_use = true;
+        drop(reply_lock);
+        drop(replies);
 
         let t_command = self.parse_command(&message, &prefix).await;
         let metrics = Metrics {
             processing_time_start: start,
         };
-        let context = Arc::new(Context::new(self.clone(), message.clone(), metrics));
+        let context = Arc::new(Context::new(
+            self.clone(),
+            message.clone(),
+            metrics,
+            reply.clone(),
+        ));
         let command = match t_command {
             Ok(res) => match res {
                 Some(c) => c,
@@ -144,6 +154,7 @@ impl Assyst {
 
         let context_clone = context.clone();
         let command_result = self.registry.execute_command(command, context_clone).await;
+        reply.lock().await.in_use = false;
         match command_result {
             Err(err) => {
                 context.reply_err(&err).await.map_err(|e| e.to_string())?;
@@ -167,6 +178,15 @@ impl Assyst {
             Some(c) => c,
             None => return Ok(None),
         };
+
+        match command.availability {
+            CommandAvailability::Public => Ok(()),
+            CommandAvailability::Private => Ok(()),
+            _ => Err(CommandParseError::without_reply(
+                "Insufficient Permissions".to_owned(),
+            )),
+        }?;
+
         let parsed_args = self
             .parse_arguments(&message, &command, command_details.1)
             .await?;

@@ -43,10 +43,11 @@ impl CommandRegistry {
         let context_c = context.clone();
 
         tokio::spawn(async move {
-            sleep(Duration::from_secs(2)).await;
+            sleep(Duration::from_millis(500)).await;
             let lock = *command_processed_c.lock().await;
             if lock == false {
-                context_c.assyst.http.create_typing_trigger(context_c.message.channel_id).await;
+                context_c.assyst.http.create_typing_trigger(context_c.message.channel_id).await
+                    .unwrap();
             }
         });
 

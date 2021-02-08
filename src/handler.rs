@@ -7,6 +7,9 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
         Event::MessageCreate(message) => {
             message_create::handle(assyst, message).await;
         }
+        Event::MessageUpdate(message) => {
+            message_update::handle(assyst, message).await;
+        }
         Event::ShardConnected(d) => {
             println!("Shard {}: READY", d.shard_id);
         }

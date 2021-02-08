@@ -45,7 +45,7 @@ lazy_static!{
 pub async fn run_caption_command(context: Arc<Context>, mut args: Vec<ParsedArgument>) -> CommandResult {
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let text = force_as::text(&args[0]);
-    let result = wsi::caption(&context.assyst.reqwest_client, image, text).await
+    let result = wsi::caption(context.assyst.clone(), image, text).await
         .map_err(|err| {
             match err {
                 RequestError::Reqwest(e) => e.to_string(),
@@ -62,7 +62,7 @@ pub async fn run_caption_command(context: Arc<Context>, mut args: Vec<ParsedArgu
 
 pub async fn run_reverse_command(context: Arc<Context>, mut args: Vec<ParsedArgument>) -> CommandResult {
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let result = wsi::reverse(&context.assyst.reqwest_client, image).await
+    let result = wsi::reverse(context.assyst.clone(), image).await
         .map_err(|err| {
             match err {
                 RequestError::Reqwest(e) => e.to_string(),
@@ -79,7 +79,7 @@ pub async fn run_reverse_command(context: Arc<Context>, mut args: Vec<ParsedArgu
 
 pub async fn run_spin_command(context: Arc<Context>, mut args: Vec<ParsedArgument>) -> CommandResult {
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let result = wsi::spin(&context.assyst.reqwest_client, image).await
+    let result = wsi::spin(context.assyst.clone(), image).await
         .map_err(|err| {
             match err {
                 RequestError::Reqwest(e) => e.to_string(),
@@ -88,7 +88,7 @@ pub async fn run_spin_command(context: Arc<Context>, mut args: Vec<ParsedArgumen
         })?;
     let format = get_buffer_filetype(&result)
         .unwrap_or_else(|| "png");
-    context.reply(MessageBuilder::new().attachment(&format!("spin.{}", format), result.to_vec()).clone())
+    context.reply_with_image(format, result)
         .await
         .map_err(|e| e.to_string())?;
     Ok(())
