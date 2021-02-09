@@ -7,6 +7,7 @@ mod assyst;
 mod rest;
 mod caching;
 mod badtranslator;
+mod consts;
 
 use dotenv::dotenv;
 use futures::stream::StreamExt;
@@ -22,6 +23,8 @@ async fn main() {
     dotenv().ok();
     let token = env::var("DISCORD_TOKEN").unwrap();
 
+    let assyst = Arc::new(Assyst::new(&token).await);
+
     // spawn as many shards as discord recommends
     let scheme = ShardScheme::Auto;
     let cluster = Cluster::builder(
@@ -29,14 +32,13 @@ async fn main() {
         Intents::GUILD_MESSAGES | Intents::GUILD_MESSAGE_REACTIONS,
     )
     .shard_scheme(scheme)
+    .http_client(assyst.http.clone())
     .build()
     .await
     .unwrap();
 
     let spawned_cluster = cluster.clone();
     tokio::spawn(async move { spawned_cluster.up().await });
-
-    let assyst = Arc::new(Assyst::new(&token).await);
 
     let mut events = cluster.events();
 

@@ -1,10 +1,10 @@
-use std::{error::Error, time::Instant};
 use bytes::Bytes;
+use std::{error::Error, time::Instant};
 use tokio::sync::Mutex;
 use twilight_http::Client as HttpClient;
 use twilight_model::{channel::Message, id::MessageId};
 
-use crate::{caching::Reply, Assyst};
+use crate::{caching::Reply, Assyst, consts};
 use std::sync::Arc;
 
 use super::messagebuilder::MessageBuilder;
@@ -64,17 +64,31 @@ impl Context {
         }
     }
 
-    pub async fn reply_with_image(&self, format: &str, buffer: Bytes) -> Result<Arc<Message>, Box<dyn Error>> {
-        let attachment_limit_bytes = 8000000;
+    pub async fn reply_with_image(
+        &self,
+        format: &str,
+        buffer: Bytes,
+    ) -> Result<Arc<Message>, String> {
         let mut builder = MessageBuilder::new();
-        if buffer.len() > attachment_limit_bytes {
-            let url = crate::rest::upload_to_filer(&self.assyst.reqwest_client, buffer, &format!("image/{}", format)).await?;
+        if buffer.len() > consts::WORKING_FILESIZE_LIMIT_BYTES {
+            let url = crate::rest::upload_to_filer(
+                &self.assyst.reqwest_client,
+                buffer,
+                &format!("image/{}", format),
+            )
+            .await
+            .map_err(|e| e.to_string())?;
             builder.content(&url);
-            self.reply(builder).await
+            self.reply(builder).await.map_err(|e| e.to_string())
         } else {
             builder.attachment(&format!("attachment.{}", format), buffer.to_vec());
-            self.reply(builder).await
+            self.reply(builder).await.map_err(|e| e.to_string())
         }
+    }
+
+    pub async fn reply_with_text(&self, text: &str) -> Result<Arc<Message>, String> {
+        let builder = MessageBuilder::new().content(text).clone();
+        self.reply(builder).await.map_err(|e| e.to_string())
     }
 
     async fn create_new_message(
@@ -108,15 +122,16 @@ impl Context {
 
         match message_builder.content {
             Some(content) => {
-                update_message =
-                    update_message.content(Some(content[0..std::cmp::min(content.len(), 1999)].to_owned()))?
+                update_message = update_message.content(Some(
+                    content[0..std::cmp::min(content.len(), 1999)].to_owned(),
+                ))?
             }
             None => update_message = update_message.content(None)?,
         };
 
         match message_builder.embed {
             Some(embed) => update_message = update_message.embed(embed)?,
-            None => update_message = update_message.embed(None)?
+            None => update_message = update_message.embed(None)?,
         };
 
         let result = Arc::new(update_message.await?);

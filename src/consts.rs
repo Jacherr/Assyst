@@ -1,0 +1,1 @@
+pub const WORKING_FILESIZE_LIMIT_BYTES: usize = 8000000;
