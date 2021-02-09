@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 mod routes {
     pub const CAPTION: &str = "/caption";
+    pub const COMPRESS: &str = "/compress";
     pub const REVERSE: &str = "/reverse";
     pub const SPIN: &str = "/spin";
 }
@@ -42,6 +43,10 @@ pub async fn request_bytes(assyst: Arc<Assyst>, route: &str, image: Bytes, query
 
 pub async fn caption(assyst: Arc<Assyst>, image: Bytes, text: &str) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::CAPTION, image, &[("text", text)]).await
+}
+
+pub async fn compress(assyst: Arc<Assyst>, image: Bytes, level: usize) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::COMPRESS, image, &[("level", &level.to_string())]).await
 }
 
 pub async fn reverse(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
