@@ -29,15 +29,15 @@ async fn should_handle_message(
 }
 
 fn convert_message_update_to_message(event: MessageUpdate) -> Option<Message> {
-    let attachments = if let Some(a) = event.attachments { a } else { vec![] };
-    let author = if let Some(a) = event.author { a } else { return None };
-    let content = if let Some(c) = event.content { c } else { String::from("") };
-    let embeds = if let Some(e) = event.embeds { e } else { vec![] };
-    let kind = if let Some(k) = event.kind { k } else { MessageType::Regular };
-    let mention_everyone = if let Some(m) = event.mention_everyone { m } else { false };
-    let mention_roles = if let Some(m) = event.mention_roles { m } else { vec![] };
-    let pinned = if let Some(p) = event.pinned { p } else { false };
-    let timestamp = if let Some(t) = event.timestamp { t } else { String::from("") };
+    let attachments = event.attachments.unwrap_or_default();
+    let author = event.author?;
+    let content = event.content.unwrap_or_default();
+    let embeds = event.embeds.unwrap_or_default();
+    let kind = event.kind.unwrap_or_else(|| MessageType::Regular);
+    let mention_everyone = event.mention_everyone.unwrap_or_default();
+    let mention_roles = event.mention_roles.unwrap_or_default();
+    let pinned = event.pinned.unwrap_or_default();
+    let timestamp = event.timestamp.unwrap_or_default();
     Some(Message {
         activity: None,
         application: None,

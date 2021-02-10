@@ -3,6 +3,7 @@ use tokio::sync::Mutex;
 use twilight_model::channel::Message;
 use util::get_current_millis;
 use std::sync::Arc;
+use twilight_model::id::MessageId;
 
 use crate::util;
 
@@ -20,6 +21,9 @@ impl Replies {
     pub fn get_or_set_reply(&mut self, reply_to_insert: Reply) -> &mut Arc<Mutex<Reply>> {
         self.cache.entry(reply_to_insert.invocation.id.0)
             .or_insert_with(|| Arc::new(Mutex::new(reply_to_insert)))
+    }
+    pub async fn get_reply_from_invocation_id(&self, id: MessageId) -> Option<Arc<Mutex<Reply>>> {
+        self.cache.get(&id.0).and_then(|r| Some(r.clone()))
     }
 }
 pub struct Reply {
