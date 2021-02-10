@@ -68,5 +68,6 @@ impl CommandRegistry {
         register_command!(self, CAPTION_COMMAND, run_caption_command);
         register_command!(self, REVERSE_COMMAND, run_reverse_command);
         register_command!(self, SPIN_COMMAND, run_spin_command);
+        register_command!(self, WORMHOLE_COMMAND, run_wormhole_command);
     }
 }

@@ -9,6 +9,7 @@ mod routes {
     pub const COMPRESS: &str = "/compress";
     pub const REVERSE: &str = "/reverse";
     pub const SPIN: &str = "/spin";
+    pub const WORMHOLE: &str = "/wormhole";
 }
 #[derive(Deserialize)]
 pub struct WsiError {
@@ -55,6 +56,10 @@ pub async fn reverse(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, Request
 
 pub async fn spin(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::SPIN, image, &[]).await
+}
+
+pub async fn wormhole(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::WORMHOLE, image, &[]).await
 }
 
 pub fn format_err(err: RequestError) -> String {
