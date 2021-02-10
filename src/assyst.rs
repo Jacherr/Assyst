@@ -87,6 +87,7 @@ impl Assyst {
             replies: RwLock::new(Replies::new()),
             reqwest_client: ReqwestClient::new(),
         };
+        assyst.badtranslator.disable().await;
         assyst.registry.register_commands();
         assyst
     }
