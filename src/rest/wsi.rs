@@ -7,6 +7,7 @@ use std::sync::Arc;
 mod routes {
     pub const CAPTION: &str = "/caption";
     pub const COMPRESS: &str = "/compress";
+    pub const IMAGEMAGICK_EVAL: &str = "/imagemagick_eval";
     pub const REVERSE: &str = "/reverse";
     pub const SPIN: &str = "/spin";
     pub const WORMHOLE: &str = "/wormhole";
@@ -48,6 +49,10 @@ pub async fn caption(assyst: Arc<Assyst>, image: Bytes, text: &str) -> Result<By
 
 pub async fn compress(assyst: Arc<Assyst>, image: Bytes, level: usize) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::COMPRESS, image, &[("level", &level.to_string())]).await
+}
+
+pub async fn imagemagick_eval(assyst: Arc<Assyst>, image: Bytes, script: &str) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::IMAGEMAGICK_EVAL, image, &[("script", script)]).await
 }
 
 pub async fn reverse(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
