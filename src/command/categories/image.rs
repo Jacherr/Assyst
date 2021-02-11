@@ -17,6 +17,18 @@ lazy_static!{
         name: box_str!("caption")
     };
 
+    pub static ref IMAGEMAGFICK_EVAL_COMMAND: Command = Command {
+        aliases: vec![],
+        args: vec![Argument::ImageBuffer, Argument::StringRemaining],
+        availability: CommandAvailability::Private,
+        metadata: CommandMetadata {
+            description: box_str!("evaluate an imagemagick script on an image"),
+            examples: vec![],
+            usage: box_str!("[image] [script]")
+        },
+        name: box_str!("ime")
+    };
+
     pub static ref REVERSE_COMMAND: Command = Command {
         aliases: vec![],
         args: vec![Argument::ImageBuffer],
@@ -74,6 +86,19 @@ pub async fn run_caption_command(context: Arc<Context>, mut args: Vec<ParsedArgu
     let text = force_as::text(&args[0]);
     context.reply_with_text("processing...").await?;
     let result = wsi::caption(context.assyst.clone(), image, text).await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result)
+        .unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
+}
+
+pub async fn run_imagemagick_eval_command(context: Arc<Context>, mut args: Vec<ParsedArgument>) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let image = compress_if_large(context.clone(), raw_image).await?;
+    let text = force_as::text(&args[0]);
+    context.reply_with_text("processing...").await?;
+    let result = wsi::imagemagick_eval(context.assyst.clone(), image, text).await
         .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result)
         .unwrap_or_else(|| "png");

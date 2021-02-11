@@ -39,6 +39,7 @@ impl DatabaseInfo {
 }
 #[derive(Clone, Deserialize)]
 pub struct Config {
+    pub admins: Vec<u64>,
     database: DatabaseInfo,
     pub default_prefix: Box<str>,
     pub prefix_override: Box<str>,
@@ -87,7 +88,7 @@ impl Assyst {
             replies: RwLock::new(Replies::new()),
             reqwest_client: ReqwestClient::new(),
         };
-        //assyst.badtranslator.disable().await;
+        assyst.badtranslator.disable().await;
         assyst.registry.register_commands();
         assyst
     }
@@ -181,7 +182,15 @@ impl Assyst {
 
         match command.availability {
             CommandAvailability::Public => Ok(()),
-            CommandAvailability::Private => Ok(()),
+            CommandAvailability::Private => {
+                if !self.config.admins.contains(&message.author.id.0) {
+                    Err(CommandParseError::without_reply(
+                        "Insufficient Permissions".to_owned(),
+                    ))
+                } else {
+                    Ok(())
+                }
+            },
             _ => Err(CommandParseError::without_reply(
                 "Insufficient Permissions".to_owned(),
             )),
