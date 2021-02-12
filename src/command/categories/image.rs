@@ -17,7 +17,19 @@ lazy_static!{
         name: box_str!("caption")
     };
 
-    pub static ref IMAGEMAGFICK_EVAL_COMMAND: Command = Command {
+    pub static ref GIF_SPEED_COMMAND: Command = Command {
+        aliases: vec![box_str!("gspeed")],
+        args: vec![Argument::ImageBuffer, Argument::StringRemaining],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: box_str!("change speed of gif"),
+            examples: vec![],
+            usage: box_str!("[image] [delay]")
+        },
+        name: box_str!("gifspeed")
+    };
+
+    pub static ref IMAGEMAGICK_EVAL_COMMAND: Command = Command {
         aliases: vec![],
         args: vec![Argument::ImageBuffer, Argument::StringRemaining],
         availability: CommandAvailability::Private,
@@ -27,6 +39,18 @@ lazy_static!{
             usage: box_str!("[image] [script]")
         },
         name: box_str!("ime")
+    };
+
+    pub static ref MELT_COMMAND: Command = Command {
+        aliases: vec![],
+        args: vec![Argument::ImageBuffer, Argument::String, Argument::String],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: box_str!("melt an image"),
+            examples: vec![],
+            usage: box_str!("[image] [length] [width]")
+        },
+        name: box_str!("melt")
     };
 
     pub static ref REVERSE_COMMAND: Command = Command {
@@ -93,12 +117,39 @@ pub async fn run_caption_command(context: Arc<Context>, mut args: Vec<ParsedArgu
     Ok(())
 }
 
+pub async fn run_gif_speed_command(context: Arc<Context>, mut args: Vec<ParsedArgument>) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let image = compress_if_large(context.clone(), raw_image).await?;
+    let delay = force_as::text(&args[0]);
+    context.reply_with_text("processing...").await?;
+    let result = wsi::gif_speed(context.assyst.clone(), image, delay).await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result)
+        .unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
+}
+
 pub async fn run_imagemagick_eval_command(context: Arc<Context>, mut args: Vec<ParsedArgument>) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let image = compress_if_large(context.clone(), raw_image).await?;
     let text = force_as::text(&args[0]);
     context.reply_with_text("processing...").await?;
     let result = wsi::imagemagick_eval(context.assyst.clone(), image, text).await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result)
+        .unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
+}
+
+pub async fn run_melt_command(context: Arc<Context>, mut args: Vec<ParsedArgument>) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let image = compress_if_large(context.clone(), raw_image).await?;
+    let length = force_as::text(&args[0]);
+    let width = force_as::text(&args[1]);
+    context.reply_with_text("processing...").await?;
+    let result = wsi::melt(context.assyst.clone(), image, length, width).await
         .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result)
         .unwrap_or_else(|| "png");
