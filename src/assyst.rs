@@ -42,6 +42,7 @@ pub struct Config {
     pub admins: Vec<u64>,
     database: DatabaseInfo,
     pub default_prefix: Box<str>,
+    pub disable_bad_translator: bool,
     pub prefix_override: Box<str>,
     pub wsi_url: Box<str>,
     pub wsi_auth: Box<str>
@@ -88,7 +89,7 @@ impl Assyst {
             replies: RwLock::new(Replies::new()),
             reqwest_client: ReqwestClient::new(),
         };
-        //assyst.badtranslator.disable().await;
+        if assyst.config.disable_bad_translator { assyst.badtranslator.disable().await };
         assyst.registry.register_commands();
         assyst
     }
