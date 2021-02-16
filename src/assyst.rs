@@ -159,7 +159,7 @@ impl Assyst {
         reply.lock().await.in_use = false;
         match command_result {
             Err(err) => {
-                context.reply_err(&err).await.map_err(|e| e.to_string())?;
+                context.reply_err(&err.replace("\\n", "\n")).await.map_err(|e| e.to_string())?;
             }
             Ok(_) => {}
         };
