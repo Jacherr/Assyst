@@ -10,6 +10,7 @@ mod routes {
     pub const GIF_SPEED: &str = "/gif_speed";
     pub const IMAGEMAGICK_EVAL: &str = "/imagemagick_eval";
     pub const MELT: &str = "/melt";
+    pub const RAINBOW: &str = "/rainbow";
     pub const REVERSE: &str = "/reverse";
     pub const SPIN: &str = "/spin";
     pub const WORMHOLE: &str = "/wormhole";
@@ -63,6 +64,10 @@ pub async fn gif_speed(assyst: Arc<Assyst>, image: Bytes, delay: &str) -> Result
 
 pub async fn imagemagick_eval(assyst: Arc<Assyst>, image: Bytes, script: &str) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::IMAGEMAGICK_EVAL, image, &[("script", script)]).await
+}
+
+pub async fn rainbow(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::RAINBOW, image, &[]).await
 }
 
 pub async fn reverse(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {

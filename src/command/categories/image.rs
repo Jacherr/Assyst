@@ -53,6 +53,18 @@ lazy_static!{
         name: box_str!("melt")
     };
 
+    pub static ref RAINBOW_COMMAND: Command = Command {
+        aliases: vec![],
+        args: vec![Argument::ImageBuffer],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: box_str!("make an image rainbow"),
+            examples: vec![],
+            usage: box_str!("[image]")
+        },
+        name: box_str!("rainbow")
+    };
+
     pub static ref REVERSE_COMMAND: Command = Command {
         aliases: vec![],
         args: vec![Argument::ImageBuffer],
@@ -150,6 +162,18 @@ pub async fn run_melt_command(context: Arc<Context>, mut args: Vec<ParsedArgumen
     let width = force_as::text(&args[1]);
     context.reply_with_text("processing...").await?;
     let result = wsi::melt(context.assyst.clone(), image, length, width).await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result)
+        .unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
+}
+
+pub async fn run_rainbow_command(context: Arc<Context>, mut args: Vec<ParsedArgument>) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let image = compress_if_large(context.clone(), raw_image).await?;
+    context.reply_with_text("processing...").await?;
+    let result = wsi::rainbow(context.assyst.clone(), image).await
         .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result)
         .unwrap_or_else(|| "png");
