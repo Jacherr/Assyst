@@ -112,6 +112,18 @@ lazy_static!{
         },
         name: box_str!("wormhole")
     };
+
+    pub static ref ZOOM_COMMAND: Command = Command {
+        aliases: vec![],
+        args: vec![Argument::ImageBuffer],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: box_str!("zoom into an image"),
+            examples: vec![],
+            usage: box_str!("[image]")
+        },
+        name: box_str!("zoom")
+    };
 }
 
 async fn compress_if_large(context: Arc<Context>, image: Bytes) -> Result<Bytes, String> {
@@ -248,6 +260,18 @@ pub async fn run_wormhole_command(context: Arc<Context>, mut args: Vec<ParsedArg
     let image = compress_if_large(context.clone(), raw_image).await?;
     context.reply_with_text("processing...").await?;
     let result = wsi::wormhole(context.assyst.clone(), image).await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result)
+        .unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
+}
+
+pub async fn run_zoom_command(context: Arc<Context>, mut args: Vec<ParsedArgument>) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let image = compress_if_large(context.clone(), raw_image).await?;
+    context.reply_with_text("processing...").await?;
+    let result = wsi::zoom(context.assyst.clone(), image).await
         .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result)
         .unwrap_or_else(|| "png");
