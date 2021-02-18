@@ -44,6 +44,7 @@ pub struct Config {
     pub default_prefix: Box<str>,
     pub disable_bad_translator: bool,
     pub prefix_override: Box<str>,
+    pub user_blacklist: Vec<u64>,
     pub wsi_url: Box<str>,
     pub wsi_auth: Box<str>
 }
@@ -97,6 +98,7 @@ impl Assyst {
     pub async fn handle_command(self: &Arc<Self>, _message: Message) -> Result<(), String> {
         let start = Instant::now();
         let message = Arc::new(_message);
+        if self.config.user_blacklist.contains(&message.author.id.0) { return Ok(()); }
         let prefix;
         if self.config.prefix_override.len() == 0 {
             let try_prefix = self
