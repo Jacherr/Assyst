@@ -76,5 +76,6 @@ impl CommandRegistry {
         register_command!(self, REVERSE_COMMAND, run_reverse_command);
         register_command!(self, SPIN_COMMAND, run_spin_command);
         register_command!(self, WORMHOLE_COMMAND, run_wormhole_command);
+        register_command!(self, ZOOM_COMMAND, run_zoom_command);
     }
 }
