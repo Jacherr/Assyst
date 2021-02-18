@@ -10,6 +10,7 @@ mod routes {
     pub const GIF_SPEED: &str = "/gif_speed";
     pub const IMAGEMAGICK_EVAL: &str = "/imagemagick_eval";
     pub const MELT: &str = "/melt";
+    pub const MOTIVATE: &str = "/motivate";
     pub const RAINBOW: &str = "/rainbow";
     pub const REVERSE: &str = "/reverse";
     pub const SPIN: &str = "/spin";
@@ -56,6 +57,10 @@ pub async fn compress(assyst: Arc<Assyst>, image: Bytes, level: usize) -> Result
 
 pub async fn melt(assyst: Arc<Assyst>, image: Bytes, length: &str, width: &str) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::MELT, image, &[("length", length), ("width", width)]).await
+}
+
+pub async fn motivate(assyst: Arc<Assyst>, image: Bytes, top_text: &str, bottom_text: &str) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::MOTIVATE, image, &[("top", top_text), ("bottom", bottom_text)]).await
 }
 
 pub async fn gif_speed(assyst: Arc<Assyst>, image: Bytes, delay: &str) -> Result<Bytes, RequestError> {

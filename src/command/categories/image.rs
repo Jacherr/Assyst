@@ -53,6 +53,18 @@ lazy_static!{
         name: box_str!("melt")
     };
 
+    pub static ref MOTIVATE_COMMAND: Command = Command {
+        aliases: vec![],
+        args: vec![Argument::ImageBuffer, Argument::StringRemaining],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: box_str!("add motivation caption to an image, separate top and bottom text with |"),
+            examples: vec![box_str!("MOTIVATION this is funny"), box_str!("HOLY SHIT | get a job")],
+            usage: box_str!("[image] [text separated by a |]")
+        },
+        name: box_str!("motivate")
+    };
+
     pub static ref RAINBOW_COMMAND: Command = Command {
         aliases: vec![],
         args: vec![Argument::ImageBuffer],
@@ -162,6 +174,32 @@ pub async fn run_melt_command(context: Arc<Context>, mut args: Vec<ParsedArgumen
     let width = force_as::text(&args[1]);
     context.reply_with_text("processing...").await?;
     let result = wsi::melt(context.assyst.clone(), image, length, width).await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result)
+        .unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
+}
+
+pub async fn run_motivate_command(context: Arc<Context>, mut args: Vec<ParsedArgument>) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let image = compress_if_large(context.clone(), raw_image).await?;
+    let text = force_as::text(&args[0]);
+
+    let divider: String;
+
+    if text.contains("|") {
+        divider = "|".to_string();
+    } else {
+        divider = " ".to_string();
+    }
+
+    let mut parts = text.split(&divider).collect::<Vec<&str>>();
+    let top_text = parts[0].to_string();
+    let bottom_text = parts.drain(1..).collect::<Vec<&str>>().join(" ");
+
+    context.reply_with_text("processing...").await?;
+    let result = wsi::motivate(context.assyst.clone(), image, &top_text, &bottom_text).await
         .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result)
         .unwrap_or_else(|| "png");
