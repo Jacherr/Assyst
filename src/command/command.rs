@@ -10,6 +10,7 @@ pub enum ParsedArgument {
     Text(String),
     Binary(Bytes)
 }
+#[derive(PartialEq)]
 pub enum CommandAvailability {
     Public,
     RequiresPermission(u16),

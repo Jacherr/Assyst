@@ -67,6 +67,8 @@ impl CommandRegistry {
         register_command!(self, ENLARGE_COMMAND, run_enlarge_command);
         register_command!(self, CAPTION_COMMAND, run_caption_command);
         register_command!(self, GIF_SPEED_COMMAND, run_gif_speed_command);
+        register_command!(self, HELP_COMMAND, run_help_command);
+        register_command!(self, INVITE_COMMAND, run_invite_command);
         register_command!(self, IMAGEMAGICK_EVAL_COMMAND, run_imagemagick_eval_command);
         register_command!(self, MELT_COMMAND, run_melt_command);
         register_command!(self, MOTIVATE_COMMAND, run_motivate_command);
