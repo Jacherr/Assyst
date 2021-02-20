@@ -5,6 +5,18 @@ use std::sync::Arc;
 use crate::util::get_buffer_filetype;
 
 lazy_static!{
+    pub static ref _3D_ROTATE_COMMAND: Command = Command {
+        aliases: vec![],
+        args: vec![Argument::ImageBuffer],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: box_str!("3d rotate an image"),
+            examples: vec![],
+            usage: box_str!("[image]")
+        },
+        name: box_str!("3drotate")
+    };
+
     pub static ref CAPTION_COMMAND: Command = Command {
         aliases: vec![],
         args: vec![Argument::ImageBuffer, Argument::StringRemaining],
@@ -138,6 +150,18 @@ async fn compress_if_large(context: Arc<Context>, image: Bytes) -> Result<Bytes,
     } else {
         Ok(image)
     }
+}
+
+pub async fn run_3d_rotate_command(context: Arc<Context>, mut args: Vec<ParsedArgument>) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let image = compress_if_large(context.clone(), raw_image).await?;
+    context.reply_with_text("processing...").await?;
+    let result = wsi::_3d_rotate(context.assyst.clone(), image).await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result)
+        .unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
 }
 
 pub async fn run_caption_command(context: Arc<Context>, mut args: Vec<ParsedArgument>) -> CommandResult {

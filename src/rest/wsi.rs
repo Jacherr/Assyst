@@ -5,6 +5,7 @@ use crate::assyst::Assyst;
 use std::sync::Arc;
 
 mod routes {
+    pub const _3D_ROTATE: &str = "/3d_rotate";
     pub const CAPTION: &str = "/caption";
     pub const COMPRESS: &str = "/compress";
     pub const GIF_SPEED: &str = "/gif_speed";
@@ -46,6 +47,10 @@ pub async fn request_bytes(assyst: Arc<Assyst>, route: &str, image: Bytes, query
             .map_err(|e| RequestError::Reqwest(e))?;
         Ok(bytes)
     }
+}
+
+pub async fn _3d_rotate(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::_3D_ROTATE, image, &[]).await
 }
 
 pub async fn caption(assyst: Arc<Assyst>, image: Bytes, text: &str) -> Result<Bytes, RequestError> {
