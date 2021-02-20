@@ -140,7 +140,7 @@ impl BadTranslator {
         }
 
         if message_len == 0 || message_len >= constants::MAX_MESSAGE_LEN || message.author.bot {
-           // let _ = assyst.http.delete_message(message.channel_id, message.id).await;
+           let _ = assyst.http.delete_message(message.channel_id, message.id).await;
            return
         }
 
@@ -156,9 +156,11 @@ impl BadTranslator {
 
         // TODO: transform content (turn ':emoji:' into 'emoji')
 
-        let translation = bt::translate(&assyst.reqwest_client, &message.content)
-            .await
-            .expect("Bad Translator request failed");
+        let translation = match bt::translate(&assyst.reqwest_client, &message.content)
+            .await {
+                Ok(res) => res,
+                Err(_) => return
+            };
 
         // If we don't have permissions to delete messages, we just silently ignore it
         let _ = assyst.http.delete_message(message.channel_id, message.id).await;
@@ -210,7 +212,7 @@ fn get_avatar_url(user: &User) -> String {
 }
 
 fn is_webhook(user: &User) -> bool {
-    user.system.unwrap_or(false) && user.discriminator == "0000"
+    user.system.unwrap_or(false) || user.discriminator == "0000"
 }
 
 fn is_ratelimit_message(assyst: &Assyst, message: &MessageCreate) -> bool {
