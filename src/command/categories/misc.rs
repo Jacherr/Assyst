@@ -1,14 +1,11 @@
-use crate::{
-    box_str,
-    command::{
+use crate::{box_str, command::{
         command::{
             force_as, Argument, Command, CommandAvailability, CommandMetadata, ParsedArgument,
         },
         context::Context,
         messagebuilder::MessageBuilder,
         registry::CommandResult,
-    },
-};
+    }, util::{codeblock, generate_table, get_memory_usage}};
 use futures::TryFutureExt;
 use lazy_static::lazy_static;
 use std::{sync::Arc, time::Instant};
@@ -57,6 +54,17 @@ lazy_static! {
             usage: box_str!("")
         },
         name: box_str!("invite")
+    };
+    pub static ref STATS_COMMAND: Command = Command {
+        aliases: vec![],
+        args: vec![],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: box_str!("get bot statistics"),
+            examples: vec![],
+            usage: box_str!("")
+        },
+        name: box_str!("stats")
     };
 }
 
@@ -125,5 +133,33 @@ pub async fn run_invite_command(context: Arc<Context>, _: Vec<ParsedArgument>) -
         )
         .await
         .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
+    let guilds = context.assyst.http.current_user_guilds()
+        .limit(100)
+        .map_err(|e| e.to_string())?
+        .await
+        .map_err(|e| e.to_string())?
+        .len()
+        .to_string();
+
+    let memory = get_memory_usage().to_string();
+    let commands = context.assyst.registry.commands.len().to_string();
+    let proc_time = context.assyst.get_average_processing_time().to_string();
+
+    let table = generate_table(&[
+        ("Guilds", &guilds),
+        ("Memory", &memory),
+        ("Commands", &commands),
+        ("Avg Processing Time", &proc_time)
+    ]);
+
+    context
+        .reply(MessageBuilder::new().content(&codeblock(&table, "hs")).clone())
+        .await
+        .map_err(|e| e.to_string())?;
+
     Ok(())
 }
