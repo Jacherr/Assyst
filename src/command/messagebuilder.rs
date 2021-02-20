@@ -21,12 +21,12 @@ impl MessageBuilder {
         }
     }
 
-    pub fn attachment(&mut self, name: &str, value: Vec<u8>) -> &mut Self {
+    pub fn attachment(mut self, name: &str, value: Vec<u8>) -> Self {
         self.attachment = Some(Attachment { name: box_str!(name), data: value });
         self
     }
 
-    pub fn content(&mut self, content: &str) -> &mut Self {
+    pub fn content(mut self, content: &str) -> Self {
         self.content = Some(box_str!(content));
         self
     }

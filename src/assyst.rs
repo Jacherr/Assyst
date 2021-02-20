@@ -405,4 +405,9 @@ impl Assyst {
             }
         }
     }
+
+    pub fn get_average_processing_time(&self) -> u32 {
+        // TODO: track processing time and return real result
+        0
+    }
 }
