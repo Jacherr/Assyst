@@ -53,3 +53,32 @@ pub fn get_current_millis() -> u64 {
         .try_into()
         .expect("Couldn't fit timestamp (u128) into i64")
 }
+
+pub fn get_longer_str<'a>(a: &'a str, b: &'a str) -> &'a str {
+    if a.len() > b.len() { a } else { b }
+}
+
+pub fn generate_table(input: &[(&str, &str)]) -> String {
+    let longest = input.iter()
+        .fold(input[0].0, |previous, (current, _)| get_longer_str(previous, current));
+    
+    input.iter()
+        .map(|(key, value)| format!("{}{}: {}\n", " ".repeat(longest.len() - key.len()), key, value))
+        .fold(String::new(), |a, b| a + &b)
+}
+
+pub fn codeblock(code: &str, language: &str) -> String {
+    format!("```{}\n{}\n```", language, &code[0..std::cmp::min(code.len(), 1980)])
+}
+
+
+#[cfg(target_os = "linux")]
+pub fn get_memory_usage() -> usize {
+    // todo
+    0
+}
+
+#[cfg(not(target_os = "linux"))]
+pub fn get_memory_usage() -> usize {
+    0
+}
