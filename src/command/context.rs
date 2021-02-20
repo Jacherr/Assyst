@@ -69,7 +69,7 @@ impl Context {
         format: &str,
         buffer: Bytes,
     ) -> Result<Arc<Message>, String> {
-        let mut builder = MessageBuilder::new();
+        let builder = MessageBuilder::new();
         if buffer.len() > consts::WORKING_FILESIZE_LIMIT_BYTES {
             let url = crate::rest::upload_to_filer(
                 &self.assyst.reqwest_client,
@@ -78,10 +78,10 @@ impl Context {
             )
             .await
             .map_err(|e| e.to_string())?;
-            builder.content(&url);
+            let builder = builder.content(&url);
             self.reply(builder).await.map_err(|e| e.to_string())
         } else {
-            builder.attachment(&format!("attachment.{}", format), buffer.to_vec());
+            let builder = builder.attachment(&format!("attachment.{}", format), buffer.to_vec());
             self.reply(builder).await.map_err(|e| e.to_string())
         }
     }
