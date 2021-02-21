@@ -147,13 +147,13 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
 
     let memory = get_memory_usage().to_string();
     let commands = context.assyst.registry.commands.len().to_string();
-    let proc_time = context.assyst.get_average_processing_time().to_string();
+    let proc_time = (context.assyst.get_average_processing_time().await / 1e3).to_string();
 
     let table = generate_table(&[
         ("Guilds", &guilds),
         ("Memory", &memory),
         ("Commands", &commands),
-        ("Avg Processing Time", &proc_time)
+        ("Avg Processing Time", &format!("{:.4}s", proc_time))
     ]);
 
     context

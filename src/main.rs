@@ -1,3 +1,4 @@
+mod metrics;
 mod command;
 mod database;
 mod handler;
