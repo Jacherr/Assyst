@@ -1,8 +1,7 @@
-use crate::command::command::{
+use crate::{command::command::{
     Argument, Command, CommandParseError, ParsedArgument, ParsedArgumentResult, ParsedCommand,
-};
+}, metrics::GlobalMetrics};
 use crate::{
-    badtranslator,
     caching::{Replies, Reply},
     command::context::Metrics,
     database::Database,
@@ -14,7 +13,7 @@ use crate::{
 };
 use reqwest::{Client as ReqwestClient, StatusCode};
 use serde::Deserialize;
-use std::fs::read_to_string;
+use std::{collections::HashSet, convert::TryInto, fs::read_to_string};
 use std::{borrow::Borrow, sync::Arc};
 use std::{borrow::Cow, time::Instant};
 use tokio::sync::RwLock;
@@ -39,12 +38,12 @@ impl DatabaseInfo {
 }
 #[derive(Clone, Deserialize)]
 pub struct Config {
-    pub admins: Vec<u64>,
+    pub admins: HashSet<u64>,
     database: DatabaseInfo,
     pub default_prefix: Box<str>,
     pub disable_bad_translator: bool,
     pub prefix_override: Box<str>,
-    pub user_blacklist: Vec<u64>,
+    pub user_blacklist: HashSet<u64>,
     pub wsi_url: Box<str>,
     pub wsi_auth: Box<str>
 }
@@ -75,6 +74,7 @@ pub struct Assyst {
     pub replies: RwLock<Replies>,
     pub reqwest_client: ReqwestClient,
     pub badtranslator: BadTranslator,
+    pub metrics: RwLock<GlobalMetrics>
 }
 impl Assyst {
     pub async fn new(token: &str) -> Self {
@@ -89,6 +89,7 @@ impl Assyst {
             registry: CommandRegistry::new(),
             replies: RwLock::new(Replies::new()),
             reqwest_client: ReqwestClient::new(),
+            metrics: RwLock::new(GlobalMetrics::new())
         };
         if assyst.config.disable_bad_translator { assyst.badtranslator.disable().await };
         assyst.registry.register_commands();
@@ -165,6 +166,13 @@ impl Assyst {
             }
             Ok(_) => {}
         };
+
+        self.metrics
+            .write()
+            .await
+            .processing
+            .add(context.metrics.processing_time_start.elapsed().as_millis() as f32);
+        
         Ok(())
     }
 
@@ -406,8 +414,7 @@ impl Assyst {
         }
     }
 
-    pub fn get_average_processing_time(&self) -> u32 {
-        // TODO: track processing time and return real result
-        0
+    pub async fn get_average_processing_time(&self) -> f32 {
+        self.metrics.read().await.processing.avg()
     }
 }
