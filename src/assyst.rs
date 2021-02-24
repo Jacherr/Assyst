@@ -386,24 +386,34 @@ impl Assyst {
 
     async fn validate_previous_message_attachment(&self, message: &Message) -> Option<String> {
         let messages = self.http.channel_messages(message.channel_id).await.ok()?;
-        let message_attachment_urls: Vec<Option<&String>> = messages
+        let message_attachment_urls: Vec<Option<Cow<String>>> = messages
             .iter()
             .map(|message| {
                 if let Some(embed) = message.embeds.first() {
-                    embed.url.as_ref().or_else(|| {
-                        embed
-                            .image
-                            .as_ref()
-                            .and_then(|img| img.proxy_url.as_ref())
-                            .or_else(|| {
-                                embed
-                                    .thumbnail
-                                    .as_ref()
-                                    .and_then(|thumbnail| thumbnail.proxy_url.as_ref())
+                    if let Some(e) = &embed.url {
+                        if e.starts_with("https://tenor.com/view/") {
+                            return Some(Cow::Borrowed(e));
+                        };
+                    }
+                    embed
+                        .image
+                        .as_ref()
+                        .and_then(|img| Some(Cow::Borrowed(img.proxy_url.as_ref()?)))
+                        .or_else(|| {
+                            embed.thumbnail.as_ref().and_then(|thumbnail| {
+                                Some(Cow::Borrowed(thumbnail.proxy_url.as_ref()?))
                             })
-                    })
+                        })
+                        .or_else(|| {
+                            embed.video.as_ref().and_then(|video| {
+                                Some(Cow::Owned(format!(
+                                    "{}?format=png",
+                                    video.proxy_url.as_ref()?
+                                )))
+                            })
+                        })
                 } else {
-                    Some(&message.attachments.first()?.proxy_url)
+                    Some(Cow::Borrowed(&message.attachments.first()?.proxy_url))
                 }
             })
             .collect();
@@ -411,7 +421,8 @@ impl Assyst {
         message_attachment_urls
             .iter()
             .find(|attachment| attachment.is_some())?
-            .and_then(|x| Some(x.clone()))
+            .as_ref()
+            .and_then(|x| Some(x.to_string()))
     }
 
     fn validate_url_argument(&self, argument: &str) -> Option<String> {
