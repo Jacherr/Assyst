@@ -1,4 +1,4 @@
-use std::{collections::HashMap, hash::Hash, ops::Index, u64, usize};
+use std::{collections::HashMap, hash::Hash, u64, usize};
 use tokio::sync::Mutex;
 use twilight_model::channel::Message;
 use util::get_current_millis;

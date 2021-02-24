@@ -3,12 +3,14 @@ pub enum Argument {
     String,
     ImageUrl,
     ImageBuffer,
-    StringRemaining
+    StringRemaining,
+    Choice(&'static [&'static str])
 }
 #[derive(Debug)]
 pub enum ParsedArgument {
     Text(String),
-    Binary(Bytes)
+    Binary(Bytes),
+    Choice(&'static str)
 }
 #[derive(PartialEq)]
 pub enum CommandAvailability {
@@ -93,17 +95,11 @@ pub mod force_as {
             _ => panic!("expected text argument")
         }
     }
-}
 
-pub mod must {
-    use super::ParsedArgument;
-
-    pub fn either<'a>(actual: &ParsedArgument, options: &'a [&'a str]) -> Result<&'a &'a str, String> {
-        let as_string = match actual {
-            ParsedArgument::Text(data) => data,
-            _ => return Err("expected text argument".to_owned())
-        };
-
-        options.iter().find(|&&option| option == as_string).ok_or("argument not found in options".to_owned())
+    pub fn choice(argument: &ParsedArgument) -> &'static str {
+        match argument {
+            ParsedArgument::Choice(data) => data,
+            _ => panic!("expected choice, got {:?}", argument)
+        }
     }
 }
