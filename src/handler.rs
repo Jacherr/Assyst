@@ -1,6 +1,6 @@
-use crate::{Assyst, handlers::*};
-use twilight_gateway::Event;
+use crate::{handlers::*, Assyst};
 use std::sync::Arc;
+use twilight_gateway::Event;
 
 pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
     match event {

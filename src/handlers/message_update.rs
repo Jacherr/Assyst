@@ -1,30 +1,27 @@
-use twilight_model::{channel::message::MessageType, gateway::payload::MessageUpdate};
-use twilight_model::channel::message::Message;
-use std::sync::Arc;
 use crate::Assyst;
+use std::sync::Arc;
+use twilight_model::channel::message::Message;
+use twilight_model::{channel::message::MessageType, gateway::payload::MessageUpdate};
 
-pub async fn handle(
-    assyst: Arc<Assyst>,
-    message: Box<MessageUpdate>
-) -> () {
-    if !should_handle_message(&message).await { return };
+pub async fn handle(assyst: Arc<Assyst>, message: Box<MessageUpdate>) -> () {
+    if !should_handle_message(&message).await {
+        return;
+    };
     let converted_message = convert_message_update_to_message(message.as_ref().clone());
     match converted_message {
         Some(c) => {
             if let Err(e) = assyst.handle_command(c).await {
                 println!("Command execution failed: {:?}", e);
             }
-        },
+        }
         _ => {}
     }
 }
 
-async fn should_handle_message(
-    message: &Box<MessageUpdate>
-) -> bool {
+async fn should_handle_message(message: &Box<MessageUpdate>) -> bool {
     match &message.author {
         Some(a) => !a.bot && a.discriminator != "0000" && message.guild_id.is_some(),
-        None => false
+        None => false,
     }
 }
 
@@ -63,6 +60,6 @@ fn convert_message_update_to_message(event: MessageUpdate) -> Option<Message> {
         stickers: vec![],
         timestamp,
         tts: false,
-        webhook_id: None
+        webhook_id: None,
     })
 }

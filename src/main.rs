@@ -1,15 +1,16 @@
-mod metrics;
+mod assyst;
+mod badtranslator;
+mod caching;
 mod command;
+mod consts;
 mod database;
 mod handler;
 mod handlers;
-mod util;
-mod assyst;
+mod metrics;
 mod rest;
-mod caching;
-mod badtranslator;
-mod consts;
+mod util;
 
+use assyst::Assyst;
 use dotenv::dotenv;
 use futures::stream::StreamExt;
 use handler::handle_event;
@@ -17,7 +18,6 @@ use std::env;
 use std::sync::Arc;
 use twilight_gateway::cluster::{Cluster, ShardScheme};
 use twilight_model::gateway::Intents;
-use assyst::Assyst;
 
 #[tokio::main]
 async fn main() {
@@ -45,7 +45,7 @@ async fn main() {
 
     while let Some((_, event)) = events.next().await {
         let assyst_clone = assyst.clone();
-        tokio::spawn(async move { 
+        tokio::spawn(async move {
             handle_event(assyst_clone, event).await;
         });
     }
