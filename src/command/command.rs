@@ -1,4 +1,5 @@
 use bytes::Bytes;
+#[derive(Debug)]
 pub enum Argument {
     String,
     ImageUrl,
@@ -12,7 +13,7 @@ pub enum ParsedArgument {
     Binary(Bytes),
     Choice(&'static str)
 }
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum CommandAvailability {
     Public,
     RequiresPermission(u16),
@@ -20,25 +21,34 @@ pub enum CommandAvailability {
     Private
 }
 #[derive(Debug)]
-pub struct CommandParseError {
+pub struct CommandParseError<'a> {
     pub error: String,
-    pub should_reply: bool
+    pub should_reply: bool,
+    pub command: Option<&'a Command>
 }
-impl CommandParseError {
-    pub fn with_reply(text: String) -> Self {
+impl<'a> CommandParseError<'a> {
+    pub fn set_command(&mut self, command: &'a Command) -> &mut Self {
+        self.command = Some(command);
+        self
+    }
+
+    pub fn with_reply(text: String, command: Option<&'a Command>) -> Self {
         CommandParseError {
             error: text,
-            should_reply: true
+            should_reply: true,
+            command
         }
     }
 
     pub fn without_reply(text: String) -> Self {
         CommandParseError {
             error: text,
-            should_reply: false
+            should_reply: false,
+            command: None
         }
     }
 }
+#[derive(Debug)]
 pub struct CommandMetadata {
     pub description: Box<str>,
     pub examples: Vec<Box<str>>,
@@ -68,7 +78,7 @@ impl ParsedArgumentResult {
         }
     }
 }
-
+#[derive(Debug)]
 pub struct Command {
     pub aliases: Vec<Box<str>>,
     pub args: Vec<Argument>,
