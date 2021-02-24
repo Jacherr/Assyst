@@ -8,6 +8,7 @@ use twilight_model::{
     id::{ChannelId, UserId},
     user::User,
 };
+use std::borrow::Cow;
 
 macro_rules! unwrap_or_eprintln {
     ($what:expr, $msg:expr) => {
@@ -165,8 +166,9 @@ impl BadTranslator {
         // TODO: transform content (turn ':emoji:' into 'emoji')
 
         let translation = match bt::translate(&assyst.reqwest_client, &message.content).await {
-            Ok(res) => res,
-            Err(_) => return,
+            Ok(res) => Cow::Owned(res),
+            Err(bt::TranslateError::Raw(msg)) => Cow::Borrowed(msg),
+            _ => return
         };
 
         // If we don't have permissions to delete messages, we just silently ignore it
