@@ -6,7 +6,8 @@ use crate::{
 };
 use crate::{
     command::command::{
-        Argument, Command, CommandParseError, ParsedArgument, ParsedArgumentResult, ParsedCommand, force_as
+        force_as, Argument, Command, CommandParseError, ParsedArgument, ParsedArgumentResult,
+        ParsedCommand,
     },
     metrics::GlobalMetrics,
 };
@@ -161,8 +162,14 @@ impl Assyst {
             },
             Err(e) => {
                 if e.should_reply {
+                    let err = match e.command {
+                        Some(c) => Cow::Owned(format!("{}\nUsage: {}{} {}", e.error, prefix, c.name, c.metadata.usage)),
+                        None => Cow::Borrowed(&e.error)
+                    };
                     context
-                        .reply_err(&e.error)
+                        .reply_err(
+                            &err
+                        )
                         .await
                         .map_err(|e| e.to_string())?;
                 }
@@ -196,7 +203,7 @@ impl Assyst {
         &self,
         message: &Message,
         prefix: &str,
-    ) -> Result<Option<ParsedCommand>, CommandParseError> {
+    ) -> Result<Option<ParsedCommand>, CommandParseError<'_>> {
         let content = &message.content;
         let command_details = get_command_and_args(&content, &prefix).unwrap_or(("", vec![]));
         let try_command = self
@@ -223,11 +230,14 @@ impl Assyst {
                     .http
                     .guild(message.guild_id.unwrap())
                     .await
-                    .map_err(|e| CommandParseError::with_reply(e.to_string()))?
+                    .map_err(|e| CommandParseError::with_reply(e.to_string(), None))?
                     .ok_or_else(|| {
-                        CommandParseError::with_reply("Permission validator failed".to_owned())
+                        CommandParseError::with_reply(
+                            "Permission validator failed".to_owned(),
+                            None,
+                        )
                     })?;
-                
+
                 if guild.owner_id == message.author.id
                     || self.config.admins.contains(&message.author.id.0)
                 {
@@ -252,12 +262,12 @@ impl Assyst {
         }))
     }
 
-    async fn parse_arguments(
+    async fn parse_arguments<'a>(
         &self,
         message: &Message,
-        command: &Command,
+        command: &'a Command,
         args: Vec<&str>,
-    ) -> Result<Vec<ParsedArgument>, CommandParseError> {
+    ) -> Result<Vec<ParsedArgument>, CommandParseError<'a>> {
         let mut parsed_args: Vec<ParsedArgument> = vec![];
         let mut index = 0;
         for arg in &command.args {
@@ -266,34 +276,50 @@ impl Assyst {
                     if args.len() <= index {
                         return Err(CommandParseError::with_reply(
                             format!("This command expects a choice argument (one of {:?}), but no argument was provided.", choices),
+                                Some(command)
                         ));
                     }
 
                     let choice = match choices.iter().find(|&&choice| choice == args[index]) {
                         Some(k) => k,
-                        None => return Err(CommandParseError::with_reply(format!("Cannot find given argument in {:?}", choices)))
+                        None => {
+                            return Err(CommandParseError::with_reply(
+                                format!("Cannot find given argument in {:?}", choices),
+                                Some(command),
+                            ))
+                        }
                     };
 
                     parsed_args.push(ParsedArgument::Choice(choice));
 
                     index += 1;
-                },
+                }
                 Argument::ImageUrl | Argument::ImageBuffer => {
                     let argument_to_pass = if args.len() <= index { "" } else { args[index] };
-                    let result = self
+                    let try_result = self
                         .parse_image_argument(message, argument_to_pass, arg)
-                        .await?;
+                        .await;
+                    
+                    match try_result {
+                        Ok(result) => {
+                            parsed_args.push(result.value);
+                            if result.should_increment_index {
+                                index += 1
+                            };
+                        },
+                        Err(mut e) => {
+                            e.set_command(command);
+                            return Err(e);
+                        }
+                    }
 
-                    parsed_args.push(result.value);
-                    if result.should_increment_index {
-                        index += 1
-                    };
                 }
                 Argument::String => {
                     if args.len() <= index {
                         return Err(CommandParseError::with_reply(
                             "This command expects a text argument that was not provided."
                                 .to_owned(),
+                            Some(command)
                         ));
                     }
                     parsed_args.push(ParsedArgument::Text(args[index].to_owned()));
@@ -304,6 +330,7 @@ impl Assyst {
                         return Err(CommandParseError::with_reply(
                             "This command expects a text argument that was not provided."
                                 .to_owned(),
+                            Some(command)
                         ));
                     }
                     parsed_args.push(ParsedArgument::Text(args[index..].join(" ")));
@@ -314,12 +341,12 @@ impl Assyst {
         Ok(parsed_args)
     }
 
-    async fn parse_image_argument(
+    async fn parse_image_argument<'a>(
         &self,
         message: &Message,
         argument: &str,
         return_as: &Argument,
-    ) -> Result<ParsedArgumentResult, CommandParseError> {
+    ) -> Result<ParsedArgumentResult, CommandParseError<'a>> {
         let mut should_increment = true;
         let mut try_url = self.validate_emoji_argument(argument).await;
         if try_url.is_none() {
@@ -345,6 +372,7 @@ impl Assyst {
             CommandParseError::with_reply(
                 "This command expects an image as an argument, but no image could be found."
                     .to_owned(),
+                None
             )
         })?;
 
@@ -354,16 +382,16 @@ impl Assyst {
                 .get(&url)
                 .send()
                 .await
-                .map_err(|e| CommandParseError::with_reply(e.to_string()))?
+                .map_err(|e| CommandParseError::with_reply(e.to_string(), None))?
                 .text()
                 .await
-                .map_err(|e| CommandParseError::with_reply(e.to_string()))?;
+                .map_err(|e| CommandParseError::with_reply(e.to_string(), None))?;
 
             let gif_url = regexes::TENOR_GIF
                 .find(&page)
                 .and_then(|url| Some(url.as_str()))
                 .ok_or_else(|| {
-                    CommandParseError::with_reply("Failed to extract Tenor GIF URL".to_owned())
+                    CommandParseError::with_reply("Failed to extract Tenor GIF URL".to_owned(), None)
                 })?;
             url = gif_url.to_owned();
         };
@@ -376,7 +404,7 @@ impl Assyst {
                     ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES,
                 )
                 .await
-                .map_err(|e| CommandParseError::with_reply(e))?;
+                .map_err(|e| CommandParseError::with_reply(e, None))?;
 
                 let parsed_argument_result = match should_increment {
                     true => {
