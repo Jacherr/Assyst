@@ -163,15 +163,13 @@ impl Assyst {
             Err(e) => {
                 if e.should_reply {
                     let err = match e.command {
-                        Some(c) => Cow::Owned(format!("{}\nUsage: {}{} {}", e.error, prefix, c.name, c.metadata.usage)),
-                        None => Cow::Borrowed(&e.error)
+                        Some(c) => Cow::Owned(format!(
+                            "{}\nUsage: {}{} {}",
+                            e.error, prefix, c.name, c.metadata.usage
+                        )),
+                        None => Cow::Borrowed(&e.error),
                     };
-                    context
-                        .reply_err(
-                            &err
-                        )
-                        .await
-                        .map_err(|e| e.to_string())?;
+                    context.reply_err(&err).await.map_err(|e| e.to_string())?;
                 }
                 return Ok(());
             }
@@ -299,27 +297,26 @@ impl Assyst {
                     let try_result = self
                         .parse_image_argument(message, argument_to_pass, arg)
                         .await;
-                    
+
                     match try_result {
                         Ok(result) => {
                             parsed_args.push(result.value);
                             if result.should_increment_index {
                                 index += 1
                             };
-                        },
+                        }
                         Err(mut e) => {
                             e.set_command(command);
                             return Err(e);
                         }
                     }
-
                 }
                 Argument::String => {
                     if args.len() <= index {
                         return Err(CommandParseError::with_reply(
                             "This command expects a text argument that was not provided."
                                 .to_owned(),
-                            Some(command)
+                            Some(command),
                         ));
                     }
                     parsed_args.push(ParsedArgument::Text(args[index].to_owned()));
@@ -330,7 +327,7 @@ impl Assyst {
                         return Err(CommandParseError::with_reply(
                             "This command expects a text argument that was not provided."
                                 .to_owned(),
-                            Some(command)
+                            Some(command),
                         ));
                     }
                     parsed_args.push(ParsedArgument::Text(args[index..].join(" ")));
@@ -372,7 +369,7 @@ impl Assyst {
             CommandParseError::with_reply(
                 "This command expects an image as an argument, but no image could be found."
                     .to_owned(),
-                None
+                None,
             )
         })?;
 
@@ -391,7 +388,10 @@ impl Assyst {
                 .find(&page)
                 .and_then(|url| Some(url.as_str()))
                 .ok_or_else(|| {
-                    CommandParseError::with_reply("Failed to extract Tenor GIF URL".to_owned(), None)
+                    CommandParseError::with_reply(
+                        "Failed to extract Tenor GIF URL".to_owned(),
+                        None,
+                    )
                 })?;
             url = gif_url.to_owned();
         };

@@ -4,7 +4,7 @@ use tokio::sync::Mutex;
 use twilight_http::Client as HttpClient;
 use twilight_model::{channel::Message, id::MessageId};
 
-use crate::{caching::Reply, Assyst, consts};
+use crate::{caching::Reply, consts, Assyst};
 use std::sync::Arc;
 
 use super::messagebuilder::MessageBuilder;

@@ -103,9 +103,10 @@ pub fn get_memory_usage() -> usize {
 pub async fn download_content(
     client: &reqwest::Client,
     url: &str,
-    limit_bytes: usize
+    limit_bytes: usize,
 ) -> Result<Vec<u8>, String> {
-    let mut stream = client.get(url)
+    let mut stream = client
+        .get(url)
         .send()
         .await
         .map_err(|e| e.to_string())?
@@ -115,11 +116,14 @@ pub async fn download_content(
     while let Some(chunk) = stream.next().await.and_then(|x| x.ok()) {
         for byte in chunk {
             if data.len() > limit_bytes {
-                return Err(format!("The download exceeded the specified limit of {} bytes", limit_bytes))
+                return Err(format!(
+                    "The download exceeded the specified limit of {} bytes",
+                    limit_bytes
+                ));
             }
             data.push(byte);
         }
-    };
+    }
 
     Ok(data)
 }

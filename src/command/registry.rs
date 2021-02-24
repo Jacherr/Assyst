@@ -1,15 +1,19 @@
+use super::categories::{image::*, misc::*};
 use super::command::{Command, ParsedArgument, ParsedCommand};
-use super::categories::{misc::*, image::*};
-use std::{collections::HashMap, pin::Pin};
 use crate::command::context::Context;
+use futures::lock;
 use std::future::Future;
 use std::sync::Arc;
-use futures::lock;
-use tokio::{sync::{Mutex, oneshot}, time::{sleep, Duration}};
+use std::{collections::HashMap, pin::Pin};
+use tokio::{
+    sync::{oneshot, Mutex},
+    time::{sleep, Duration},
+};
 
 pub type CommandResult = Result<(), String>;
 pub type CommandResultOuter = Pin<Box<dyn Future<Output = CommandResult> + Send>>;
-pub type CommandRun = Box<dyn Fn(Arc<Context>, Vec<ParsedArgument>) -> CommandResultOuter + Send + Sync>;
+pub type CommandRun =
+    Box<dyn Fn(Arc<Context>, Vec<ParsedArgument>) -> CommandResultOuter + Send + Sync>;
 
 macro_rules! register_command {
     ($self:expr, $command:expr, $run_fn:expr) => {{
@@ -25,20 +29,24 @@ macro_rules! register_command {
 
 pub struct CommandRegistry {
     pub command_runs: HashMap<&'static str, CommandRun>,
-    pub commands: HashMap<&'static str, &'static Command>
+    pub commands: HashMap<&'static str, &'static Command>,
 }
 
 impl CommandRegistry {
     pub fn new() -> Self {
         CommandRegistry {
             command_runs: HashMap::new(),
-            commands: HashMap::new()
+            commands: HashMap::new(),
         }
     }
 
-    pub async fn execute_command(&self, parsed_command: ParsedCommand, context: Arc<Context>) -> Result<(), String> {
+    pub async fn execute_command(
+        &self,
+        parsed_command: ParsedCommand,
+        context: Arc<Context>,
+    ) -> Result<(), String> {
         let command_processed = Arc::new(Mutex::new(false));
-        
+
         let command_processed_c = command_processed.clone();
         let context_c = context.clone();
 
@@ -46,7 +54,11 @@ impl CommandRegistry {
             sleep(Duration::from_millis(500)).await;
             let lock = *command_processed_c.lock().await;
             if lock == false {
-                context_c.assyst.http.create_typing_trigger(context_c.message.channel_id).await
+                context_c
+                    .assyst
+                    .http
+                    .create_typing_trigger(context_c.message.channel_id)
+                    .await
                     .unwrap();
             }
         });

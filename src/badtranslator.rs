@@ -1,9 +1,13 @@
-use std::{cmp::min, collections::HashMap, sync::Arc};
-use twilight_model::{channel::Webhook, id::{ChannelId, UserId}, user::User};
-use twilight_model::gateway::payload::MessageCreate;
-use crate::{rest::bt, util::get_current_millis};
-use tokio::sync::RwLock;
 use crate::assyst::Assyst;
+use crate::{rest::bt, util::get_current_millis};
+use std::{cmp::min, collections::HashMap, sync::Arc};
+use tokio::sync::RwLock;
+use twilight_model::gateway::payload::MessageCreate;
+use twilight_model::{
+    channel::Webhook,
+    id::{ChannelId, UserId},
+    user::User,
+};
 
 macro_rules! unwrap_or_eprintln {
     ($what:expr, $msg:expr) => {
@@ -45,7 +49,7 @@ impl BadTranslatorRatelimit {
 pub struct BadTranslator {
     flags: RwLock<u32>,
     channels: RwLock<ChannelCache>,
-    ratelimits: RwLock<HashMap<u64, BadTranslatorRatelimit>>
+    ratelimits: RwLock<HashMap<u64, BadTranslatorRatelimit>>,
 }
 
 impl BadTranslator {
@@ -57,14 +61,12 @@ impl BadTranslator {
         Self {
             channels: RwLock::new(channels),
             ratelimits: RwLock::new(HashMap::new()),
-            flags: RwLock::new(0)
+            flags: RwLock::new(0),
         }
     }
 
     pub async fn is_channel(&self, k: Snowflake) -> bool {
-        self.channels.read()
-            .await
-            .contains_key(&k)
+        self.channels.read().await.contains_key(&k)
     }
 
     pub async fn set_channels(&self, channels: ChannelCache) {
@@ -72,9 +74,7 @@ impl BadTranslator {
     }
 
     pub async fn should_fetch(&self) -> bool {
-        !self.is_disabled().await && self.channels.read()
-            .await
-            .len() == 0
+        !self.is_disabled().await && self.channels.read().await.len() == 0
     }
 
     pub async fn disable(&self) {
@@ -86,7 +86,11 @@ impl BadTranslator {
         (*self.flags.read().await & flags::DISABLED) == flags::DISABLED
     }
 
-    pub async fn get_or_fetch_webhook(&self, assyst: &Arc<Assyst>, id: &ChannelId) -> Option<Webhook> {
+    pub async fn get_or_fetch_webhook(
+        &self,
+        assyst: &Arc<Assyst>,
+        id: &ChannelId,
+    ) -> Option<Webhook> {
         let cache = self.channels.read().await;
 
         if let Some(Some(value)) = cache.get(&id.0) {
@@ -97,13 +101,9 @@ impl BadTranslator {
         drop(cache);
 
         // TODO: maybe return Result?
-        let webhooks = assyst.http.channel_webhooks(*id)
-            .await
-            .ok()?;
+        let webhooks = assyst.http.channel_webhooks(*id).await.ok()?;
 
-
-        let webhook = webhooks
-            .get(0)?;
+        let webhook = webhooks.get(0)?;
 
         let mut cache = self.channels.write().await;
         cache.insert(id.0, Some(webhook.clone()));
@@ -124,7 +124,7 @@ impl BadTranslator {
         let mut cache = self.ratelimits.write().await;
 
         cache.insert(id.0, BadTranslatorRatelimit::new());
-        
+
         false
     }
 
@@ -135,49 +135,59 @@ impl BadTranslator {
         let message_len = message.content.len();
 
         if is_webhook(&message.author) || is_ratelimit_message(assyst, &message) {
-            return
+            return;
         }
 
         if message_len == 0 || message_len >= constants::MAX_MESSAGE_LEN || message.author.bot {
-           let _ = assyst.http.delete_message(message.channel_id, message.id).await;
-           return
+            let _ = assyst
+                .http
+                .delete_message(message.channel_id, message.id)
+                .await;
+            return;
         }
 
         let ratelimit = self.try_ratelimit(&message.author.id).await;
         if ratelimit {
-            assyst.http.create_message(message.channel_id)
-                .content(&format!("<@{}>, {}", message.author.id.0, constants::RATELIMITED_MESSAGE))
+            assyst
+                .http
+                .create_message(message.channel_id)
+                .content(&format!(
+                    "<@{}>, {}",
+                    message.author.id.0,
+                    constants::RATELIMITED_MESSAGE
+                ))
                 .unwrap()
                 .await
                 .unwrap();
-            return
+            return;
         }
 
         // TODO: transform content (turn ':emoji:' into 'emoji')
 
-        let translation = match bt::translate(&assyst.reqwest_client, &message.content)
-            .await {
-                Ok(res) => res,
-                Err(_) => return
-            };
+        let translation = match bt::translate(&assyst.reqwest_client, &message.content).await {
+            Ok(res) => res,
+            Err(_) => return,
+        };
 
         // If we don't have permissions to delete messages, we just silently ignore it
-        let _ = assyst.http.delete_message(message.channel_id, message.id).await;
+        let _ = assyst
+            .http
+            .delete_message(message.channel_id, message.id)
+            .await;
 
         let webhook = unwrap_or_eprintln!(
             self.get_or_fetch_webhook(assyst, &message.channel_id).await,
             "Could not find webhook for channel"
         );
 
-        let token = unwrap_or_eprintln!(
-            webhook.token.as_ref(),
-            "Failed to extract token"
-        );
+        let token = unwrap_or_eprintln!(webhook.token.as_ref(), "Failed to extract token");
 
         let translation = sanitize_message_content(&translation[0..min(translation.len(), 1999)]);
 
         // Again, this might be a permission problem, so we ignore it if it fails
-        let _ = assyst.http.execute_webhook(webhook.id, token)
+        let _ = assyst
+            .http
+            .execute_webhook(webhook.id, token)
             .content(translation)
             .username(&message.author.name)
             .avatar_url(get_avatar_url(&message.author))
@@ -203,11 +213,18 @@ fn sanitize_message_content(content: &str) -> String {
 fn get_avatar_url(user: &User) -> String {
     let avatar = match &user.avatar {
         Some(av) => av,
-        None => return get_default_avatar_url(user)
+        None => return get_default_avatar_url(user),
     };
-    
-    let ext = if avatar.starts_with("a_") { "gif" } else { "png" };
-    format!("https://cdn.discordapp.com/avatars/{}/{}.{}", user.id, avatar, ext)
+
+    let ext = if avatar.starts_with("a_") {
+        "gif"
+    } else {
+        "png"
+    };
+    format!(
+        "https://cdn.discordapp.com/avatars/{}/{}.{}",
+        user.id, avatar, ext
+    )
 }
 
 fn is_webhook(user: &User) -> bool {

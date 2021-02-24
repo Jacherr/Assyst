@@ -1,4 +1,4 @@
-use reqwest::{Error, Client};
+use reqwest::{Client, Error};
 
 const API_BASE: &str = "http://translate.y21_.repl.co";
 

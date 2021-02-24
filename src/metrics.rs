@@ -1,13 +1,13 @@
 pub struct ProcessingMetrics {
     pub total_commands: u32,
-    pub total_processing_time: f32
+    pub total_processing_time: f32,
 }
 
 impl ProcessingMetrics {
     pub fn new() -> Self {
         Self {
             total_commands: 0,
-            total_processing_time: 0f32
+            total_processing_time: 0f32,
         }
     }
 
@@ -22,13 +22,13 @@ impl ProcessingMetrics {
 }
 
 pub struct GlobalMetrics {
-    pub processing: ProcessingMetrics
+    pub processing: ProcessingMetrics,
 }
 
 impl GlobalMetrics {
     pub fn new() -> Self {
         Self {
-            processing: ProcessingMetrics::new()
+            processing: ProcessingMetrics::new(),
         }
     }
 }

@@ -1,8 +1,19 @@
-use crate::{box_str, command::{command::{Argument, Command, CommandAvailability, CommandMetadata, ParsedArgument, force_as}, context::Context, messagebuilder::MessageBuilder, registry::CommandResult}, util::{codeblock, generate_table, get_memory_usage}};
+use crate::rest::rust;
+use crate::{
+    box_str,
+    command::{
+        command::{
+            force_as, Argument, Command, CommandAvailability, CommandMetadata, ParsedArgument,
+        },
+        context::Context,
+        messagebuilder::MessageBuilder,
+        registry::CommandResult,
+    },
+    util::{codeblock, generate_table, get_memory_usage},
+};
 use futures::TryFutureExt;
 use lazy_static::lazy_static;
 use std::{sync::Arc, time::Instant};
-use crate::rest::rust;
 
 lazy_static! {
     pub static ref PING_COMMAND: Command = Command {
@@ -62,7 +73,11 @@ lazy_static! {
     };
     pub static ref RUST_COMMAND: Command = Command {
         aliases: vec![],
-        args: vec![Argument::Choice(&["run", "bench"]), Argument::Choice(&["stable", "beta", "nightly"]), Argument::StringRemaining],
+        args: vec![
+            Argument::Choice(&["run", "bench"]),
+            Argument::Choice(&["stable", "beta", "nightly"]),
+            Argument::StringRemaining
+        ],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!("run/benchmark rust code"),
@@ -111,7 +126,13 @@ pub async fn run_enlarge_command(
 pub async fn run_help_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
     let mut unique_command_names: Vec<&Box<str>> = Vec::new();
     let mut command_help_entries: Vec<String> = Vec::new();
-    for i in context.assyst.registry.commands.values().filter(|a| a.availability != CommandAvailability::Private) {
+    for i in context
+        .assyst
+        .registry
+        .commands
+        .values()
+        .filter(|a| a.availability != CommandAvailability::Private)
+    {
         if unique_command_names.contains(&&i.name) {
             continue;
         };
@@ -133,7 +154,9 @@ pub async fn run_invite_command(context: Arc<Context>, _: Vec<ParsedArgument>) -
     context
         .reply(
             MessageBuilder::new()
-                .content("<https://discord.com/oauth2/authorize?client_id=571661221854707713&scope=bot>")
+                .content(
+                    "<https://discord.com/oauth2/authorize?client_id=571661221854707713&scope=bot>",
+                )
                 .clone(),
         )
         .await
@@ -142,7 +165,10 @@ pub async fn run_invite_command(context: Arc<Context>, _: Vec<ParsedArgument>) -
 }
 
 pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
-    let guilds = context.assyst.http.current_user_guilds()
+    let guilds = context
+        .assyst
+        .http
+        .current_user_guilds()
         .limit(100)
         .map_err(|e| e.to_string())?
         .await
@@ -158,11 +184,15 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
         ("Guilds", &guilds),
         ("Memory", &memory),
         ("Commands", &commands),
-        ("Avg Processing Time", &format!("{:.4}s", proc_time))
+        ("Avg Processing Time", &format!("{:.4}s", proc_time)),
     ]);
 
     context
-        .reply(MessageBuilder::new().content(&codeblock(&table, "hs")).clone())
+        .reply(
+            MessageBuilder::new()
+                .content(&codeblock(&table, "hs"))
+                .clone(),
+        )
         .await
         .map_err(|e| e.to_string())?;
 
@@ -175,19 +205,12 @@ pub async fn run_rust_command(context: Arc<Context>, args: Vec<ParsedArgument>) 
     let code = force_as::text(&args[2]);
 
     let result = if ty == "run" {
-        rust::run_binary(
-            &context.assyst.reqwest_client,
-            code,
-            channel
-        ).await
+        rust::run_binary(&context.assyst.reqwest_client, code, channel).await
     } else {
-        rust::run_benchmark(
-            &context.assyst.reqwest_client,
-            code
-        ).await
+        rust::run_benchmark(&context.assyst.reqwest_client, code).await
     };
-    
-    let result = result .map_err(|e| e.to_string())?;
+
+    let result = result.map_err(|e| e.to_string())?;
 
     let formatted = result.format();
 

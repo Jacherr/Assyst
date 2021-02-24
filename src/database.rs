@@ -1,8 +1,8 @@
 use std::{borrow::Cow, collections::HashMap};
 
+use futures::StreamExt;
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use tokio::sync::RwLock;
-use futures::StreamExt;
 
 use crate::badtranslator::ChannelCache;
 
@@ -55,7 +55,7 @@ impl Database {
         let cache_lock = self.cache.read().await;
         let try_fetch_cache = cache_lock.prefixes.get(&guild_id);
         if let Some(prefix) = try_fetch_cache {
-            return Ok(Some(Cow::Owned(prefix.to_string())))
+            return Ok(Some(Cow::Owned(prefix.to_string())));
         }
         drop(cache_lock);
 
@@ -72,9 +72,11 @@ impl Database {
         {
             Ok(res) => {
                 let mut cache_lock = self.cache.write().await;
-                cache_lock.prefixes.insert(guild_id, res.0.clone().into_boxed_str());
+                cache_lock
+                    .prefixes
+                    .insert(guild_id, res.0.clone().into_boxed_str());
                 Ok(Some(Cow::Owned(res.0)))
-            },
+            }
             Err(sqlx::Error::RowNotFound) => {
                 self.set_prefix_for(guild_id, set_prefix).await?;
                 Ok(Some(Cow::Borrowed(set_prefix)))
@@ -89,7 +91,9 @@ impl Database {
         prefix: &str,
     ) -> Result<(), sqlx::error::Error> {
         let mut cache_lock = self.cache.write().await;
-        cache_lock.prefixes.insert(guild_id, prefix.to_owned().into_boxed_str());
+        cache_lock
+            .prefixes
+            .insert(guild_id, prefix.to_owned().into_boxed_str());
 
         generate_query_task!(
             r#" INSERT INTO prefixes(guild, prefix) VALUES($1, $2) "#,
@@ -105,8 +109,7 @@ impl Database {
 
         let mut channels: ChannelCache = HashMap::new();
 
-        let mut rows = sqlx::query_as::<_, (i64,)>(query)
-            .fetch(&self.pool);
+        let mut rows = sqlx::query_as::<_, (i64,)>(query).fetch(&self.pool);
 
         while let Some(Ok(row)) = rows.next().await {
             channels.insert(row.0 as u64, None);

@@ -1,6 +1,6 @@
+use reqwest::{Client, Error};
+use serde::Deserialize;
 use serde_json::json;
-use serde::{Deserialize};
-use reqwest::{Error, Client};
 use std::borrow::{Borrow, Cow};
 
 const API_BASE: &str = "https://play.rust-lang.org";
@@ -28,7 +28,7 @@ mod tests {
 pub struct ApiResult {
     pub success: bool,
     pub stdout: String,
-    pub stderr: String
+    pub stderr: String,
 }
 
 impl ApiResult {
@@ -48,7 +48,7 @@ pub async fn run(
     mode: Option<&str>,
     edition: Option<&str>,
     crate_type: Option<&str>,
-    tests: Option<bool>
+    tests: Option<bool>,
 ) -> Result<ApiResult, Error> {
     client
         .post(&format!("{}/execute", API_BASE))
