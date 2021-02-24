@@ -1,21 +1,26 @@
-use crate::{command::command::{
-    Argument, Command, CommandParseError, ParsedArgument, ParsedArgumentResult, ParsedCommand,
-}, metrics::GlobalMetrics};
+use crate::{badtranslator::BadTranslator, command::command::CommandAvailability};
 use crate::{
     caching::{Replies, Reply},
     command::context::Metrics,
     database::Database,
 };
-use crate::{badtranslator::BadTranslator, command::command::CommandAvailability};
+use crate::{
+    command::command::{
+        Argument, Command, CommandParseError, ParsedArgument, ParsedArgumentResult, ParsedCommand,
+    },
+    metrics::GlobalMetrics,
+};
 use crate::{
     command::{context::Context, registry::CommandRegistry},
-    util::regexes,
+    consts::ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES,
+    util::{download_content, regexes},
 };
-use reqwest::{Client as ReqwestClient, StatusCode};
+use bytes::Bytes;
+use reqwest::Client as ReqwestClient;
 use serde::Deserialize;
-use std::{collections::HashSet, convert::TryInto, fs::read_to_string};
 use std::{borrow::Borrow, sync::Arc};
 use std::{borrow::Cow, time::Instant};
+use std::{collections::HashSet, fs::read_to_string};
 use tokio::sync::RwLock;
 use twilight_http::Client as HttpClient;
 use twilight_model::channel::Message;
@@ -45,7 +50,7 @@ pub struct Config {
     pub prefix_override: Box<str>,
     pub user_blacklist: HashSet<u64>,
     pub wsi_url: Box<str>,
-    pub wsi_auth: Box<str>
+    pub wsi_auth: Box<str>,
 }
 impl Config {
     fn new() -> Self {
@@ -74,7 +79,7 @@ pub struct Assyst {
     pub replies: RwLock<Replies>,
     pub reqwest_client: ReqwestClient,
     pub badtranslator: BadTranslator,
-    pub metrics: RwLock<GlobalMetrics>
+    pub metrics: RwLock<GlobalMetrics>,
 }
 impl Assyst {
     pub async fn new(token: &str) -> Self {
@@ -89,9 +94,11 @@ impl Assyst {
             registry: CommandRegistry::new(),
             replies: RwLock::new(Replies::new()),
             reqwest_client: ReqwestClient::new(),
-            metrics: RwLock::new(GlobalMetrics::new())
+            metrics: RwLock::new(GlobalMetrics::new()),
         };
-        if assyst.config.disable_bad_translator { assyst.badtranslator.disable().await };
+        if assyst.config.disable_bad_translator {
+            assyst.badtranslator.disable().await
+        };
         assyst.registry.register_commands();
         assyst
     }
@@ -99,7 +106,9 @@ impl Assyst {
     pub async fn handle_command(self: &Arc<Self>, _message: Message) -> Result<(), String> {
         let start = Instant::now();
         let message = Arc::new(_message);
-        if self.config.user_blacklist.contains(&message.author.id.0) { return Ok(()); }
+        if self.config.user_blacklist.contains(&message.author.id.0) {
+            return Ok(());
+        }
         let prefix;
         if self.config.prefix_override.len() == 0 {
             let try_prefix = self
@@ -123,10 +132,14 @@ impl Assyst {
         };
 
         let mut replies = self.replies.write().await;
-        let reply = replies.get_or_set_reply(Reply::new(message.clone())).clone();
-        
+        let reply = replies
+            .get_or_set_reply(Reply::new(message.clone()))
+            .clone();
+
         let mut reply_lock = reply.lock().await;
-        if reply_lock.has_expired() || reply_lock.in_use { return Ok(()) };
+        if reply_lock.has_expired() || reply_lock.in_use {
+            return Ok(());
+        };
         reply_lock.in_use = true;
         drop(reply_lock);
         drop(replies);
@@ -162,7 +175,10 @@ impl Assyst {
         reply.lock().await.in_use = false;
         match command_result {
             Err(err) => {
-                context.reply_err(&err.replace("\\n", "\n")).await.map_err(|e| e.to_string())?;
+                context
+                    .reply_err(&err.replace("\\n", "\n"))
+                    .await
+                    .map_err(|e| e.to_string())?;
             }
             Ok(_) => {}
         };
@@ -172,7 +188,7 @@ impl Assyst {
             .await
             .processing
             .add(context.metrics.processing_time_start.elapsed().as_millis() as f32);
-        
+
         Ok(())
     }
 
@@ -201,7 +217,7 @@ impl Assyst {
                 } else {
                     Ok(())
                 }
-            },
+            }
             _ => Err(CommandParseError::without_reply(
                 "Insufficient Permissions".to_owned(),
             )),
@@ -228,17 +244,14 @@ impl Assyst {
             match arg {
                 Argument::ImageUrl | Argument::ImageBuffer => {
                     let argument_to_pass = if args.len() <= index { "" } else { args[index] };
-                    let try_result = self
+                    let result = self
                         .parse_image_argument(message, argument_to_pass, arg)
-                        .await;
-                    if let Some(result) = try_result {
-                        parsed_args.push(result.value);
-                        if result.should_increment_index {
-                            index += 1
-                        };
-                    } else {
-                        return Err(CommandParseError::with_reply("This command expects an image as an argument, but no image could be found.".to_owned()));
-                    }
+                        .await?;
+
+                    parsed_args.push(result.value);
+                    if result.should_increment_index {
+                        index += 1
+                    };
                 }
                 Argument::String => {
                     if args.len() <= index {
@@ -270,7 +283,7 @@ impl Assyst {
         message: &Message,
         argument: &str,
         return_as: &Argument,
-    ) -> Option<ParsedArgumentResult> {
+    ) -> Result<ParsedArgumentResult, CommandParseError> {
         let mut should_increment = true;
         let mut try_url = self.validate_emoji_argument(argument).await;
         if try_url.is_none() {
@@ -292,36 +305,59 @@ impl Assyst {
             };
         };
 
-        let mut url = try_url?;
+        let mut url = try_url.ok_or_else(|| {
+            CommandParseError::with_reply(
+                "This command expects an image as an argument, but no image could be found."
+                    .to_owned(),
+            )
+        })?;
+
         if url.starts_with("https://tenor.com/view/") {
-            let page = self.reqwest_client.get(&url).send().await.ok()?;
-            let page_html = page.text().await.ok()?;
+            let page = self
+                .reqwest_client
+                .get(&url)
+                .send()
+                .await
+                .map_err(|e| CommandParseError::with_reply(e.to_string()))?
+                .text()
+                .await
+                .map_err(|e| CommandParseError::with_reply(e.to_string()))?;
+
             let gif_url = regexes::TENOR_GIF
-                .find(&page_html)
-                .and_then(|url| Some(url.as_str()))?;
+                .find(&page)
+                .and_then(|url| Some(url.as_str()))
+                .ok_or_else(|| {
+                    CommandParseError::with_reply("Failed to extract Tenor GIF URL".to_owned())
+                })?;
             url = gif_url.to_owned();
         };
 
         match return_as {
             Argument::ImageBuffer => {
-                let result = self.reqwest_client.get(&url).send().await.ok()?;
-                if result.status() != StatusCode::OK {
-                    None
-                } else {
-                    let bytes = result.bytes().await.ok()?;
-                    let parsed_argument_result = match should_increment {
-                        true => ParsedArgumentResult::increment(ParsedArgument::Binary(bytes)),
-                        false => ParsedArgumentResult::no_increment(ParsedArgument::Binary(bytes)),
-                    };
-                    Some(parsed_argument_result)
-                }
+                let result = download_content(
+                    &self.reqwest_client,
+                    &url,
+                    ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES,
+                )
+                .await
+                .map_err(|e| CommandParseError::with_reply(e))?;
+
+                let parsed_argument_result = match should_increment {
+                    true => {
+                        ParsedArgumentResult::increment(ParsedArgument::Binary(Bytes::from(result)))
+                    }
+                    false => ParsedArgumentResult::no_increment(ParsedArgument::Binary(
+                        Bytes::from(result),
+                    )),
+                };
+                Ok(parsed_argument_result)
             }
             Argument::ImageUrl => {
                 let parsed_argument_result = match should_increment {
                     true => ParsedArgumentResult::increment(ParsedArgument::Text(url)),
                     false => ParsedArgumentResult::no_increment(ParsedArgument::Text(url)),
                 };
-                Some(parsed_argument_result)
+                Ok(parsed_argument_result)
             }
             _ => panic!("return_as must be imageurl or imagebuffer"),
         }

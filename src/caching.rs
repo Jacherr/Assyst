@@ -1,13 +1,69 @@
-use std::{collections::HashMap, u64};
+use std::{collections::HashMap, hash::Hash, ops::Index, u64, usize};
 use tokio::sync::Mutex;
 use twilight_model::channel::Message;
 use util::get_current_millis;
 use std::sync::Arc;
 use twilight_model::id::MessageId;
 
-use crate::util;
+use crate::{util, box_str};
 
 pub const MESSAGE_EDIT_HANDLE_LIMIT: u32 = 60000;
+pub const PER_GUILD_COMMAND_RATELIMIT: u32 = 2000;
+
+pub struct Cache<T, U> {
+    pub cache: HashMap<T, U>,
+    pub limit: usize,
+    key_queue: Vec<T>,
+}
+impl<T: Hash + Eq + Clone, U> Cache<T, U> {
+    pub fn new(limit: usize) -> Self {
+        Cache {
+            cache: HashMap::new(),
+            limit,
+            key_queue: Vec::new()
+        }
+    }
+
+    pub fn insert(&mut self, key: T, value: U) {
+        if let Some(i) = self.key_queue.iter().position(|e| *e == key) {
+            self.key_queue.drain(i..(i+1));
+            self.key_queue.push(key.clone());
+        };
+
+        if self.cache.len() == self.limit {
+            self.cache.remove(self.key_queue.pop().as_ref().unwrap());
+        }
+
+        self.cache.insert(key, value);
+    }
+}
+
+pub struct Ratelimits {
+    cache: HashMap<u64, GuildRatelimits>
+}
+impl Ratelimits {
+    pub fn new() -> Self {
+        Ratelimits {
+            cache: HashMap::new()
+        }
+    }
+
+    pub fn time_until_guild_command_usable(&self, guild_id: twilight_model::id::GuildId, command: &str) -> Option<u64> {
+        let guild_ratelimits = self.cache.get(&guild_id.0)?;
+        let command_ratelimit = guild_ratelimits.get_command_expiry(command)?;
+        let millis =  get_current_millis();
+        if millis > *command_ratelimit { None }
+        else { Some(*command_ratelimit - millis) }
+    }
+}
+pub struct GuildRatelimits {
+    cache: HashMap<Box<str>, u64>
+}
+impl GuildRatelimits {
+    pub fn get_command_expiry(&self, command: &str) -> Option<&u64> {
+        self.cache.get(&box_str!(command))
+    }
+}
 
 pub struct Replies {
     cache: HashMap<u64, Arc<Mutex<Reply>>>
