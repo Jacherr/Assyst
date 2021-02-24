@@ -218,6 +218,26 @@ impl Assyst {
                     Ok(())
                 }
             }
+            CommandAvailability::GuildOwner => {
+                let guild = self
+                    .http
+                    .guild(message.guild_id.unwrap())
+                    .await
+                    .map_err(|e| CommandParseError::with_reply(e.to_string()))?
+                    .ok_or_else(|| {
+                        CommandParseError::with_reply("Permission validator failed".to_owned())
+                    })?;
+                
+                if guild.owner_id == message.author.id
+                    || self.config.admins.contains(&message.author.id.0)
+                {
+                    Ok(())
+                } else {
+                    Err(CommandParseError::without_reply(
+                        "Insufficient Permissions".to_owned(),
+                    ))
+                }
+            }
             _ => Err(CommandParseError::without_reply(
                 "Insufficient Permissions".to_owned(),
             )),
