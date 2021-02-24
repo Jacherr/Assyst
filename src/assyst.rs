@@ -6,7 +6,7 @@ use crate::{
 };
 use crate::{
     command::command::{
-        Argument, Command, CommandParseError, ParsedArgument, ParsedArgumentResult, ParsedCommand,
+        Argument, Command, CommandParseError, ParsedArgument, ParsedArgumentResult, ParsedCommand, force_as
     },
     metrics::GlobalMetrics,
 };
@@ -242,6 +242,22 @@ impl Assyst {
         let mut index = 0;
         for arg in &command.args {
             match arg {
+                Argument::Choice(choices) => {
+                    if args.len() <= index {
+                        return Err(CommandParseError::with_reply(
+                            format!("This command expects a choice argument (one of {:?}), but no argument was provided.", choices),
+                        ));
+                    }
+
+                    let choice = match choices.iter().find(|&&choice| choice == args[index]) {
+                        Some(k) => k,
+                        None => return Err(CommandParseError::with_reply(format!("Cannot find given argument in {:?}", choices)))
+                    };
+
+                    parsed_args.push(ParsedArgument::Choice(choice));
+
+                    index += 1;
+                },
                 Argument::ImageUrl | Argument::ImageBuffer => {
                     let argument_to_pass = if args.len() <= index { "" } else { args[index] };
                     let result = self

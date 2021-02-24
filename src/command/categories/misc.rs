@@ -1,14 +1,8 @@
-use crate::{box_str, command::{
-        command::{
-            force_as, Argument, Command, CommandAvailability, CommandMetadata, ParsedArgument,
-        },
-        context::Context,
-        messagebuilder::MessageBuilder,
-        registry::CommandResult,
-    }, util::{codeblock, generate_table, get_memory_usage}};
+use crate::{box_str, command::{command::{Argument, Command, CommandAvailability, CommandMetadata, ParsedArgument, force_as}, context::Context, messagebuilder::MessageBuilder, registry::CommandResult}, util::{codeblock, generate_table, get_memory_usage}};
 use futures::TryFutureExt;
 use lazy_static::lazy_static;
 use std::{sync::Arc, time::Instant};
+use crate::rest::rust;
 
 lazy_static! {
     pub static ref PING_COMMAND: Command = Command {
@@ -65,6 +59,17 @@ lazy_static! {
             usage: box_str!("")
         },
         name: box_str!("stats")
+    };
+    pub static ref RUST_COMMAND: Command = Command {
+        aliases: vec![],
+        args: vec![Argument::Choice(&["run", "bench"]), Argument::Choice(&["stable", "beta", "nightly"]), Argument::StringRemaining],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: box_str!("run/benchmark rust code"),
+            examples: vec![],
+            usage: box_str!("[run|bench] [stable|nightly|beta] [code]")
+        },
+        name: box_str!("rust")
     };
 }
 
@@ -158,6 +163,36 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
 
     context
         .reply(MessageBuilder::new().content(&codeblock(&table, "hs")).clone())
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+pub async fn run_rust_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
+    let ty = force_as::choice(&args[0]);
+    let channel = force_as::choice(&args[1]);
+    let code = force_as::text(&args[2]);
+
+    let result = if ty == "run" {
+        rust::run_binary(
+            &context.assyst.reqwest_client,
+            code,
+            channel
+        ).await
+    } else {
+        rust::run_benchmark(
+            &context.assyst.reqwest_client,
+            code
+        ).await
+    };
+    
+    let result = result .map_err(|e| e.to_string())?;
+
+    let formatted = result.format();
+
+    context
+        .reply(MessageBuilder::new().content(&codeblock(formatted, "rs")))
         .await
         .map_err(|e| e.to_string())?;
 
