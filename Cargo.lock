@@ -53,6 +53,7 @@ dependencies = [
  "regex",
  "reqwest",
  "serde",
+ "serde_json",
  "sqlx",
  "tokio",
  "toml",

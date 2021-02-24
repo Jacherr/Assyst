@@ -3,6 +3,7 @@ use reqwest::{Error, Client};
 
 pub mod wsi;
 pub mod bt;
+pub mod rust;
 
 const API_BASE: &str = "https://cdn.jacher.io";
 
