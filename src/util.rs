@@ -1,21 +1,22 @@
-use std::{convert::TryInto, time::{SystemTime, UNIX_EPOCH}};
-
 use bytes::Bytes;
+use futures_util::StreamExt;
+use std::{
+    convert::TryInto,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 #[macro_export]
 macro_rules! box_str {
     ($str:expr) => {
-        $str
-            .to_owned()
-            .into_boxed_str()
-    }
+        $str.to_owned().into_boxed_str()
+    };
 }
 
 pub mod regexes {
     use lazy_static::lazy_static;
     use regex::Regex;
 
-    lazy_static!{
+    lazy_static! {
         pub static ref CUSTOM_EMOJI: Regex = Regex::new(r"<a?:\w+:(\d{16,20})>").unwrap();
         pub static ref TENOR_GIF: Regex = Regex::new(r"https://media1\.tenor\.com/images/[a-zA-Z0-9]+/tenor\.gif").unwrap();
         pub static ref URL: Regex = Regex::new(r"https?://(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)").unwrap();
@@ -55,22 +56,38 @@ pub fn get_current_millis() -> u64 {
 }
 
 pub fn get_longer_str<'a>(a: &'a str, b: &'a str) -> &'a str {
-    if a.len() > b.len() { a } else { b }
+    if a.len() > b.len() {
+        a
+    } else {
+        b
+    }
 }
 
 pub fn generate_table(input: &[(&str, &str)]) -> String {
-    let longest = input.iter()
-        .fold(input[0].0, |previous, (current, _)| get_longer_str(previous, current));
-    
-    input.iter()
-        .map(|(key, value)| format!("{}{}: {}\n", " ".repeat(longest.len() - key.len()), key, value))
+    let longest = input.iter().fold(input[0].0, |previous, (current, _)| {
+        get_longer_str(previous, current)
+    });
+
+    input
+        .iter()
+        .map(|(key, value)| {
+            format!(
+                "{}{}: {}\n",
+                " ".repeat(longest.len() - key.len()),
+                key,
+                value
+            )
+        })
         .fold(String::new(), |a, b| a + &b)
 }
 
 pub fn codeblock(code: &str, language: &str) -> String {
-    format!("```{}\n{}\n```", language, &code[0..std::cmp::min(code.len(), 1980)])
+    format!(
+        "```{}\n{}\n```",
+        language,
+        &code[0..std::cmp::min(code.len(), 1980)]
+    )
 }
-
 
 #[cfg(target_os = "linux")]
 pub fn get_memory_usage() -> usize {
@@ -81,4 +98,28 @@ pub fn get_memory_usage() -> usize {
 #[cfg(not(target_os = "linux"))]
 pub fn get_memory_usage() -> usize {
     0
+}
+
+pub async fn download_content(
+    client: &reqwest::Client,
+    url: &str,
+    limit_bytes: usize
+) -> Result<Vec<u8>, String> {
+    let mut stream = client.get(url)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?
+        .bytes_stream();
+
+    let mut data = Vec::with_capacity(limit_bytes);
+    while let Some(chunk) = stream.next().await.and_then(|x| x.ok()) {
+        for byte in chunk {
+            if data.len() > limit_bytes {
+                return Err(format!("The download exceeded the specified limit of {} bytes", limit_bytes))
+            }
+            data.push(byte);
+        }
+    };
+
+    Ok(data)
 }

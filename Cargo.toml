@@ -19,5 +19,6 @@ dotenv = "0.15.0"
 async-trait = "0.1.42"
 lazy_static = "1.4.0"
 regex = "1.4.3"
-reqwest = { version = "0.11.0", features = ["json"] }
+reqwest = { version = "0.11.0", features = [ "json", "stream" ] }
 bytes = "1.0.1"
+futures-util = "0.3.12"
