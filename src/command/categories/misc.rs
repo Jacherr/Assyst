@@ -185,6 +185,15 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
         ("Memory", &memory),
         ("Commands", &commands),
         ("Avg Processing Time", &format!("{:.4}s", proc_time)),
+        ("BadTranslator Messages", &{
+            let read_lock =  context.assyst.metrics.read().await;
+            let total = read_lock.bt_messages.sum();
+            let guild_count  = context.message.guild_id
+                .and_then(|id| read_lock.bt_messages.0.get(&id.0))
+                .unwrap_or(&0);
+
+            format!("Total: {}, Server: {}", total, guild_count)
+        })
     ]);
 
     context
