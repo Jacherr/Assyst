@@ -268,7 +268,12 @@ pub async fn run_remind_command(context: Arc<Context>, args: Vec<ParsedArgument>
         message: comment.to_owned(),
         message_id: context.message.id.0 as i64,
         user_id: context.message.author.id.0 as i64,
-        timestamp: (get_current_millis() + time) as i64,
+        timestamp: time as i64,
         guild_id: guild_id as i64
-    }).await.map_err(|e| e.to_string())
+    }).await.map_err(|e| e.to_string())?;
+
+    context.reply(MessageBuilder::new().content("Reminder set."))
+        .await
+        .map_err(|e|e.to_string())
+        .and_then(|_| Ok(()))
 }

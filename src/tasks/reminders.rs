@@ -7,6 +7,8 @@ const FETCH_INTERVAL: i64 = 30000;
 
 async fn process_single_reminder(assyst: &Arc<Assyst>, reminder: &Reminder) -> Result<(), Box<dyn std::error::Error>> {
     assyst.http.create_message(ChannelId(reminder.channel_id as u64))
+        .allowed_mentions()
+        .build()
         .content(&format!("<@{}> Reminder: {}", reminder.user_id, reminder.message))?
         .await?;
 
