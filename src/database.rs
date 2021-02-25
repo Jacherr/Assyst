@@ -1,10 +1,10 @@
 use std::{borrow::Cow, collections::HashMap};
 
 use futures::StreamExt;
-use sqlx::postgres::{PgPool, PgPoolOptions};
+use sqlx::{postgres::{PgPool, PgPoolOptions}};
 use tokio::sync::RwLock;
 
-use crate::badtranslator::ChannelCache;
+use crate::{badtranslator::ChannelCache, util::get_current_millis};
 
 macro_rules! generate_query_task {
     ($query:expr, $pool:expr, $ret:tt, $($v:expr),+) => {{
@@ -18,6 +18,16 @@ macro_rules! generate_query_task {
                 Err(err) => Err(err),
             };
     }}
+}
+
+#[derive(sqlx::FromRow, Debug)]
+pub struct Reminder {
+    pub user_id: i64,
+    pub timestamp: i64,
+    pub guild_id: i64,
+    pub channel_id: i64,
+    pub message_id: i64,
+    pub message: String
 }
 
 struct Cache {
@@ -126,5 +136,48 @@ impl Database {
             .execute(&self.pool)
             .await
             .and_then(|_| Ok(()))
+    }
+    
+    pub async fn add_reminder(
+        &self,
+        reminder: Reminder
+    ) -> Result<(), sqlx::Error> {
+        let query = r#"INSERT INTO reminders VALUES ($1, $2, $3, $4, $5, $6)"#;
+
+        sqlx::query(query)
+            .bind(reminder.user_id)
+            .bind(reminder.timestamp)
+            .bind(reminder.guild_id)
+            .bind(reminder.channel_id)
+            .bind(reminder.message_id)
+            .bind(&*reminder.message)
+            .execute(&self.pool)
+            .await
+            .and_then(|_| Ok(()))
+    }
+
+    pub async fn fetch_reminders(&self, time_delta: i64) -> Result<Vec<Reminder>, sqlx::Error> {
+        let query = "SELECT * FROM reminders WHERE timestamp < $1";
+
+        sqlx::query_as::<_, Reminder>(query)
+            .bind(get_current_millis() as i64 + time_delta)
+            .fetch_all(&self.pool)
+            .await
+    }
+
+    pub async fn delete_reminders(&self, reminders: Vec<Reminder>) -> Result<(), sqlx::Error> {
+        let mut tx = self.pool.begin().await?;
+
+        println!("Deleting {:?}", reminders);
+
+        for reminder in reminders {
+            sqlx::query("DELETE FROM reminders WHERE message_id = $1 AND channel_id = $2")
+                .bind(reminder.message_id)
+                .bind(reminder.channel_id)
+                .execute(&mut tx)
+                .await?;
+        }
+
+        tx.commit().await
     }
 }

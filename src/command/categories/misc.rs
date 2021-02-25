@@ -1,4 +1,4 @@
-use crate::rest::rust;
+use crate::{database::Reminder, rest::rust, util::{get_current_millis, parse_to_millis}};
 use crate::{
     box_str,
     command::{
@@ -85,6 +85,20 @@ lazy_static! {
             usage: box_str!("[run|bench] [stable|nightly|beta] [code]")
         },
         name: box_str!("rust")
+    };
+    pub static ref REMINDER_COMMAND: Command = Command {
+        aliases: vec![],
+        args: vec![
+            Argument::String,
+            Argument::StringRemaining
+        ],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: box_str!("set a reminder"),
+            examples: vec![],
+            usage: box_str!("[when] [description]")
+        },
+        name: box_str!("remind")
     };
 }
 
@@ -230,4 +244,31 @@ pub async fn run_rust_command(context: Arc<Context>, args: Vec<ParsedArgument>) 
         .map_err(|e| e.to_string())?;
 
     Ok(())
+}
+
+pub async fn run_remind_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
+    let time = force_as::text(&args[0]);
+    let comment = force_as::text(&args[1]);
+    
+    let time = parse_to_millis(time)
+        .map_err(|e| e.to_string())? as u64;
+
+    // TODO: check if time is too large
+
+    let guild_id = match context.message.guild_id {
+        Some(id) => id.0,
+        None => return Err("This command can only be run in a server".to_owned())
+    };
+
+    let time = get_current_millis() + time;
+
+    // TODO: try_into
+    context.assyst.database.add_reminder(Reminder {
+        channel_id: context.message.channel_id.0 as i64,
+        message: comment.to_owned(),
+        message_id: context.message.id.0 as i64,
+        user_id: context.message.author.id.0 as i64,
+        timestamp: (get_current_millis() + time) as i64,
+        guild_id: guild_id as i64
+    }).await.map_err(|e| e.to_string())
 }

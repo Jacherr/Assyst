@@ -1,5 +1,5 @@
 use crate::assyst::Assyst;
-use crate::{rest::bt, util::get_current_millis};
+use crate::{rest::bt, util::get_current_millis, util::sanitize_message_content};
 use std::{cmp::min, collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
 use twilight_model::gateway::payload::MessageCreate;
@@ -210,13 +210,6 @@ fn get_default_avatar_url(user: &User) -> String {
         "https://cdn.discordapp.com/embed/avatars/{}.png",
         user.discriminator.parse::<u16>().unwrap() % 5
     )
-}
-
-// Ugly solution for now
-// Twilight currently doesn't support Allowed Mentions API for Webhooks
-// TODO: Use allowed_mentions once it's out
-fn sanitize_message_content(content: &str) -> String {
-    content.replace("@", "@\u{200b}")
 }
 
 fn get_avatar_url(user: &User) -> String {

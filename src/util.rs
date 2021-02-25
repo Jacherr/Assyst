@@ -1,6 +1,6 @@
 use bytes::Bytes;
 use futures_util::StreamExt;
-use std::{borrow::Cow, convert::TryInto, time::{SystemTime, UNIX_EPOCH}};
+use std::{borrow::Cow, convert::TryInto, num::ParseIntError, time::{SystemTime, UNIX_EPOCH}};
 
 #[macro_export]
 macro_rules! box_str {
@@ -18,6 +18,7 @@ pub mod regexes {
         pub static ref TENOR_GIF: Regex = Regex::new(r"https://media1\.tenor\.com/images/[a-zA-Z0-9]+/tenor\.gif").unwrap();
         pub static ref URL: Regex = Regex::new(r"https?://(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)").unwrap();
         pub static ref USER_MENTION: Regex = Regex::new(r"(?:<@!?)?(\d{16,20})>?").unwrap();
+        pub static ref TIME_STRING: Regex = Regex::new("(\\d+)([smhd])").unwrap();
     }
 }
 
@@ -163,4 +164,36 @@ impl Uptime {
             format!("{} {}", amount, pluralize("second", "s", amount))
         }
     }
+}
+
+fn unit_to_ms(u: &str) -> u32 {
+    match u {
+        "s" => 1000,
+        "m" => 1000 * 60,
+        "h" => 1000 * 60 * 60,
+        "d" => 1000 * 60 * 60 * 24,
+        _ => unreachable!()
+    }
+}
+
+pub fn parse_to_millis(input: &str) -> Result<u32, ParseIntError> {
+    let matches = regexes::TIME_STRING.captures_iter(input);
+
+    let mut total = 0u32;
+
+    for current in matches {
+        let amount = current[1].parse::<u32>()?;
+        let unit = unit_to_ms(&current[2]);
+
+        total += amount * unit;
+    }
+    
+    Ok(total)
+}
+
+// Ugly solution for now
+// Twilight currently doesn't support Allowed Mentions API for Webhooks
+// TODO: Use allowed_mentions once it's out
+pub fn sanitize_message_content(content: &str) -> String {
+    content.replace("@", "@\u{200b}")
 }

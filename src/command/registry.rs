@@ -91,5 +91,6 @@ impl CommandRegistry {
         register_command!(self, WORMHOLE_COMMAND, run_wormhole_command);
         register_command!(self, ZOOM_COMMAND, run_zoom_command);
         register_command!(self, RUST_COMMAND, run_rust_command);
+        register_command!(self, REMINDER_COMMAND, run_remind_command);
     }
 }
