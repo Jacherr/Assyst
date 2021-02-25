@@ -6,7 +6,7 @@ use crate::{
 };
 use crate::{
     command::command::{
-        force_as, Argument, Command, CommandParseError, ParsedArgument, ParsedArgumentResult,
+        Argument, Command, CommandParseError, ParsedArgument, ParsedArgumentResult,
         ParsedCommand,
     },
     metrics::GlobalMetrics,
@@ -178,14 +178,11 @@ impl Assyst {
         let context_clone = context.clone();
         let command_result = self.registry.execute_command(command, context_clone).await;
         reply.lock().await.in_use = false;
-        match command_result {
-            Err(err) => {
-                context
-                    .reply_err(&err.replace("\\n", "\n"))
-                    .await
-                    .map_err(|e| e.to_string())?;
-            }
-            Ok(_) => {}
+        if let Err(err) = command_result {
+            context
+            .reply_err(&err.replace("\\n", "\n"))
+            .await
+            .map_err(|e| e.to_string())?;
         };
 
         self.metrics
