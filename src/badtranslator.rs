@@ -194,6 +194,13 @@ impl BadTranslator {
             .username(&message.author.name)
             .avatar_url(get_avatar_url(&message.author))
             .await;
+
+        // Increase metrics counter for this guild
+        // BadTranslator is only available in guilds, so it's safe to unwrap
+        let guild_id = message.guild_id.unwrap().0;
+        let mut metrics_lock = assyst.metrics.write().await;
+        *metrics_lock.bt_messages.0.entry(guild_id)
+            .or_insert(0) += 1;
     }
 }
 

@@ -1,9 +1,11 @@
-pub struct ProcessingMetrics {
+use std::collections::HashMap;
+
+pub struct CountableMetrics {
     pub total_commands: u32,
     pub total_processing_time: f32,
 }
 
-impl ProcessingMetrics {
+impl CountableMetrics {
     pub fn new() -> Self {
         Self {
             total_commands: 0,
@@ -21,14 +23,31 @@ impl ProcessingMetrics {
     }
 }
 
+pub struct BtMessagesMetrics(pub HashMap<u64, u32>);
+
+impl BtMessagesMetrics {
+    pub fn new() -> Self {
+        Self(HashMap::new())
+    }
+
+    pub fn sum(&self) -> u32 {
+        self.0.iter().fold(0, |a, b| a + b.1)
+    }
+}
+
 pub struct GlobalMetrics {
-    pub processing: ProcessingMetrics,
+    /// Processing metrics
+    pub processing: CountableMetrics,
+    /// BadTranslator metrics
+    /// Maps Guild ID to messages count
+    pub bt_messages: BtMessagesMetrics
 }
 
 impl GlobalMetrics {
     pub fn new() -> Self {
         Self {
-            processing: ProcessingMetrics::new(),
+            processing: CountableMetrics::new(),
+            bt_messages: BtMessagesMetrics::new()
         }
     }
 }
