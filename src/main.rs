@@ -9,6 +9,7 @@ mod handlers;
 mod metrics;
 mod rest;
 mod util;
+mod tasks;
 
 use assyst::Assyst;
 use dotenv::dotenv;
@@ -40,6 +41,9 @@ async fn main() {
 
     let spawned_cluster = cluster.clone();
     tokio::spawn(async move { spawned_cluster.up().await });
+
+    // Tasks
+    tasks::init_reminder_loop(assyst.clone());
 
     let mut events = cluster.events();
 
