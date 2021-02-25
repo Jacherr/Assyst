@@ -1,12 +1,11 @@
 use super::categories::{image::*, misc::*};
 use super::command::{Command, ParsedArgument, ParsedCommand};
 use crate::command::context::Context;
-use futures::lock;
 use std::future::Future;
 use std::sync::Arc;
 use std::{collections::HashMap, pin::Pin};
 use tokio::{
-    sync::{oneshot, Mutex},
+    sync::Mutex,
     time::{sleep, Duration},
 };
 
