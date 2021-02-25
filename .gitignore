@@ -1,3 +1,8 @@
 dist
 node_modules
-config.json
+config.toml
+.env
+
+#Added by cargo
+
+/target

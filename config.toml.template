@@ -1,0 +1,11 @@
+default_prefix = "a-"
+prefix_override = ""
+wsi_url = "https://wsi.jacher.io"
+wsi_auth = ""
+
+[database]
+  host = ""
+  username = ""
+  password = ""
+  database = ""
+  port = 1234
