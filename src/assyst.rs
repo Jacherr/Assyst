@@ -1,4 +1,4 @@
-use crate::{badtranslator::BadTranslator, command::command::CommandAvailability};
+use crate::{badtranslator::BadTranslator, command::command::CommandAvailability, util::{Uptime, get_current_millis}};
 use crate::{
     caching::{Replies, Reply},
     command::context::Metrics,
@@ -6,7 +6,7 @@ use crate::{
 };
 use crate::{
     command::command::{
-        force_as, Argument, Command, CommandParseError, ParsedArgument, ParsedArgumentResult,
+        Argument, Command, CommandParseError, ParsedArgument, ParsedArgumentResult,
         ParsedCommand,
     },
     metrics::GlobalMetrics,
@@ -75,6 +75,7 @@ pub fn get_command_and_args<'a>(content: &'a str, prefix: &str) -> Option<(&'a s
 pub struct Assyst {
     pub config: Config,
     pub database: Database,
+    pub started_at: u64,
     pub http: HttpClient,
     pub registry: CommandRegistry,
     pub replies: RwLock<Replies>,
@@ -90,6 +91,7 @@ impl Assyst {
         let mut assyst = Assyst {
             config,
             database,
+            started_at: get_current_millis(),
             http,
             badtranslator: BadTranslator::new(),
             registry: CommandRegistry::new(),
@@ -527,5 +529,9 @@ impl Assyst {
 
     pub async fn get_average_processing_time(&self) -> f32 {
         self.metrics.read().await.processing.avg()
+    }
+
+    pub fn uptime(&self) -> Uptime {
+        Uptime::new(get_current_millis() - self.started_at)
     }
 }

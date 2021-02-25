@@ -1,9 +1,6 @@
 use bytes::Bytes;
 use futures_util::StreamExt;
-use std::{
-    convert::TryInto,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::{borrow::Cow, convert::TryInto, time::{SystemTime, UNIX_EPOCH}};
 
 #[macro_export]
 macro_rules! box_str {
@@ -126,4 +123,44 @@ pub async fn download_content(
     }
 
     Ok(data)
+}
+
+mod units {
+    pub const SECOND: u64 = 1000;
+    pub const MINUTE: u64 = SECOND * 60;
+    pub const HOUR: u64 = MINUTE * 60;
+    pub const DAY: u64 = HOUR * 24;
+}
+
+pub fn pluralize<'a>(s: &'a str, adder: &str, count: u64) -> Cow<'a, str> {
+    if count == 1 {
+        Cow::Borrowed(s)
+    } else {
+        Cow::Owned(s.to_owned() + adder)
+    }
+}
+
+pub struct Uptime(u64);
+impl Uptime {
+    pub fn new(time: u64) -> Self {
+        Self(time)
+    }
+
+    pub fn format(&self) -> String {
+        let time = self.0;
+        
+        if time >= units::DAY {
+            let amount = time / units::DAY;
+            format!("{} {}", amount, pluralize("day", "s", amount))
+        } else if time >= units::HOUR {
+            let amount = time / units::HOUR;
+            format!("{} {}", amount, pluralize("hour", "s", amount))
+        } else if time >= units::MINUTE {
+            let amount = time / units::MINUTE;
+            format!("{} {}", amount, pluralize("minute", "s", amount))
+        } else {
+            let amount = time / units::SECOND;
+            format!("{} {}", amount, pluralize("second", "s", amount))
+        }
+    }
 }
