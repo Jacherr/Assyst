@@ -8,8 +8,8 @@ mod handler;
 mod handlers;
 mod metrics;
 mod rest;
-mod util;
 mod tasks;
+mod util;
 
 use assyst::Assyst;
 use dotenv::dotenv;

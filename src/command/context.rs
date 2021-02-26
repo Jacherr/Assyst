@@ -87,7 +87,7 @@ impl Context {
     }
 
     pub async fn reply_with_text(&self, text: &str) -> Result<Arc<Message>, String> {
-        let builder = MessageBuilder::new().content(text).clone();
+        let builder = MessageBuilder::new().content(text);
         self.reply(builder).await.map_err(|e| e.to_string())
     }
 
@@ -95,7 +95,12 @@ impl Context {
         &self,
         message_builder: MessageBuilder,
     ) -> Result<Arc<Message>, Box<dyn Error>> {
-        let mut create_message = self.assyst.http.create_message(self.message.channel_id);
+        let mut create_message = self
+            .assyst
+            .http
+            .create_message(self.message.channel_id)
+            .allowed_mentions()
+            .build();
         if let Some(attachment) = message_builder.attachment {
             create_message = create_message.attachment(attachment.name, attachment.data.to_vec());
         };

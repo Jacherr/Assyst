@@ -1,5 +1,6 @@
 use crate::assyst::Assyst;
 use crate::{rest::bt, util::get_current_millis, util::sanitize_message_content};
+use std::borrow::Cow;
 use std::{cmp::min, collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
 use twilight_model::gateway::payload::MessageCreate;
@@ -8,7 +9,6 @@ use twilight_model::{
     id::{ChannelId, UserId},
     user::User,
 };
-use std::borrow::Cow;
 
 macro_rules! unwrap_or_eprintln {
     ($what:expr, $msg:expr) => {
@@ -168,7 +168,7 @@ impl BadTranslator {
         let translation = match bt::translate(&assyst.reqwest_client, &message.content).await {
             Ok(res) => Cow::Owned(res),
             Err(bt::TranslateError::Raw(msg)) => Cow::Borrowed(msg),
-            _ => return
+            _ => return,
         };
 
         // If we don't have permissions to delete messages, we just silently ignore it
@@ -199,8 +199,7 @@ impl BadTranslator {
         // BadTranslator is only available in guilds, so it's safe to unwrap
         let guild_id = message.guild_id.unwrap().0;
         let mut metrics_lock = assyst.metrics.write().await;
-        *metrics_lock.bt_messages.0.entry(guild_id)
-            .or_insert(0) += 1;
+        *metrics_lock.bt_messages.0.entry(guild_id).or_insert(0) += 1;
     }
 }
 

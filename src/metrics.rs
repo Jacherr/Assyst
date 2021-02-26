@@ -40,14 +40,14 @@ pub struct GlobalMetrics {
     pub processing: CountableMetrics,
     /// BadTranslator metrics
     /// Maps Guild ID to messages count
-    pub bt_messages: BtMessagesMetrics
+    pub bt_messages: BtMessagesMetrics,
 }
 
 impl GlobalMetrics {
     pub fn new() -> Self {
         Self {
             processing: CountableMetrics::new(),
-            bt_messages: BtMessagesMetrics::new()
+            bt_messages: BtMessagesMetrics::new(),
         }
     }
 }

@@ -1,4 +1,3 @@
-use crate::util::get_buffer_filetype;
 use crate::{
     box_str,
     command::{
@@ -10,6 +9,11 @@ use crate::{
     },
     consts::WORKING_FILESIZE_LIMIT_BYTES,
     rest::wsi,
+};
+use crate::{
+    command::{command::force_as::text, messagebuilder},
+    rest,
+    util::{codeblock, get_buffer_filetype},
 };
 use bytes::Bytes;
 use lazy_static::lazy_static;
@@ -86,6 +90,17 @@ lazy_static! {
             usage: box_str!("[image] [text separated by a |]")
         },
         name: box_str!("motivate")
+    };
+    pub static ref OCR_COMMAND: Command = Command {
+        aliases: vec![box_str!("read")],
+        args: vec![Argument::ImageUrl],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: box_str!("read the text on an image"),
+            examples: vec![],
+            usage: box_str!("[image]")
+        },
+        name: box_str!("ocr")
     };
     pub static ref RAINBOW_COMMAND: Command = Command {
         aliases: vec![],
@@ -264,6 +279,22 @@ pub async fn run_motivate_command(
         .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
+    Ok(())
+}
+
+pub async fn run_ocr_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let arg = args.drain(0..1).next().unwrap();
+    let image = force_as::text(&arg);
+    let mut result = rest::ocr_image(&context.assyst.reqwest_client, image)
+        .await
+        .map_err(|e| e.to_string())?;
+    if result.is_empty() {
+        result = "No text detected".to_owned()
+    };
+    context.reply_with_text(&codeblock(&result, "")).await?;
     Ok(())
 }
 

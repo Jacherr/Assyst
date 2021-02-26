@@ -1,4 +1,3 @@
-use crate::{database::Reminder, rest::rust, util::{get_current_millis, parse_to_millis}};
 use crate::{
     box_str,
     command::{
@@ -10,6 +9,11 @@ use crate::{
         registry::CommandResult,
     },
     util::{codeblock, generate_table, get_memory_usage},
+};
+use crate::{
+    database::Reminder,
+    rest::rust,
+    util::{get_current_millis, parse_to_millis},
 };
 use futures::TryFutureExt;
 use lazy_static::lazy_static;
@@ -88,10 +92,7 @@ lazy_static! {
     };
     pub static ref REMINDER_COMMAND: Command = Command {
         aliases: vec![],
-        args: vec![
-            Argument::String,
-            Argument::StringRemaining
-        ],
+        args: vec![Argument::String, Argument::StringRemaining],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!("set a reminder"),
@@ -201,14 +202,16 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
         ("Avg Processing Time", &format!("{:.4}s", proc_time)),
         ("Uptime", &context.assyst.uptime().format()),
         ("BadTranslator Messages", &{
-            let read_lock =  context.assyst.metrics.read().await;
+            let read_lock = context.assyst.metrics.read().await;
             let total = read_lock.bt_messages.sum();
-            let guild_count  = context.message.guild_id
+            let guild_count = context
+                .message
+                .guild_id
                 .and_then(|id| read_lock.bt_messages.0.get(&id.0))
                 .unwrap_or(&0);
 
             format!("Total: {}, Server: {}", total, guild_count)
-        })
+        }),
     ]);
 
     context
@@ -249,31 +252,36 @@ pub async fn run_rust_command(context: Arc<Context>, args: Vec<ParsedArgument>) 
 pub async fn run_remind_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
     let time = force_as::text(&args[0]);
     let comment = force_as::text(&args[1]);
-    
-    let time = parse_to_millis(time)
-        .map_err(|e| e.to_string())? as u64;
+
+    let time = parse_to_millis(time).map_err(|e| e.to_string())? as u64;
 
     // TODO: check if time is too large
 
     let guild_id = match context.message.guild_id {
         Some(id) => id.0,
-        None => return Err("This command can only be run in a server".to_owned())
+        None => return Err("This command can only be run in a server".to_owned()),
     };
 
     let time = get_current_millis() + time;
 
     // TODO: try_into
-    context.assyst.database.add_reminder(Reminder {
-        channel_id: context.message.channel_id.0 as i64,
-        message: comment.to_owned(),
-        message_id: context.message.id.0 as i64,
-        user_id: context.message.author.id.0 as i64,
-        timestamp: time as i64,
-        guild_id: guild_id as i64
-    }).await.map_err(|e| e.to_string())?;
-
-    context.reply(MessageBuilder::new().content("Reminder set."))
+    context
+        .assyst
+        .database
+        .add_reminder(Reminder {
+            channel_id: context.message.channel_id.0 as i64,
+            message: comment.to_owned(),
+            message_id: context.message.id.0 as i64,
+            user_id: context.message.author.id.0 as i64,
+            timestamp: time as i64,
+            guild_id: guild_id as i64,
+        })
         .await
-        .map_err(|e|e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    context
+        .reply(MessageBuilder::new().content("Reminder set."))
+        .await
+        .map_err(|e| e.to_string())
         .and_then(|_| Ok(()))
 }

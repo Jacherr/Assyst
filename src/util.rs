@@ -1,6 +1,11 @@
 use bytes::Bytes;
 use futures_util::StreamExt;
-use std::{borrow::Cow, convert::TryInto, num::ParseIntError, time::{SystemTime, UNIX_EPOCH}};
+use std::{
+    borrow::Cow,
+    convert::TryInto,
+    num::ParseIntError,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 #[macro_export]
 macro_rules! box_str {
@@ -80,10 +85,11 @@ pub fn generate_table(input: &[(&str, &str)]) -> String {
 }
 
 pub fn codeblock(code: &str, language: &str) -> String {
+    let escaped_code = code.replace("`", "`\u{0200b}");
     format!(
         "```{}\n{}\n```",
         language,
-        &code[0..std::cmp::min(code.len(), 1980)]
+        &escaped_code[0..std::cmp::min(escaped_code.len(), 1980)]
     )
 }
 
@@ -149,7 +155,7 @@ impl Uptime {
 
     pub fn format(&self) -> String {
         let time = self.0;
-        
+
         if time >= units::DAY {
             let amount = time / units::DAY;
             format!("{} {}", amount, pluralize("day", "s", amount))
@@ -172,7 +178,7 @@ fn unit_to_ms(u: &str) -> u32 {
         "m" => 1000 * 60,
         "h" => 1000 * 60 * 60,
         "d" => 1000 * 60 * 60 * 24,
-        _ => unreachable!()
+        _ => unreachable!(),
     }
 }
 
@@ -187,7 +193,7 @@ pub fn parse_to_millis(input: &str) -> Result<u32, ParseIntError> {
 
         total += amount * unit;
     }
-    
+
     Ok(total)
 }
 
