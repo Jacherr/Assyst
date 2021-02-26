@@ -1,4 +1,9 @@
-use crate::{badtranslator::BadTranslator, command::command::CommandAvailability, util::{Uptime, get_current_millis}};
+use crate::{
+    badtranslator::BadTranslator,
+    caching::Ratelimits,
+    command::command::CommandAvailability,
+    util::{get_current_millis, Uptime},
+};
 use crate::{
     caching::{Replies, Reply},
     command::context::Metrics,
@@ -6,8 +11,7 @@ use crate::{
 };
 use crate::{
     command::command::{
-        Argument, Command, CommandParseError, ParsedArgument, ParsedArgumentResult,
-        ParsedCommand,
+        Argument, Command, CommandParseError, ParsedArgument, ParsedArgumentResult, ParsedCommand,
     },
     metrics::GlobalMetrics,
 };
@@ -73,6 +77,7 @@ pub fn get_command_and_args<'a>(content: &'a str, prefix: &str) -> Option<(&'a s
 }
 
 pub struct Assyst {
+    pub command_ratelimits: RwLock<Ratelimits>,
     pub config: Config,
     pub database: Database,
     pub started_at: u64,
@@ -89,6 +94,7 @@ impl Assyst {
         let config = Config::new();
         let database = Database::new(2, config.database.to_url()).await.unwrap();
         let mut assyst = Assyst {
+            command_ratelimits: RwLock::new(Ratelimits::new()),
             config,
             database,
             started_at: get_current_millis(),
@@ -178,13 +184,18 @@ impl Assyst {
         };
 
         let context_clone = context.clone();
+
+        let ratelimit_lock = self.command_ratelimits.write().await;
+        let guild_ratelimits = ratelimit_lock
+            .time_until_guild_command_usable(message.guild_id.unwrap(), command.calling_name);
+
         let command_result = self.registry.execute_command(command, context_clone).await;
         reply.lock().await.in_use = false;
         if let Err(err) = command_result {
             context
-            .reply_err(&err.replace("\\n", "\n"))
-            .await
-            .map_err(|e| e.to_string())?;
+                .reply_err(&err.replace("\\n", "\n"))
+                .await
+                .map_err(|e| e.to_string())?;
         };
 
         self.metrics

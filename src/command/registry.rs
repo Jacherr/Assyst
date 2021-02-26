@@ -85,6 +85,7 @@ impl CommandRegistry {
         register_command!(self, IMAGEMAGICK_EVAL_COMMAND, run_imagemagick_eval_command);
         register_command!(self, MELT_COMMAND, run_melt_command);
         register_command!(self, MOTIVATE_COMMAND, run_motivate_command);
+        register_command!(self, OCR_COMMAND, run_ocr_command);
         register_command!(self, RAINBOW_COMMAND, run_rainbow_command);
         register_command!(self, REVERSE_COMMAND, run_reverse_command);
         register_command!(self, SPIN_COMMAND, run_spin_command);

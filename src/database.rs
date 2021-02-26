@@ -1,7 +1,7 @@
 use std::{borrow::Cow, collections::HashMap};
 
 use futures::StreamExt;
-use sqlx::{postgres::{PgPool, PgPoolOptions}};
+use sqlx::postgres::{PgPool, PgPoolOptions};
 use tokio::sync::RwLock;
 
 use crate::{badtranslator::ChannelCache, util::get_current_millis};
@@ -27,7 +27,7 @@ pub struct Reminder {
     pub guild_id: i64,
     pub channel_id: i64,
     pub message_id: i64,
-    pub message: String
+    pub message: String,
 }
 
 struct Cache {
@@ -137,11 +137,8 @@ impl Database {
             .await
             .and_then(|_| Ok(()))
     }
-    
-    pub async fn add_reminder(
-        &self,
-        reminder: Reminder
-    ) -> Result<(), sqlx::Error> {
+
+    pub async fn add_reminder(&self, reminder: Reminder) -> Result<(), sqlx::Error> {
         let query = r#"INSERT INTO reminders VALUES ($1, $2, $3, $4, $5, $6)"#;
 
         sqlx::query(query)
