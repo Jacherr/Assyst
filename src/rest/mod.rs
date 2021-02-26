@@ -9,7 +9,7 @@ pub mod wsi;
 
 mod routes {
     pub const CDN: &str = "https://cdn.jacher.io";
-    pub const OCR: &str = "https://ocr--y21_.repl.co/?url=";
+    pub const OCR: &str = "http://ocr--y21_.repl.co/?url=";
 }
 
 pub async fn ocr_image(client: &Client, url: &str) -> Result<String, Error> {
