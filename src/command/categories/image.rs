@@ -124,6 +124,17 @@ lazy_static! {
         },
         name: box_str!("reverse")
     };
+    pub static ref ROTATE_COMMAND: Command = Command {
+        aliases: vec![],
+        args: vec![Argument::ImageBuffer, Argument::String],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: box_str!("rotate an image"),
+            examples: vec![box_str!("@y21 45")],
+            usage: box_str!("[image] [degrees]")
+        },
+        name: box_str!("rotate")
+    };
     pub static ref SPIN_COMMAND: Command = Command {
         aliases: vec![],
         args: vec![Argument::ImageBuffer],
@@ -321,6 +332,22 @@ pub async fn run_reverse_command(
     let image = compress_if_large(context.clone(), raw_image).await?;
     context.reply_with_text("processing...").await?;
     let result = wsi::reverse(context.assyst.clone(), image)
+        .await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
+}
+
+pub async fn run_rotate_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let image = compress_if_large(context.clone(), raw_image).await?;
+    let degrees = force_as::text(&args[0]);
+    context.reply_with_text("processing...").await?;
+    let result = wsi::rotate(context.assyst.clone(), image, degrees)
         .await
         .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
