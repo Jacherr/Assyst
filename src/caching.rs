@@ -38,6 +38,7 @@ impl<T: Hash + Eq + Clone, U> Cache<T, U> {
     }
 }
 
+#[derive(Debug)]
 pub struct Ratelimits {
     cache: HashMap<u64, GuildRatelimits>,
 }
@@ -46,6 +47,16 @@ impl Ratelimits {
         Ratelimits {
             cache: HashMap::new(),
         }
+    }
+
+    pub fn set_command_expire_at(
+        &mut self,
+        guild_id: twilight_model::id::GuildId,
+        command: &str
+    ) -> () {
+        self.cache.entry(guild_id.0)
+            .or_insert_with(|| GuildRatelimits::new())
+            .set_command_expiry(command, get_current_millis() + PER_GUILD_COMMAND_RATELIMIT as u64);
     }
 
     pub fn time_until_guild_command_usable(
@@ -63,12 +74,21 @@ impl Ratelimits {
         }
     }
 }
+#[derive(Debug)]
 pub struct GuildRatelimits {
     cache: HashMap<Box<str>, u64>,
 }
 impl GuildRatelimits {
+    pub fn new() -> Self {
+        GuildRatelimits {
+            cache: HashMap::new()
+        }
+    }
     pub fn get_command_expiry(&self, command: &str) -> Option<&u64> {
         self.cache.get(&box_str!(command))
+    }
+    pub fn set_command_expiry(&mut self, command: &str, expiry: u64) -> () {
+        self.cache.insert(box_str!(command), expiry);
     }
 }
 
