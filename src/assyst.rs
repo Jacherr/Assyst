@@ -185,11 +185,34 @@ impl Assyst {
 
         let context_clone = context.clone();
 
-        let ratelimit_lock = self.command_ratelimits.write().await;
-        let guild_ratelimits = ratelimit_lock
-            .time_until_guild_command_usable(message.guild_id.unwrap(), command.calling_name);
+        let mut ratelimit_lock = self.command_ratelimits.write().await;
+        let command_actual_name = &self
+            .registry
+            .commands
+            .get(command.calling_name)
+            .unwrap()
+            .name;
+        let command_ratelimit = ratelimit_lock
+            .time_until_guild_command_usable(message.guild_id.unwrap(), &command_actual_name);
+        match command_ratelimit {
+            Some(r) => {
+                context
+                    .reply_err(&format!(
+                        "This command is on cooldown for {:.2} seconds.",
+                        (r as f64 / 1000f64)
+                    ))
+                    .await
+                    .map_err(|e| e.to_string())?;
+                return Ok(());
+            }
+            None => {}
+        };
+        ratelimit_lock
+            .set_command_expire_at(message.guild_id.unwrap(), &command_actual_name);
+        drop(ratelimit_lock);
 
         let command_result = self.registry.execute_command(command, context_clone).await;
+
         reply.lock().await.in_use = false;
         if let Err(err) = command_result {
             context
