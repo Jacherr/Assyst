@@ -14,6 +14,7 @@ mod routes {
     pub const MOTIVATE: &str = "/motivate";
     pub const RAINBOW: &str = "/rainbow";
     pub const REVERSE: &str = "/reverse";
+    pub const ROTATE: &str = "/rotate";
     pub const SPIN: &str = "/spin";
     pub const WORMHOLE: &str = "/wormhole";
     pub const ZOOM: &str = "/zoom";
@@ -139,6 +140,10 @@ pub async fn rainbow(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, Request
 
 pub async fn reverse(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::REVERSE, image, &[]).await
+}
+
+pub async fn rotate(assyst: Arc<Assyst>, image: Bytes, degrees: &str) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::ROTATE, image, &[("degrees", degrees)]).await
 }
 
 pub async fn spin(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {

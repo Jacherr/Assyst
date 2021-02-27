@@ -88,6 +88,7 @@ impl CommandRegistry {
         register_command!(self, OCR_COMMAND, run_ocr_command);
         register_command!(self, RAINBOW_COMMAND, run_rainbow_command);
         register_command!(self, REVERSE_COMMAND, run_reverse_command);
+        register_command!(self, ROTATE_COMMAND, run_rotate_command);
         register_command!(self, SPIN_COMMAND, run_spin_command);
         register_command!(self, WORMHOLE_COMMAND, run_wormhole_command);
         register_command!(self, ZOOM_COMMAND, run_zoom_command);
