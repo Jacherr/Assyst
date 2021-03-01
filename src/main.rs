@@ -4,6 +4,7 @@ mod caching;
 mod command;
 mod consts;
 mod database;
+mod filetype;
 mod handler;
 mod handlers;
 mod metrics;
