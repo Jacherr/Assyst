@@ -439,6 +439,10 @@ impl Assyst {
                 .await
                 .map_err(|e| CommandParseError::with_reply(e, None))?;
 
+                if result.len() == 0 {
+                    return Err(CommandParseError::with_reply("The media download failed because no data was received.".to_owned(), None));
+                }
+
                 let parsed_argument_result = match should_increment {
                     true => {
                         ParsedArgumentResult::increment(ParsedArgument::Binary(Bytes::from(result)))

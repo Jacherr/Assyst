@@ -92,12 +92,18 @@ pub async fn download_content(
     url: &str,
     limit_bytes: usize,
 ) -> Result<Vec<u8>, String> {
-    let mut stream = client
+    let request = client
         .get(url)
         .send()
         .await
-        .map_err(|e| e.to_string())?
-        .bytes_stream();
+        .map_err(|e| e.to_string())?;
+
+    let status = request.status();
+    if status != reqwest::StatusCode::OK {
+        return Err(format!("Download failed: {}", status));
+    }
+    
+    let mut stream = request.bytes_stream();
 
     let mut data = Vec::with_capacity(limit_bytes);
     while let Some(chunk) = stream.next().await.and_then(|x| x.ok()) {
