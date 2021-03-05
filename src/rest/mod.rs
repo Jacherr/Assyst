@@ -1,5 +1,3 @@
-use std::borrow::Borrow;
-
 use bytes::Bytes;
 use reqwest::{Client, Error};
 

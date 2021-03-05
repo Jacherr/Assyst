@@ -11,7 +11,6 @@ use crate::{
     rest::wsi,
 };
 use crate::{
-    command::{command::force_as::text, messagebuilder},
     rest,
     util::{codeblock, get_buffer_filetype},
 };
