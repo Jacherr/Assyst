@@ -192,3 +192,14 @@ pub fn parse_to_millis(input: &str) -> Result<u32, ParseIntError> {
 pub fn sanitize_message_content(content: &str) -> String {
     content.replace("@", "@\u{200b}")
 }
+
+
+pub const CODEBLOCK_MD: &str = "```";
+
+pub fn parse_codeblock<'a>(text: &'a str, lang: &str) -> &'a str {
+    if !text.starts_with(CODEBLOCK_MD) || !text.ends_with(CODEBLOCK_MD) {
+        text
+    } else {
+        &text[(lang.len() + CODEBLOCK_MD.len())..(text.len() - CODEBLOCK_MD.len())].trim()
+    }
+}

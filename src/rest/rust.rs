@@ -68,7 +68,7 @@ pub async fn run(
 
 pub async fn run_binary(client: &Client, code: &str, channel: &str) -> Result<ApiResult, Error> {
     let code = if !code.contains("fn main") {
-        Cow::Owned(format!("fn main() {{{}}}", code))
+        Cow::Owned(format!("fn main() {{ println!(\"{{:?}}\", {{ {} }});}}", code))
     } else {
         Cow::Borrowed(code)
     };
