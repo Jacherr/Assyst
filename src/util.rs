@@ -192,7 +192,7 @@ pub fn sanitize_message_content(content: &str) -> String {
 pub const CODEBLOCK_MD: &str = "```";
 
 pub fn parse_codeblock<'a>(text: &'a str, lang: &str) -> &'a str {
-    if !text.starts_with(CODEBLOCK_MD)
+    if !text.starts_with(&format!("{}{}", CODEBLOCK_MD, lang))
         || !text.ends_with(CODEBLOCK_MD)
         || text.len() <= CODEBLOCK_MD.len() * 2
     {
