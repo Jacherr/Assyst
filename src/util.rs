@@ -1,3 +1,4 @@
+use crate::filetype;
 use bytes::Bytes;
 use futures_util::StreamExt;
 use std::{
@@ -6,7 +7,6 @@ use std::{
     num::ParseIntError,
     time::{SystemTime, UNIX_EPOCH},
 };
-use crate::filetype;
 
 #[macro_export]
 macro_rules! box_str {
@@ -92,17 +92,13 @@ pub async fn download_content(
     url: &str,
     limit_bytes: usize,
 ) -> Result<Vec<u8>, String> {
-    let request = client
-        .get(url)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
+    let request = client.get(url).send().await.map_err(|e| e.to_string())?;
 
     let status = request.status();
     if status != reqwest::StatusCode::OK {
         return Err(format!("Download failed: {}", status));
     }
-    
+
     let mut stream = request.bytes_stream();
 
     let mut data = Vec::with_capacity(limit_bytes);
@@ -193,11 +189,13 @@ pub fn sanitize_message_content(content: &str) -> String {
     content.replace("@", "@\u{200b}")
 }
 
-
 pub const CODEBLOCK_MD: &str = "```";
 
 pub fn parse_codeblock<'a>(text: &'a str, lang: &str) -> &'a str {
-    if !text.starts_with(CODEBLOCK_MD) || !text.ends_with(CODEBLOCK_MD) {
+    if !text.starts_with(CODEBLOCK_MD)
+        || !text.ends_with(CODEBLOCK_MD)
+        || text.len() <= CODEBLOCK_MD.len() * 2
+    {
         text
     } else {
         &text[(lang.len() + CODEBLOCK_MD.len())..(text.len() - CODEBLOCK_MD.len())].trim()
