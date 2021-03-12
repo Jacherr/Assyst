@@ -8,7 +8,7 @@ use crate::{
         messagebuilder::MessageBuilder,
         registry::CommandResult,
     },
-    util::{codeblock, generate_table, get_memory_usage},
+    util::{codeblock, generate_table, get_memory_usage, parse_codeblock},
 };
 use crate::{
     database::Reminder,
@@ -232,9 +232,14 @@ pub async fn run_rust_command(context: Arc<Context>, args: Vec<ParsedArgument>) 
     let code = force_as::text(&args[2]);
 
     let result = if ty == "run" {
-        rust::run_binary(&context.assyst.reqwest_client, code, channel).await
+        rust::run_binary(
+            &context.assyst.reqwest_client,
+            parse_codeblock(code, "rs"),
+            channel,
+        )
+        .await
     } else {
-        rust::run_benchmark(&context.assyst.reqwest_client, code).await
+        rust::run_benchmark(&context.assyst.reqwest_client, parse_codeblock(code, "rs")).await
     };
 
     let result = result.map_err(|e| e.to_string())?;
