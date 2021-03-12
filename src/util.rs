@@ -72,8 +72,21 @@ pub fn codeblock(code: &str, language: &str) -> String {
     format!(
         "```{}\n{}\n```",
         language,
-        &escaped_code[0..std::cmp::min(escaped_code.len(), 1980)]
+        escaped_code.chars().take(1980).collect::<String>()
     )
+}
+
+pub const CODEBLOCK_MD: &str = "```";
+
+pub fn parse_codeblock<'a>(text: &'a str, lang: &str) -> &'a str {
+    if !text.starts_with(&format!("{}{}", CODEBLOCK_MD, lang))
+        || !text.ends_with(CODEBLOCK_MD)
+        || text.len() <= CODEBLOCK_MD.len() * 2
+    {
+        text
+    } else {
+        &text[(lang.len() + CODEBLOCK_MD.len())..(text.len() - CODEBLOCK_MD.len())].trim()
+    }
 }
 
 #[cfg(target_os = "linux")]
@@ -187,17 +200,4 @@ pub fn parse_to_millis(input: &str) -> Result<u32, ParseIntError> {
 // TODO: Use allowed_mentions once it's out
 pub fn sanitize_message_content(content: &str) -> String {
     content.replace("@", "@\u{200b}")
-}
-
-pub const CODEBLOCK_MD: &str = "```";
-
-pub fn parse_codeblock<'a>(text: &'a str, lang: &str) -> &'a str {
-    if !text.starts_with(&format!("{}{}", CODEBLOCK_MD, lang))
-        || !text.ends_with(CODEBLOCK_MD)
-        || text.len() <= CODEBLOCK_MD.len() * 2
-    {
-        text
-    } else {
-        &text[(lang.len() + CODEBLOCK_MD.len())..(text.len() - CODEBLOCK_MD.len())].trim()
-    }
 }
