@@ -92,7 +92,7 @@ pub fn get_memory_usage() -> Option<String> {
     let stdout = String::from_utf8_lossy(&result.stdout);
     let memory_line = stdout.split("\n").find(|line| line.trim().starts_with("Memory"))?;
     let memory_usage = memory_line.split(":").collect::<Vec<&str>>()[1];
-    Some(memory_usage.to_owned())
+    Some(memory_usage.trim().to_owned())
 }
 
 #[cfg(not(target_os = "linux"))]
