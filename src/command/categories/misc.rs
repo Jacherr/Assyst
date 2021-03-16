@@ -157,7 +157,7 @@ pub async fn run_help_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> 
     context
         .reply(
             MessageBuilder::new()
-                .content(&format!("{}\nInvite the bot: <https://discord.com/oauth2/authorize?client_id=571661221854707713&scope=bot>", &command_help_entries.join("\n")))
+                .content(&format!("{}\nInvite the bot: <https://discord.com/oauth2/authorize?client_id=571661221854707713&scope=bot>\nSupport server: <https://discord.gg/JBvJbBEDpA>", &command_help_entries.join("\n")))
                 .clone(),
         )
         .await
@@ -170,7 +170,7 @@ pub async fn run_invite_command(context: Arc<Context>, _: Vec<ParsedArgument>) -
         .reply(
             MessageBuilder::new()
                 .content(
-                    "<https://discord.com/oauth2/authorize?client_id=571661221854707713&scope=bot>",
+                    "Bot invite: <https://discord.com/oauth2/authorize?client_id=571661221854707713&scope=bot>\nSupport server: <https://discord.gg/JBvJbBEDpA>",
                 )
                 .clone(),
         )
