@@ -157,16 +157,21 @@ impl Assyst {
         let metrics = Metrics {
             processing_time_start: start,
         };
+
         let context = Arc::new(Context::new(
             self.clone(),
             message.clone(),
             metrics,
             reply.clone(),
         ));
+
         let command = match t_command {
             Ok(res) => match res {
                 Some(c) => c,
-                None => return Ok(()),
+                None => {
+                    reply.lock().await.in_use = false;
+                    return Ok(())
+                },
             },
             Err(e) => {
                 if e.should_reply {
@@ -179,6 +184,7 @@ impl Assyst {
                     };
                     context.reply_err(&err).await.map_err(|e| e.to_string())?;
                 }
+                reply.lock().await.in_use = false;
                 return Ok(());
             }
         };
@@ -196,6 +202,7 @@ impl Assyst {
             .time_until_guild_command_usable(message.guild_id.unwrap(), &command_actual_name);
         match command_ratelimit {
             Some(r) => {
+                reply.lock().await.in_use = false;
                 context
                     .reply_err(&format!(
                         "This command is on cooldown for {:.2} seconds.",
