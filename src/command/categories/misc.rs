@@ -192,7 +192,7 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
         .to_string();
 
     let memory = get_memory_usage().unwrap_or("Unknown".to_owned());
-    let commands = context.assyst.registry.commands.len().to_string();
+    let commands = context.assyst.registry.get_command_count().to_string();
     let proc_time = (context.assyst.get_average_processing_time().await / 1e3).to_string();
 
     let table = generate_table(&[
