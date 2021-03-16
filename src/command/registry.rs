@@ -1,4 +1,4 @@
-use super::categories::{image::*, misc::*};
+use super::{categories::{image::*, misc::*}, command::CommandAvailability};
 use super::command::{Command, ParsedArgument, ParsedCommand};
 use crate::command::context::Context;
 use std::future::Future;
@@ -67,6 +67,23 @@ impl CommandRegistry {
         let mut lock = command_processed.lock().await;
         *lock = true;
         result
+    }
+
+    pub fn get_command_count(&self) -> usize {
+        let mut command_count = 0;
+        let mut unique_command_names = Vec::new();
+        for i in self
+            .commands
+            .values()
+            .filter(|a| a.availability != CommandAvailability::Private)
+        {
+            if unique_command_names.contains(&&i.name) {
+                continue;
+            };
+            unique_command_names.push(&i.name);
+            command_count += 1;
+        }
+        command_count
     }
 
     pub fn get_command_from_name_or_alias(&self, name: &str) -> Option<&'static Command> {
