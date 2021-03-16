@@ -1,12 +1,7 @@
 use crate::filetype;
 use bytes::Bytes;
 use futures_util::StreamExt;
-use std::{
-    borrow::Cow,
-    convert::TryInto,
-    num::ParseIntError,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::{borrow::Cow, convert::TryInto, num::ParseIntError, process::Command, time::{SystemTime, UNIX_EPOCH}};
 
 #[macro_export]
 macro_rules! box_str {
@@ -90,14 +85,19 @@ pub fn parse_codeblock<'a>(text: &'a str, lang: &str) -> &'a str {
 }
 
 #[cfg(target_os = "linux")]
-pub fn get_memory_usage() -> usize {
-    // todo
-    0
+pub fn get_memory_usage() -> Option<String> {
+    let mut command = Command::new("systemctl");
+    command.args(vec!["status", "assyst"]);
+    let result = command.output().ok()?;
+    let stdout = String::from_utf8_lossy(&result.stdout);
+    let memory_line = stdout.split("\n").find(|line| line.trim().starts_with("Memory"))?;
+    let memory_usage = memory_line.split(":").collect::<Vec<&str>>()[1];
+    Some(memory_usage.to_owned())
 }
 
 #[cfg(not(target_os = "linux"))]
-pub fn get_memory_usage() -> usize {
-    0
+pub fn get_memory_usage() -> Option<String> {
+    None
 }
 
 pub async fn download_content(
