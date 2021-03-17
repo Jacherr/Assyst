@@ -63,17 +63,6 @@ lazy_static! {
         },
         name: box_str!("ime")
     };
-    pub static ref MELT_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![Argument::ImageBuffer, Argument::String, Argument::String],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: box_str!("melt an image"),
-            examples: vec![],
-            usage: box_str!("[image] [length] [width]")
-        },
-        name: box_str!("melt")
-    };
     pub static ref MOTIVATE_COMMAND: Command = Command {
         aliases: vec![],
         args: vec![Argument::ImageBuffer, Argument::StringRemaining],
@@ -144,6 +133,17 @@ lazy_static! {
             usage: box_str!("[image]")
         },
         name: box_str!("spin")
+    };
+    pub static ref WALL_COMMAND: Command = Command {
+        aliases: vec![],
+        args: vec![Argument::ImageBuffer],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: box_str!("create a wall out of an image"),
+            examples: vec![],
+            usage: box_str!("[image]")
+        },
+        name: box_str!("wall")
     };
     pub static ref WORMHOLE_COMMAND: Command = Command {
         aliases: vec![],
@@ -239,23 +239,6 @@ pub async fn run_imagemagick_eval_command(
     let text = force_as::text(&args[0]);
     context.reply_with_text("processing...").await?;
     let result = wsi::imagemagick_eval(context.assyst.clone(), image, text)
-        .await
-        .map_err(wsi::format_err)?;
-    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
-    context.reply_with_image(format, result).await?;
-    Ok(())
-}
-
-pub async fn run_melt_command(
-    context: Arc<Context>,
-    mut args: Vec<ParsedArgument>,
-) -> CommandResult {
-    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
-    let length = force_as::text(&args[0]);
-    let width = force_as::text(&args[1]);
-    context.reply_with_text("processing...").await?;
-    let result = wsi::melt(context.assyst.clone(), image, length, width)
         .await
         .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
@@ -362,6 +345,21 @@ pub async fn run_spin_command(
     let image = compress_if_large(context.clone(), raw_image).await?;
     context.reply_with_text("processing...").await?;
     let result = wsi::spin(context.assyst.clone(), image)
+        .await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
+}
+
+pub async fn run_wall_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let image = compress_if_large(context.clone(), raw_image).await?;
+    context.reply_with_text("processing...").await?;
+    let result = wsi::wall(context.assyst.clone(), image)
         .await
         .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");

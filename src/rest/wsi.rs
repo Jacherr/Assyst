@@ -16,6 +16,7 @@ mod routes {
     pub const REVERSE: &str = "/reverse";
     pub const ROTATE: &str = "/rotate";
     pub const SPIN: &str = "/spin";
+    pub const WALL: &str = "/wall";
     pub const WORMHOLE: &str = "/wormhole";
     pub const ZOOM: &str = "/zoom";
 }
@@ -82,21 +83,6 @@ pub async fn compress(
     .await
 }
 
-pub async fn melt(
-    assyst: Arc<Assyst>,
-    image: Bytes,
-    length: &str,
-    width: &str,
-) -> Result<Bytes, RequestError> {
-    request_bytes(
-        assyst,
-        routes::MELT,
-        image,
-        &[("length", length), ("width", width)],
-    )
-    .await
-}
-
 pub async fn motivate(
     assyst: Arc<Assyst>,
     image: Bytes,
@@ -148,6 +134,10 @@ pub async fn rotate(assyst: Arc<Assyst>, image: Bytes, degrees: &str) -> Result<
 
 pub async fn spin(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::SPIN, image, &[]).await
+}
+
+pub async fn wall(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::WALL, image, &[]).await
 }
 
 pub async fn wormhole(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
