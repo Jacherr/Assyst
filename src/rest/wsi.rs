@@ -10,13 +10,13 @@ mod routes {
     pub const COMPRESS: &str = "/compress";
     pub const GIF_SPEED: &str = "/gif_speed";
     pub const IMAGEMAGICK_EVAL: &str = "/imagemagick_eval";
-    pub const MELT: &str = "/melt";
     pub const MOTIVATE: &str = "/motivate";
     pub const RAINBOW: &str = "/rainbow";
     pub const REVERSE: &str = "/reverse";
     pub const ROTATE: &str = "/rotate";
     pub const SPIN: &str = "/spin";
     pub const WALL: &str = "/wall";
+    pub const WAVE: &str = "/wave";
     pub const WORMHOLE: &str = "/wormhole";
     pub const ZOOM: &str = "/zoom";
 }
@@ -138,6 +138,10 @@ pub async fn spin(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestErr
 
 pub async fn wall(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::WALL, image, &[]).await
+}
+
+pub async fn wave(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::WAVE, image, &[]).await
 }
 
 pub async fn wormhole(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
