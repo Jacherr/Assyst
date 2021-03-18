@@ -1,4 +1,4 @@
-use super::{categories::{image::*, misc::*}, command::CommandAvailability};
+use super::{categories::{image::*, misc::*, fun::*}, command::CommandAvailability};
 use super::command::{Command, ParsedArgument, ParsedCommand};
 use crate::command::context::Context;
 use std::future::Future;
@@ -107,9 +107,12 @@ impl CommandRegistry {
         register_command!(self, ROTATE_COMMAND, run_rotate_command);
         register_command!(self, SPIN_COMMAND, run_spin_command);
         register_command!(self, WALL_COMMAND, run_wall_command);
+        register_command!(self, WAVE_COMMAND, run_wave_command);
         register_command!(self, WORMHOLE_COMMAND, run_wormhole_command);
         register_command!(self, ZOOM_COMMAND, run_zoom_command);
         register_command!(self, RUST_COMMAND, run_rust_command);
         register_command!(self, REMINDER_COMMAND, run_remind_command);
+        register_command!(self, BT_COMMAND, run_bt_command);
+        register_command!(self, OCRBT_COMMAND, run_ocrbt_command);
     }
 }
