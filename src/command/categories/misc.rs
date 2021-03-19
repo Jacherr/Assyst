@@ -1,15 +1,11 @@
-use crate::{
-    box_str,
-    command::{
+use crate::{box_str, command::{
         command::{
             force_as, Argument, Command, CommandAvailability, CommandMetadata, ParsedArgument,
         },
         context::Context,
         messagebuilder::MessageBuilder,
         registry::CommandResult,
-    },
-    util::{codeblock, generate_table, get_memory_usage, parse_codeblock},
-};
+    }, util::{codeblock, generate_list, generate_table, get_memory_usage, parse_codeblock}};
 use crate::{
     database::Reminder,
     rest::rust,
@@ -100,6 +96,17 @@ lazy_static! {
             usage: box_str!("[when] [description]")
         },
         name: box_str!("remind")
+    };
+    pub static ref TOP_COMMANDS_COMMAND: Command = Command {
+        aliases: vec![box_str!("tcs")],
+        args: vec![],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: box_str!("get top command usage info"),
+            examples: vec![],
+            usage: box_str!("")
+        },
+        name: box_str!("topcmds")
     };
 }
 
@@ -289,4 +296,33 @@ pub async fn run_remind_command(context: Arc<Context>, args: Vec<ParsedArgument>
         .await
         .map_err(|e| e.to_string())
         .and_then(|_| Ok(()))
+}
+
+pub async fn run_top_commands_command(
+    context: Arc<Context>,
+    _: Vec<ParsedArgument>,
+) -> CommandResult {
+    let top_commands = context
+        .assyst
+        .database
+        .get_command_usage_stats()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let top_commands_formatted_raw: Vec<(&str, String)> = top_commands
+        .iter()
+        .map(|t| (&t.command_name[..], t.uses.to_string()))
+        .collect::<Vec<_>>();
+    
+    let top_commands_formatted = top_commands_formatted_raw.iter().map(|(a, b)| (*a, &b[..])).collect::<Vec<_>>();
+
+    let table = generate_list("Command", "Uses", &top_commands_formatted);
+
+    context
+        .reply_with_text(
+            &codeblock(&table, "hs")
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
 }

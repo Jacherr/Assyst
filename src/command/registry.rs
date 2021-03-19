@@ -1,5 +1,8 @@
-use super::{categories::{image::*, misc::*, fun::*}, command::CommandAvailability};
 use super::command::{Command, ParsedArgument, ParsedCommand};
+use super::{
+    categories::{fun::*, image::*, misc::*},
+    command::CommandAvailability,
+};
 use crate::command::context::Context;
 use std::future::Future;
 use std::sync::Arc;
@@ -48,6 +51,7 @@ impl CommandRegistry {
 
         let command_processed_c = command_processed.clone();
         let context_c = context.clone();
+        let assyst = context.assyst.clone();
 
         tokio::spawn(async move {
             sleep(Duration::from_millis(500)).await;
@@ -66,6 +70,11 @@ impl CommandRegistry {
         let result = command_run(context, parsed_command.args).await;
         let mut lock = command_processed.lock().await;
         *lock = true;
+
+        let command_name = &self.commands.get(parsed_command.calling_name).unwrap().name;
+        assyst.database.increment_command_uses(&command_name).await
+            .map_err(|e| e.to_string())?;
+
         result
     }
 
@@ -114,5 +123,6 @@ impl CommandRegistry {
         register_command!(self, REMINDER_COMMAND, run_remind_command);
         register_command!(self, BT_COMMAND, run_bt_command);
         register_command!(self, OCRBT_COMMAND, run_ocrbt_command);
+        register_command!(self, TOP_COMMANDS_COMMAND, run_top_commands_command);
     }
 }
