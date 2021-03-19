@@ -1,7 +1,13 @@
 use crate::filetype;
 use bytes::Bytes;
 use futures_util::StreamExt;
-use std::{borrow::Cow, convert::TryInto, num::ParseIntError, process::Command, time::{SystemTime, UNIX_EPOCH}};
+use std::{
+    borrow::Cow,
+    convert::TryInto,
+    num::ParseIntError,
+    process::Command,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 #[macro_export]
 macro_rules! box_str {
@@ -62,6 +68,34 @@ pub fn generate_table(input: &[(&str, &str)]) -> String {
         .fold(String::new(), |a, b| a + &b)
 }
 
+pub fn generate_list(key_name: &str, value_name: &str, values: &[(&str, &str)]) -> String {
+    let longest = get_longer_str(
+        key_name,
+        values.iter().fold(values[0].0, |previous, (current, _)| {
+            get_longer_str(previous, current)
+        }),
+    );
+
+    let mut output = format!(
+        " {4}{}\t{}\n {4}{}\t{}",
+        key_name,
+        value_name,
+        "-".repeat(key_name.len()),
+        "-".repeat(value_name.len()),
+        " ".repeat(longest.len() - key_name.len()),
+    );
+
+    let formatted_values = values
+        .iter()
+        .map(|(k, v)| format!(" {}{}\t{}", " ".repeat(longest.len() - k.len()), k, v))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    output = format!("{}\n{}", output, formatted_values);
+
+    output
+}
+
 pub fn codeblock(code: &str, language: &str) -> String {
     let escaped_code = code.replace("`", "`\u{0200b}");
     format!(
@@ -90,7 +124,9 @@ pub fn get_memory_usage() -> Option<String> {
     command.args(vec!["status", "assyst"]);
     let result = command.output().ok()?;
     let stdout = String::from_utf8_lossy(&result.stdout);
-    let memory_line = stdout.split("\n").find(|line| line.trim().starts_with("Memory"))?;
+    let memory_line = stdout
+        .split("\n")
+        .find(|line| line.trim().starts_with("Memory"))?;
     let memory_usage = memory_line.split(":").collect::<Vec<&str>>()[1];
     Some(memory_usage.trim().to_owned())
 }

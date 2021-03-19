@@ -29,6 +29,11 @@ pub struct Reminder {
     pub message_id: i64,
     pub message: String,
 }
+#[derive(sqlx::FromRow, Debug)]
+pub struct CommandUsage {
+    pub command_name: String,
+    pub uses: i32,
+}
 
 struct Cache {
     pub prefixes: HashMap<u64, Box<str>>,
@@ -176,5 +181,21 @@ impl Database {
         }
 
         tx.commit().await
+    }
+
+    pub async fn get_command_usage_stats(&self) -> Result<Vec<CommandUsage>, sqlx::Error> {
+        let query = "SELECT * FROM command_uses order by uses desc";
+        sqlx::query_as::<_, CommandUsage>(query)
+            .fetch_all(&self.pool)
+            .await
+    }
+
+    pub async fn increment_command_uses(&self, command: &str) -> Result<(), sqlx::Error> {
+        let query = "insert into command_uses (command_name, uses) values ($1, 1) on conflict (command_name) do update set uses = command_uses.uses + 1 where command_uses.command_name = $1;";
+        sqlx::query(query)
+            .bind(command)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
     }
 }
