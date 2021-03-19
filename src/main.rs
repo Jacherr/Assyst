@@ -45,6 +45,7 @@ async fn main() {
 
     // Tasks
     tasks::init_reminder_loop(assyst.clone());
+    tasks::init_caching_gc_loop(assyst.clone());
 
     let mut events = cluster.events();
 

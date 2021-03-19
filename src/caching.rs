@@ -52,11 +52,15 @@ impl Ratelimits {
     pub fn set_command_expire_at(
         &mut self,
         guild_id: twilight_model::id::GuildId,
-        command: &str
+        command: &str,
     ) -> () {
-        self.cache.entry(guild_id.0)
+        self.cache
+            .entry(guild_id.0)
             .or_insert_with(|| GuildRatelimits::new())
-            .set_command_expiry(command, get_current_millis() + PER_GUILD_COMMAND_RATELIMIT as u64);
+            .set_command_expiry(
+                command,
+                get_current_millis() + PER_GUILD_COMMAND_RATELIMIT as u64,
+            );
     }
 
     pub fn time_until_guild_command_usable(
@@ -81,7 +85,7 @@ pub struct GuildRatelimits {
 impl GuildRatelimits {
     pub fn new() -> Self {
         GuildRatelimits {
-            cache: HashMap::new()
+            cache: HashMap::new(),
         }
     }
     pub fn get_command_expiry(&self, command: &str) -> Option<&u64> {
@@ -101,11 +105,26 @@ impl Replies {
             cache: HashMap::new(),
         }
     }
+
+    pub async fn garbage_collect(&mut self) {
+        let entries = self
+            .cache
+            .iter()
+            .map(|a| (a.0.clone(), a.1.clone()))
+            .collect::<Vec<_>>();
+        for (key, value) in entries {
+            if value.lock().await.has_expired() {
+                self.cache.remove(&key);
+            };
+        }
+    }
+
     pub fn get_or_set_reply(&mut self, reply_to_insert: Reply) -> &mut Arc<Mutex<Reply>> {
         self.cache
             .entry(reply_to_insert.invocation.id.0)
             .or_insert_with(|| Arc::new(Mutex::new(reply_to_insert)))
     }
+
     pub async fn get_reply_from_invocation_id(&self, id: MessageId) -> Option<Arc<Mutex<Reply>>> {
         self.cache.get(&id.0).and_then(|r| Some(r.clone()))
     }
