@@ -5,10 +5,9 @@ use twilight_model::channel::Message;
 use twilight_model::id::MessageId;
 use util::get_current_millis;
 
-use crate::{box_str, util};
+use crate::{box_str, command::command::Command, util};
 
 pub const MESSAGE_EDIT_HANDLE_LIMIT: u32 = 60000;
-pub const PER_GUILD_COMMAND_RATELIMIT: u32 = 2000;
 
 pub struct Cache<T, U> {
     pub cache: HashMap<T, U>,
@@ -52,14 +51,14 @@ impl Ratelimits {
     pub fn set_command_expire_at(
         &mut self,
         guild_id: twilight_model::id::GuildId,
-        command: &str,
+        command: &Command,
     ) -> () {
         self.cache
             .entry(guild_id.0)
             .or_insert_with(|| GuildRatelimits::new())
             .set_command_expiry(
-                command,
-                get_current_millis() + PER_GUILD_COMMAND_RATELIMIT as u64,
+                &command.name,
+                get_current_millis() + (command.cooldown_seconds * 1000) as u64,
             );
     }
 

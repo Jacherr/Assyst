@@ -28,7 +28,9 @@ lazy_static! {
             examples: vec![],
             usage: box_str!("[image]")
         },
-        name: box_str!("3drotate")
+        name: box_str!("3drotate"),
+        cooldown_seconds: 4,
+        category: "image"
     };
     pub static ref CAPTION_COMMAND: Command = Command {
         aliases: vec![],
@@ -39,18 +41,22 @@ lazy_static! {
             examples: vec![],
             usage: box_str!("[image] [caption]")
         },
-        name: box_str!("caption")
+        name: box_str!("caption"),
+        cooldown_seconds: 4,
+        category: "image"
     };
     pub static ref GIF_SPEED_COMMAND: Command = Command {
         aliases: vec![box_str!("gspeed")],
-        args: vec![Argument::ImageBuffer, Argument::StringRemaining],
+        args: vec![Argument::ImageBuffer, Argument::OptionalWithDefault(Box::new(Argument::StringRemaining), "2")],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!("change speed of gif"),
             examples: vec![],
             usage: box_str!("[image] [delay]")
         },
-        name: box_str!("gifspeed")
+        name: box_str!("gifspeed"),
+        cooldown_seconds: 4,
+        category: "image"
     };
     pub static ref IMAGEMAGICK_EVAL_COMMAND: Command = Command {
         aliases: vec![],
@@ -61,7 +67,9 @@ lazy_static! {
             examples: vec![],
             usage: box_str!("[image] [script]")
         },
-        name: box_str!("ime")
+        name: box_str!("ime"),
+        cooldown_seconds: 4,
+        category: "image"
     };
     pub static ref MOTIVATE_COMMAND: Command = Command {
         aliases: vec![],
@@ -69,7 +77,7 @@ lazy_static! {
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!(
-                "add motivation caption to an image, separate top and bottom text with |"
+                "add motivation caption to an image, separate top and bottom text with | divider"
             ),
             examples: vec![
                 box_str!("MOTIVATION this is funny"),
@@ -77,7 +85,9 @@ lazy_static! {
             ],
             usage: box_str!("[image] [text separated by a |]")
         },
-        name: box_str!("motivate")
+        name: box_str!("motivate"),
+        cooldown_seconds: 4,
+        category: "image"
     };
     pub static ref OCR_COMMAND: Command = Command {
         aliases: vec![box_str!("read")],
@@ -88,7 +98,9 @@ lazy_static! {
             examples: vec![],
             usage: box_str!("[image]")
         },
-        name: box_str!("ocr")
+        name: box_str!("ocr"),
+        cooldown_seconds: 4,
+        category: "image"
     };
     pub static ref RAINBOW_COMMAND: Command = Command {
         aliases: vec![],
@@ -99,7 +111,9 @@ lazy_static! {
             examples: vec![],
             usage: box_str!("[image]")
         },
-        name: box_str!("rainbow")
+        name: box_str!("rainbow"),
+        cooldown_seconds: 4,
+        category: "image"
     };
     pub static ref REVERSE_COMMAND: Command = Command {
         aliases: vec![],
@@ -110,7 +124,9 @@ lazy_static! {
             examples: vec![],
             usage: box_str!("[image]")
         },
-        name: box_str!("reverse")
+        name: box_str!("reverse"),
+        cooldown_seconds: 4,
+        category: "image"
     };
     pub static ref ROTATE_COMMAND: Command = Command {
         aliases: vec![],
@@ -121,7 +137,9 @@ lazy_static! {
             examples: vec![box_str!("@y21 45")],
             usage: box_str!("[image] [degrees]")
         },
-        name: box_str!("rotate")
+        name: box_str!("rotate"),
+        cooldown_seconds: 4,
+        category: "image"
     };
     pub static ref SPIN_COMMAND: Command = Command {
         aliases: vec![],
@@ -132,7 +150,9 @@ lazy_static! {
             examples: vec![],
             usage: box_str!("[image]")
         },
-        name: box_str!("spin")
+        name: box_str!("spin"),
+        cooldown_seconds: 4,
+        category: "image"
     };
     pub static ref WALL_COMMAND: Command = Command {
         aliases: vec![],
@@ -143,7 +163,9 @@ lazy_static! {
             examples: vec![],
             usage: box_str!("[image]")
         },
-        name: box_str!("wall")
+        name: box_str!("wall"),
+        cooldown_seconds: 4,
+        category: "image"
     };
     pub static ref WAVE_COMMAND: Command = Command {
         aliases: vec![],
@@ -154,7 +176,9 @@ lazy_static! {
             examples: vec![],
             usage: box_str!("[image]")
         },
-        name: box_str!("wave")
+        name: box_str!("wave"),
+        cooldown_seconds: 4,
+        category: "image"
     };
     pub static ref WORMHOLE_COMMAND: Command = Command {
         aliases: vec![],
@@ -165,7 +189,9 @@ lazy_static! {
             examples: vec![],
             usage: box_str!("[image]")
         },
-        name: box_str!("wormhole")
+        name: box_str!("wormhole"),
+        cooldown_seconds: 4,
+        category: "image"
     };
     pub static ref ZOOM_COMMAND: Command = Command {
         aliases: vec![],
@@ -176,7 +202,9 @@ lazy_static! {
             examples: vec![],
             usage: box_str!("[image]")
         },
-        name: box_str!("zoom")
+        name: box_str!("zoom"),
+        cooldown_seconds: 4,
+        category: "image"
     };
 }
 

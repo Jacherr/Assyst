@@ -11,7 +11,8 @@ use crate::{
 };
 use crate::{
     command::command::{
-        Argument, Command, CommandParseError, ParsedArgument, ParsedArgumentResult, ParsedCommand,
+        Argument, Command, CommandParseError, CommandParseErrorType, ParsedArgument,
+        ParsedArgumentResult, ParsedCommand,
     },
     metrics::GlobalMetrics,
 };
@@ -23,7 +24,7 @@ use crate::{
 use bytes::Bytes;
 use reqwest::Client as ReqwestClient;
 use serde::Deserialize;
-use std::{borrow::Borrow, sync::Arc};
+use std::{borrow::Borrow, hint::unreachable_unchecked, sync::Arc};
 use std::{borrow::Cow, time::Instant};
 use std::{collections::HashSet, fs::read_to_string};
 use tokio::sync::RwLock;
@@ -162,6 +163,7 @@ impl Assyst {
             self.clone(),
             message.clone(),
             metrics,
+            String::from(prefix.clone()),
             reply.clone(),
         ));
 
@@ -170,8 +172,8 @@ impl Assyst {
                 Some(c) => c,
                 None => {
                     reply.lock().await.in_use = false;
-                    return Ok(())
-                },
+                    return Ok(());
+                }
             },
             Err(e) => {
                 if e.should_reply {
@@ -192,14 +194,13 @@ impl Assyst {
         let context_clone = context.clone();
 
         let mut ratelimit_lock = self.command_ratelimits.write().await;
-        let command_actual_name = &self
+        let command_instance = &self
             .registry
             .commands
             .get(command.calling_name)
-            .unwrap()
-            .name;
+            .unwrap();
         let command_ratelimit = ratelimit_lock
-            .time_until_guild_command_usable(message.guild_id.unwrap(), &command_actual_name);
+            .time_until_guild_command_usable(message.guild_id.unwrap(), &command_instance.name);
         match command_ratelimit {
             Some(r) => {
                 reply.lock().await.in_use = false;
@@ -214,8 +215,7 @@ impl Assyst {
             }
             None => {}
         };
-        ratelimit_lock
-            .set_command_expire_at(message.guild_id.unwrap(), &command_actual_name);
+        ratelimit_lock.set_command_expire_at(message.guild_id.unwrap(), &command_instance);
         drop(ratelimit_lock);
 
         let command_result = self.registry.execute_command(command, context_clone).await;
@@ -258,6 +258,7 @@ impl Assyst {
                 if !self.config.admins.contains(&message.author.id.0) {
                     Err(CommandParseError::without_reply(
                         "Insufficient Permissions".to_owned(),
+                        CommandParseErrorType::MissingPermissions
                     ))
                 } else {
                     Ok(())
@@ -268,11 +269,12 @@ impl Assyst {
                     .http
                     .guild(message.guild_id.unwrap())
                     .await
-                    .map_err(|e| CommandParseError::with_reply(e.to_string(), None))?
+                    .map_err(|e| CommandParseError::with_reply(e.to_string(), None, CommandParseErrorType::MediaDownloadFail))?
                     .ok_or_else(|| {
                         CommandParseError::with_reply(
                             "Permission validator failed".to_owned(),
                             None,
+                            CommandParseErrorType::MissingPermissions
                         )
                     })?;
 
@@ -283,11 +285,13 @@ impl Assyst {
                 } else {
                     Err(CommandParseError::without_reply(
                         "Insufficient Permissions".to_owned(),
+                        CommandParseErrorType::MissingPermissions
                     ))
                 }
             }
             _ => Err(CommandParseError::without_reply(
                 "Insufficient Permissions".to_owned(),
+                CommandParseErrorType::MissingPermissions
             )),
         }?;
 
@@ -307,75 +311,194 @@ impl Assyst {
         args: Vec<&str>,
     ) -> Result<Vec<ParsedArgument>, CommandParseError<'a>> {
         let mut parsed_args: Vec<ParsedArgument> = vec![];
-        let mut index = 0;
+        let mut index: usize = 0;
         for arg in &command.args {
-            match arg {
-                Argument::Choice(choices) => {
-                    if args.len() <= index {
-                        return Err(CommandParseError::with_reply(
-                            format!("This command expects a choice argument (one of {:?}), but no argument was provided.", choices),
-                                Some(command)
-                        ));
-                    }
+            let result = self
+                .parse_argument(message, command, &args, arg, &index)
+                .await?;
+            parsed_args.push(result.value);
+            if result.should_break {
+                break;
+            } else if result.should_increment_index {
+                index += 1
+            };
+        }
+        Ok(parsed_args)
+    }
 
-                    let choice = match choices.iter().find(|&&choice| choice == args[index]) {
-                        Some(k) => k,
-                        None => {
-                            return Err(CommandParseError::with_reply(
-                                format!("Cannot find given argument in {:?}", choices),
-                                Some(command),
-                            ))
-                        }
-                    };
-
-                    parsed_args.push(ParsedArgument::Choice(choice));
-
-                    index += 1;
-                }
-                Argument::ImageUrl | Argument::ImageBuffer => {
-                    let argument_to_pass = if args.len() <= index { "" } else { args[index] };
-                    let try_result = self
-                        .parse_image_argument(message, argument_to_pass, arg)
-                        .await;
-
-                    match try_result {
-                        Ok(result) => {
-                            parsed_args.push(result.value);
-                            if result.should_increment_index {
-                                index += 1
-                            };
-                        }
-                        Err(mut e) => {
-                            e.set_command(command);
-                            return Err(e);
-                        }
-                    }
-                }
-                Argument::String => {
-                    if args.len() <= index {
-                        return Err(CommandParseError::with_reply(
-                            "This command expects a text argument that was not provided."
-                                .to_owned(),
+    async fn parse_argument<'a>(
+        &self,
+        message: &Message,
+        command: &'a Command,
+        args: &Vec<&str>,
+        arg: &Argument,
+        index: &usize,
+    ) -> Result<ParsedArgumentResult, CommandParseError<'a>> {
+        match arg {
+            Argument::Choice(choices) => {
+                if args.len() <= *index {
+                    return Err(CommandParseError::with_reply(
+                        format!("This command expects a choice argument (one of {:?}), but no argument was provided.", choices),
                             Some(command),
-                        ));
-                    }
-                    parsed_args.push(ParsedArgument::Text(args[index].to_owned()));
-                    index += 1;
+                            CommandParseErrorType::MissingArgument
+                    ));
                 }
-                Argument::StringRemaining => {
-                    if args.len() <= index {
+
+                let choice = match choices.iter().find(|&&choice| choice == args[*index]) {
+                    Some(k) => k,
+                    None => {
                         return Err(CommandParseError::with_reply(
-                            "This command expects a text argument that was not provided."
-                                .to_owned(),
+                            format!("Cannot find given argument in {:?}", choices),
                             Some(command),
-                        ));
+                            CommandParseErrorType::InvalidArgument,
+                        ))
                     }
-                    parsed_args.push(ParsedArgument::Text(args[index..].join(" ")));
-                    break;
+                };
+
+                Ok(ParsedArgumentResult::increment(ParsedArgument::Choice(
+                    choice,
+                )))
+            }
+            Argument::ImageUrl | Argument::ImageBuffer => {
+                let argument_to_pass = if args.len() <= *index {
+                    ""
+                } else {
+                    args[*index]
+                };
+                self.parse_image_argument(message, argument_to_pass, arg)
+                    .await
+            }
+            Argument::String => {
+                if args.len() <= *index {
+                    return Err(CommandParseError::with_reply(
+                        "This command expects a text argument that was not provided.".to_owned(),
+                        Some(command),
+                        CommandParseErrorType::MissingArgument,
+                    ));
+                }
+                Ok(ParsedArgumentResult::increment(ParsedArgument::Text(
+                    args[*index].to_owned(),
+                )))
+            }
+            Argument::StringRemaining => {
+                if args.len() <= *index {
+                    return Err(CommandParseError::with_reply(
+                        "This command expects a text argument that was not provided.".to_owned(),
+                        Some(command),
+                        CommandParseErrorType::MissingArgument,
+                    ));
+                }
+                Ok(ParsedArgumentResult::r#break(ParsedArgument::Text(
+                    args[*index..].join(" "),
+                )))
+            }
+            Argument::Optional(a) => {
+                let result = self
+                    .parse_argument_nonoptional(message, command, args, &**a, index)
+                    .await;
+                match result {
+                    Ok(p) => Ok(p),
+                    Err(e) => {
+                        match e.error_type {
+                            CommandParseErrorType::MissingArgument => {
+                                return Ok(ParsedArgumentResult::increment(ParsedArgument::Nothing))
+                            }
+                            _ => (),
+                        }
+                        Err(e)
+                    }
+                }
+            }
+            Argument::OptionalWithDefault(a, d) => {
+                let result = self
+                    .parse_argument_nonoptional(message, command, args, &**a, index)
+                    .await;
+                match result {
+                    Ok(p) => Ok(p),
+                    Err(e) => {
+                        match e.error_type {
+                            CommandParseErrorType::MissingArgument => {
+                                return Ok(ParsedArgumentResult::increment(ParsedArgument::Text(
+                                    d.to_owned().to_owned(),
+                                )))
+                            }
+                            _ => (),
+                        }
+                        Err(e)
+                    }
                 }
             }
         }
-        Ok(parsed_args)
+    }
+
+    async fn parse_argument_nonoptional<'a>(
+        &self,
+        message: &Message,
+        command: &'a Command,
+        args: &Vec<&str>,
+        arg: &Argument,
+        index: &usize,
+    ) -> Result<ParsedArgumentResult, CommandParseError<'a>> {
+        match arg {
+            Argument::Choice(choices) => {
+                if args.len() <= *index {
+                    return Err(CommandParseError::with_reply(
+                        format!("This command expects a choice argument (one of {:?}), but no argument was provided.", choices),
+                            Some(command),
+                            CommandParseErrorType::MissingArgument
+                    ));
+                }
+
+                let choice = match choices.iter().find(|&&choice| choice == args[*index]) {
+                    Some(k) => k,
+                    None => {
+                        return Err(CommandParseError::with_reply(
+                            format!("Cannot find given argument in {:?}", choices),
+                            Some(command),
+                            CommandParseErrorType::InvalidArgument,
+                        ))
+                    }
+                };
+
+                Ok(ParsedArgumentResult::increment(ParsedArgument::Choice(
+                    choice,
+                )))
+            }
+            Argument::ImageUrl | Argument::ImageBuffer => {
+                let argument_to_pass = if args.len() <= *index {
+                    ""
+                } else {
+                    args[*index]
+                };
+                self.parse_image_argument(message, argument_to_pass, arg)
+                    .await
+            }
+            Argument::String => {
+                if args.len() <= *index {
+                    return Err(CommandParseError::with_reply(
+                        "This command expects a text argument that was not provided.".to_owned(),
+                        Some(command),
+                        CommandParseErrorType::MissingArgument,
+                    ));
+                }
+                Ok(ParsedArgumentResult::increment(ParsedArgument::Text(
+                    args[*index].to_owned(),
+                )))
+            }
+            Argument::StringRemaining => {
+                if args.len() <= *index {
+                    return Err(CommandParseError::with_reply(
+                        "This command expects a text argument that was not provided.".to_owned(),
+                        Some(command),
+                        CommandParseErrorType::MissingArgument,
+                    ));
+                }
+                Ok(ParsedArgumentResult::r#break(ParsedArgument::Text(
+                    args[*index..].join(" "),
+                )))
+            }
+            _ => unreachable!(),
+        }
     }
 
     async fn parse_image_argument<'a>(
@@ -410,6 +533,7 @@ impl Assyst {
                 "This command expects an image as an argument, but no image could be found."
                     .to_owned(),
                 None,
+                CommandParseErrorType::MissingArgument
             )
         })?;
 
@@ -419,10 +543,22 @@ impl Assyst {
                 .get(&url)
                 .send()
                 .await
-                .map_err(|e| CommandParseError::with_reply(e.to_string(), None))?
+                .map_err(|e| {
+                    CommandParseError::with_reply(
+                        e.to_string(),
+                        None,
+                        CommandParseErrorType::MediaDownloadFail,
+                    )
+                })?
                 .text()
                 .await
-                .map_err(|e| CommandParseError::with_reply(e.to_string(), None))?;
+                .map_err(|e| {
+                    CommandParseError::with_reply(
+                        e.to_string(),
+                        None,
+                        CommandParseErrorType::MediaDownloadFail,
+                    )
+                })?;
 
             let gif_url = regexes::TENOR_GIF
                 .find(&page)
@@ -431,6 +567,7 @@ impl Assyst {
                     CommandParseError::with_reply(
                         "Failed to extract Tenor GIF URL".to_owned(),
                         None,
+                        CommandParseErrorType::MediaDownloadFail,
                     )
                 })?;
             url = gif_url.to_owned();
@@ -444,10 +581,16 @@ impl Assyst {
                     ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES,
                 )
                 .await
-                .map_err(|e| CommandParseError::with_reply(e, None))?;
+                .map_err(|e| {
+                    CommandParseError::with_reply(e, None, CommandParseErrorType::MediaDownloadFail)
+                })?;
 
                 if result.len() == 0 {
-                    return Err(CommandParseError::with_reply("The media download failed because no data was received.".to_owned(), None));
+                    return Err(CommandParseError::with_reply(
+                        "The media download failed because no data was received.".to_owned(),
+                        None,
+                        CommandParseErrorType::MediaDownloadFail,
+                    ));
                 }
 
                 let parsed_argument_result = match should_increment {

@@ -1,4 +1,5 @@
 use bytes::Bytes;
+
 #[derive(Debug)]
 pub enum Argument {
     String,
@@ -6,13 +7,22 @@ pub enum Argument {
     ImageBuffer,
     StringRemaining,
     Choice(&'static [&'static str]),
+    Optional(Box<Argument>),
+    OptionalWithDefault(Box<Argument>, &'static str)
 }
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ParsedArgument {
     Text(String),
     Binary(Bytes),
     Choice(&'static str),
+    Nothing
 }
+impl ParsedArgument {
+    pub fn is_nothing(&self) -> bool {
+        *self == ParsedArgument::Nothing
+    }
+}
+
 #[derive(PartialEq, Debug)]
 pub enum CommandAvailability {
     Public,
@@ -21,10 +31,19 @@ pub enum CommandAvailability {
     Private,
 }
 #[derive(Debug)]
+pub enum CommandParseErrorType {
+    MissingArgument,
+    InvalidArgument,
+    MediaDownloadFail,
+    MissingPermissions,
+    Other
+}
+#[derive(Debug)]
 pub struct CommandParseError<'a> {
     pub error: String,
     pub should_reply: bool,
     pub command: Option<&'a Command>,
+    pub error_type: CommandParseErrorType
 }
 impl<'a> CommandParseError<'a> {
     pub fn set_command(&mut self, command: &'a Command) -> &mut Self {
@@ -32,19 +51,21 @@ impl<'a> CommandParseError<'a> {
         self
     }
 
-    pub fn with_reply(text: String, command: Option<&'a Command>) -> Self {
+    pub fn with_reply(text: String, command: Option<&'a Command>, r#type: CommandParseErrorType) -> Self {
         CommandParseError {
             error: text,
             should_reply: true,
             command,
+            error_type: r#type
         }
     }
 
-    pub fn without_reply(text: String) -> Self {
+    pub fn without_reply(text: String, r#type: CommandParseErrorType) -> Self {
         CommandParseError {
             error: text,
             should_reply: false,
             command: None,
+            error_type: r#type
         }
     }
 }
@@ -62,18 +83,28 @@ pub struct ParsedCommand {
 
 pub struct ParsedArgumentResult {
     pub should_increment_index: bool,
+    pub should_break: bool,
     pub value: ParsedArgument,
 }
 impl ParsedArgumentResult {
     pub fn increment(value: ParsedArgument) -> Self {
         ParsedArgumentResult {
             should_increment_index: true,
+            should_break: false,
             value,
         }
     }
     pub fn no_increment(value: ParsedArgument) -> Self {
         ParsedArgumentResult {
             should_increment_index: false,
+            should_break: false,
+            value,
+        }
+    }
+    pub fn r#break(value: ParsedArgument) -> Self {
+        ParsedArgumentResult {
+            should_increment_index: false,
+            should_break: true,
             value,
         }
     }
@@ -85,6 +116,8 @@ pub struct Command {
     pub availability: CommandAvailability,
     pub metadata: CommandMetadata,
     pub name: Box<str>,
+    pub cooldown_seconds: usize,
+    pub category: &'static str
 }
 
 pub mod force_as {
