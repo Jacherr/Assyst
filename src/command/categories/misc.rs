@@ -17,7 +17,7 @@ use crate::{
 };
 use futures::TryFutureExt;
 use lazy_static::lazy_static;
-use std::{sync::Arc, time::Instant};
+use std::{collections::HashMap, sync::Arc, time::Instant};
 
 lazy_static! {
     pub static ref PING_COMMAND: Command = Command {
@@ -182,6 +182,8 @@ pub async fn run_help_command(context: Arc<Context>, args: Vec<ParsedArgument>) 
     if args[0].is_nothing() {
         let mut unique_command_names: Vec<&Box<str>> = Vec::new();
         let mut command_help_entries: Vec<String> = Vec::new();
+        let mut command_categories: HashMap<&str, Vec<&str>> = HashMap::new();
+
         for i in context
             .assyst
             .registry
@@ -193,13 +195,26 @@ pub async fn run_help_command(context: Arc<Context>, args: Vec<ParsedArgument>) 
                 continue;
             };
             unique_command_names.push(&i.name);
-            command_help_entries.push(format!("`{}` - *{}*", i.name, i.metadata.description));
+            let category = command_categories.get_mut(i.category);
+            match category {
+                Some(c) => c.push(&i.name),
+                None => {
+                    command_categories.insert(i.category, vec![&i.name]);
+                }
+            };
         }
+
+        command_categories.iter().for_each(|(name, commands)| {
+            command_help_entries.push(format!("**{}**\n```\n{}\n```", name, commands.join(", ")))
+        });
+
         context
-            .reply(
-                MessageBuilder::new()
-                    .content(&format!("{}\nInvite the bot: <https://discord.com/oauth2/authorize?client_id=571661221854707713&scope=bot>\nSupport server: <https://discord.gg/JBvJbBEDpA>", &command_help_entries.join("\n")))
-                    .clone(),
+            .reply_with_text(
+                &format!(
+                    "{}\n*Do {}help [command] for more info on a command.*\nInvite the bot: <https://jacher.io/assyst>\nSupport server: <https://discord.gg/JBvJbBEDpA>",
+                    &command_help_entries.join("\n"),
+                    context.prefix
+                )
             )
             .await
             .map_err(|e| e.to_string())?;
@@ -210,8 +225,15 @@ pub async fn run_help_command(context: Arc<Context>, args: Vec<ParsedArgument>) 
             .registry
             .get_command_from_name_or_alias(command_name)
             .ok_or_else(|| "Command not found".to_owned())?;
+        let raw_aliases = &*command.aliases.join(", ");
+        let aliases = if command.aliases.len() == 0 {
+            "None"
+        } else {
+            raw_aliases
+        };
         let table = generate_table(&vec![
             ("Name", &*command.name),
+            ("Aliases", aliases),
             ("Description", &*command.metadata.description),
             (
                 "Usage",
@@ -220,7 +242,11 @@ pub async fn run_help_command(context: Arc<Context>, args: Vec<ParsedArgument>) 
                     context.prefix, &*command.name, &*command.metadata.usage
                 ),
             ),
-            ("Access", &*command.availability.to_string())
+            ("Access", &*command.availability.to_string()),
+            (
+                "Cooldown",
+                &format!("{} seconds", &*command.cooldown_seconds.to_string()),
+            ),
         ]);
         let help;
         if command.metadata.examples.len() == 0 {
@@ -261,7 +287,7 @@ pub async fn run_invite_command(context: Arc<Context>, _: Vec<ParsedArgument>) -
         .reply(
             MessageBuilder::new()
                 .content(
-                    "Bot invite: <https://discord.com/oauth2/authorize?client_id=571661221854707713&scope=bot>\nSupport server: <https://discord.gg/JBvJbBEDpA>",
+                    "Bot invite: <https://jacher.io/assyst>\nSupport server: <https://discord.gg/JBvJbBEDpA>",
                 )
                 .clone(),
         )
@@ -272,10 +298,14 @@ pub async fn run_invite_command(context: Arc<Context>, _: Vec<ParsedArgument>) -
 
 pub async fn run_prefix_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
     let new_prefix = force_as::text(&args[0]);
-    context.assyst.database.set_prefix_for(context.message.guild_id.unwrap().0, new_prefix)
+    context
+        .assyst
+        .database
+        .set_prefix_for(context.message.guild_id.unwrap().0, new_prefix)
         .await
         .map_err(|e| e.to_string())?;
-    context.reply_with_text(&format!("Prefix set to {}", new_prefix))
+    context
+        .reply_with_text(&format!("Prefix set to {}", new_prefix))
         .await?;
     Ok(())
 }
