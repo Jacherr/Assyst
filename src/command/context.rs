@@ -17,6 +17,7 @@ pub struct Context {
     pub assyst: Arc<Assyst>,
     pub message: Arc<Message>,
     pub metrics: Metrics,
+    pub prefix: String,
     pub reply: Arc<Mutex<Reply>>,
 }
 impl Context {
@@ -24,12 +25,14 @@ impl Context {
         assyst: Arc<Assyst>,
         message: Arc<Message>,
         metrics: Metrics,
+        prefix: String,
         reply: Arc<Mutex<Reply>>,
     ) -> Self {
         Context {
             assyst,
             message,
             metrics,
+            prefix,
             reply,
         }
     }

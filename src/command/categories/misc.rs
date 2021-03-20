@@ -1,11 +1,15 @@
-use crate::{box_str, command::{
+use crate::{
+    box_str,
+    command::{
         command::{
             force_as, Argument, Command, CommandAvailability, CommandMetadata, ParsedArgument,
         },
         context::Context,
         messagebuilder::MessageBuilder,
         registry::CommandResult,
-    }, util::{codeblock, generate_list, generate_table, get_memory_usage, parse_codeblock}};
+    },
+    util::{codeblock, generate_list, generate_table, get_memory_usage, parse_codeblock},
+};
 use crate::{
     database::Reminder,
     rest::rust,
@@ -26,6 +30,8 @@ lazy_static! {
             usage: box_str!("")
         },
         name: box_str!("ping"),
+        cooldown_seconds: 2,
+        category: "misc"
     };
     pub static ref ENLARGE_COMMAND: Command = Command {
         aliases: vec![box_str!("e")],
@@ -36,18 +42,22 @@ lazy_static! {
             examples: vec![],
             usage: box_str!("[image]")
         },
-        name: box_str!("enlarge")
+        name: box_str!("enlarge"),
+        cooldown_seconds: 2,
+        category: "misc"
     };
     pub static ref HELP_COMMAND: Command = Command {
         aliases: vec![],
-        args: vec![],
+        args: vec![Argument::Optional(Box::new(Argument::String))],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!("get help"),
             examples: vec![],
             usage: box_str!("")
         },
-        name: box_str!("help")
+        name: box_str!("help"),
+        cooldown_seconds: 2,
+        category: "misc"
     };
     pub static ref INVITE_COMMAND: Command = Command {
         aliases: vec![],
@@ -58,7 +68,9 @@ lazy_static! {
             examples: vec![],
             usage: box_str!("")
         },
-        name: box_str!("invite")
+        name: box_str!("invite"),
+        cooldown_seconds: 2,
+        category: "misc"
     };
     pub static ref STATS_COMMAND: Command = Command {
         aliases: vec![],
@@ -69,7 +81,9 @@ lazy_static! {
             examples: vec![],
             usage: box_str!("")
         },
-        name: box_str!("stats")
+        name: box_str!("stats"),
+        cooldown_seconds: 2,
+        category: "misc"
     };
     pub static ref RUST_COMMAND: Command = Command {
         aliases: vec![],
@@ -84,7 +98,9 @@ lazy_static! {
             examples: vec![],
             usage: box_str!("[run|bench] [stable|nightly|beta] [code]")
         },
-        name: box_str!("rust")
+        name: box_str!("rust"),
+        cooldown_seconds: 2,
+        category: "misc"
     };
     pub static ref REMINDER_COMMAND: Command = Command {
         aliases: vec![],
@@ -95,7 +111,9 @@ lazy_static! {
             examples: vec![],
             usage: box_str!("[when] [description]")
         },
-        name: box_str!("remind")
+        name: box_str!("remind"),
+        cooldown_seconds: 2,
+        category: "misc"
     };
     pub static ref TOP_COMMANDS_COMMAND: Command = Command {
         aliases: vec![box_str!("tcs")],
@@ -106,7 +124,9 @@ lazy_static! {
             examples: vec![],
             usage: box_str!("")
         },
-        name: box_str!("topcmds")
+        name: box_str!("topcmds"),
+        cooldown_seconds: 2,
+        category: "misc"
     };
 }
 
@@ -145,30 +165,80 @@ pub async fn run_enlarge_command(
     Ok(())
 }
 
-pub async fn run_help_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
-    let mut unique_command_names: Vec<&Box<str>> = Vec::new();
-    let mut command_help_entries: Vec<String> = Vec::new();
-    for i in context
-        .assyst
-        .registry
-        .commands
-        .values()
-        .filter(|a| a.availability != CommandAvailability::Private)
-    {
-        if unique_command_names.contains(&&i.name) {
-            continue;
-        };
-        unique_command_names.push(&i.name);
-        command_help_entries.push(format!("`{}` - *{}*", i.name, i.metadata.description));
+pub async fn run_help_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
+    if args[0].is_nothing() {
+        let mut unique_command_names: Vec<&Box<str>> = Vec::new();
+        let mut command_help_entries: Vec<String> = Vec::new();
+        for i in context
+            .assyst
+            .registry
+            .commands
+            .values()
+            .filter(|a| a.availability != CommandAvailability::Private)
+        {
+            if unique_command_names.contains(&&i.name) {
+                continue;
+            };
+            unique_command_names.push(&i.name);
+            command_help_entries.push(format!("`{}` - *{}*", i.name, i.metadata.description));
+        }
+        context
+            .reply(
+                MessageBuilder::new()
+                    .content(&format!("{}\nInvite the bot: <https://discord.com/oauth2/authorize?client_id=571661221854707713&scope=bot>\nSupport server: <https://discord.gg/JBvJbBEDpA>", &command_help_entries.join("\n")))
+                    .clone(),
+            )
+            .await
+            .map_err(|e| e.to_string())?;
+    } else {
+        let command_name = force_as::text(&args[0]);
+        let command = context
+            .assyst
+            .registry
+            .get_command_from_name_or_alias(command_name)
+            .ok_or_else(|| "Command not found".to_owned())?;
+        let table = generate_table(&vec![
+            ("Name", &*command.name),
+            ("Description", &*command.metadata.description),
+            (
+                "Usage",
+                &format!(
+                    "{}{} {}",
+                    context.prefix, &*command.name, &*command.metadata.usage
+                ),
+            ),
+        ]);
+        let help;
+        if command.metadata.examples.len() == 0 {
+            help = codeblock(
+                &format!(
+                    "{}\nExamples:\n{}",
+                    table,
+                    format!("{}{}", context.prefix, &*command.name)
+                ),
+                "yaml",
+            );
+        } else {
+            help = codeblock(
+                &format!(
+                    "{}\nExamples:\n{}",
+                    table,
+                    &*command
+                        .metadata
+                        .examples
+                        .iter()
+                        .map(|e| format!("{}{} {}", context.prefix, &*command.name, e))
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                ),
+                "yaml",
+            );
+        }
+        context
+            .reply_with_text(&help)
+            .await
+            .map_err(|e| e.to_string())?;
     }
-    context
-        .reply(
-            MessageBuilder::new()
-                .content(&format!("{}\nInvite the bot: <https://discord.com/oauth2/authorize?client_id=571661221854707713&scope=bot>\nSupport server: <https://discord.gg/JBvJbBEDpA>", &command_help_entries.join("\n")))
-                .clone(),
-        )
-        .await
-        .map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -313,15 +383,16 @@ pub async fn run_top_commands_command(
         .iter()
         .map(|t| (&t.command_name[..], t.uses.to_string()))
         .collect::<Vec<_>>();
-    
-    let top_commands_formatted = top_commands_formatted_raw.iter().map(|(a, b)| (*a, &b[..])).collect::<Vec<_>>();
+
+    let top_commands_formatted = top_commands_formatted_raw
+        .iter()
+        .map(|(a, b)| (*a, &b[..]))
+        .collect::<Vec<_>>();
 
     let table = generate_list("Command", "Uses", &top_commands_formatted);
 
     context
-        .reply_with_text(
-            &codeblock(&table, "hs")
-        )
+        .reply_with_text(&codeblock(&table, "hs"))
         .await
         .map_err(|e| e.to_string())?;
     Ok(())

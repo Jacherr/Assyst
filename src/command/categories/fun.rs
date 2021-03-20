@@ -10,7 +10,6 @@ use crate::{
     rest::{
         self,
         bt::{translate, TranslateError},
-        ocr_image,
     },
     util::codeblock,
 };
@@ -28,6 +27,8 @@ lazy_static! {
             usage: box_str!("[text]")
         },
         name: box_str!("badtranslate"),
+        cooldown_seconds: 2,
+        category: "fun"
     };
     pub static ref OCRBT_COMMAND: Command = Command {
         aliases: vec![box_str!("ocrbt")],
@@ -39,6 +40,8 @@ lazy_static! {
             usage: box_str!("[text]")
         },
         name: box_str!("ocrbadtranslate"),
+        cooldown_seconds: 2,
+        category: "fun"
     };
 }
 
