@@ -72,6 +72,19 @@ lazy_static! {
         cooldown_seconds: 2,
         category: "misc"
     };
+    pub static ref PREFIX_COMMAND: Command = Command {
+        aliases: vec![],
+        args: vec![Argument::String],
+        availability: CommandAvailability::GuildOwner,
+        metadata: CommandMetadata {
+            description: box_str!("set bot prefix"),
+            examples: vec![box_str!("-")],
+            usage: box_str!("[new prefix]")
+        },
+        name: box_str!("prefix"),
+        cooldown_seconds: 2,
+        category: "misc"
+    };
     pub static ref STATS_COMMAND: Command = Command {
         aliases: vec![],
         args: vec![],
@@ -207,6 +220,7 @@ pub async fn run_help_command(context: Arc<Context>, args: Vec<ParsedArgument>) 
                     context.prefix, &*command.name, &*command.metadata.usage
                 ),
             ),
+            ("Access", &*command.availability.to_string())
         ]);
         let help;
         if command.metadata.examples.len() == 0 {
@@ -253,6 +267,16 @@ pub async fn run_invite_command(context: Arc<Context>, _: Vec<ParsedArgument>) -
         )
         .await
         .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub async fn run_prefix_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
+    let new_prefix = force_as::text(&args[0]);
+    context.assyst.database.set_prefix_for(context.message.guild_id.unwrap().0, new_prefix)
+        .await
+        .map_err(|e| e.to_string())?;
+    context.reply_with_text(&format!("Prefix set to {}", new_prefix))
+        .await?;
     Ok(())
 }
 

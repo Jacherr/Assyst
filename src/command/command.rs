@@ -30,6 +30,17 @@ pub enum CommandAvailability {
     GuildOwner,
     Private,
 }
+impl CommandAvailability {
+    pub fn to_string(&self) -> String {
+        match self {
+            CommandAvailability::Private => "Private".to_owned(),
+            CommandAvailability::Public => "Public".to_owned(),
+            CommandAvailability::GuildOwner => "Guild Owner".to_owned(),
+            CommandAvailability::RequiresPermission(p) => format!("Requires Permissions: {}", p)
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum CommandParseErrorType {
     MissingArgument,

@@ -110,13 +110,14 @@ impl Database {
             .prefixes
             .insert(guild_id, prefix.to_owned().into_boxed_str());
 
-        generate_query_task!(
-            r#" INSERT INTO prefixes(guild, prefix) VALUES($1, $2) "#,
-            &self.pool,
-            (String,),
-            guild_id as i64,
-            prefix
-        )
+        let query = r#" INSERT INTO prefixes(guild, prefix) VALUES($1, $2) ON CONFLICT (guild) DO UPDATE SET prefix = $2 WHERE prefixes.guild = $1 "#;
+
+        sqlx::query(query)
+            .bind(guild_id as i64)
+            .bind(prefix)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
     }
 
     pub async fn get_bt_channels(&self) -> Result<ChannelCache, sqlx::Error> {
