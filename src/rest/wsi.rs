@@ -8,6 +8,7 @@ mod routes {
     pub const _3D_ROTATE: &str = "/3d_rotate";
     pub const CAPTION: &str = "/caption";
     pub const COMPRESS: &str = "/compress";
+    pub const GIF_SCRAMBLE: &str = "/gif_scramble";
     pub const GIF_SPEED: &str = "/gif_speed";
     pub const IMAGEMAGICK_EVAL: &str = "/imagemagick_eval";
     pub const MOTIVATE: &str = "/motivate";
@@ -96,6 +97,13 @@ pub async fn motivate(
         &[("top", top_text), ("bottom", bottom_text)],
     )
     .await
+}
+
+pub async fn gif_scramble(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::GIF_SCRAMBLE, image, &[]).await
 }
 
 pub async fn gif_speed(

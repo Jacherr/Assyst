@@ -25,7 +25,7 @@ lazy_static! {
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!("3d rotate an image"),
-            examples: vec![],
+            examples: vec![box_str!("312715611413413889")],
             usage: box_str!("[image]")
         },
         name: box_str!("3drotate"),
@@ -38,10 +38,23 @@ lazy_static! {
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!("add a caption to an image"),
-            examples: vec![],
+            examples: vec![box_str!("312715611413413889 yea")],
             usage: box_str!("[image] [caption]")
         },
         name: box_str!("caption"),
+        cooldown_seconds: 4,
+        category: "image"
+    };
+    pub static ref GIF_SCRAMBLE_COMMAND: Command = Command {
+        aliases: vec![box_str!("gscramble")],
+        args: vec![Argument::ImageBuffer],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: box_str!("scramble the frames in a gif"),
+            examples: vec![box_str!("312715611413413889")],
+            usage: box_str!("[image]")
+        },
+        name: box_str!("gifscramble"),
         cooldown_seconds: 4,
         category: "image"
     };
@@ -51,8 +64,8 @@ lazy_static! {
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!("change speed of gif"),
-            examples: vec![],
-            usage: box_str!("[image] [delay]")
+            examples: vec![box_str!("312715611413413889 2")],
+            usage: box_str!("[image] <delay>")
         },
         name: box_str!("gifspeed"),
         cooldown_seconds: 4,
@@ -64,7 +77,7 @@ lazy_static! {
         availability: CommandAvailability::Private,
         metadata: CommandMetadata {
             description: box_str!("evaluate an imagemagick script on an image"),
-            examples: vec![],
+            examples: vec![box_str!("312715611413413889 -reverse")],
             usage: box_str!("[image] [script]")
         },
         name: box_str!("ime"),
@@ -95,7 +108,7 @@ lazy_static! {
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!("read the text on an image"),
-            examples: vec![],
+            examples: vec![box_str!("312715611413413889")],
             usage: box_str!("[image]")
         },
         name: box_str!("ocr"),
@@ -108,7 +121,7 @@ lazy_static! {
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!("make an image rainbow"),
-            examples: vec![],
+            examples: vec![box_str!("312715611413413889")],
             usage: box_str!("[image]")
         },
         name: box_str!("rainbow"),
@@ -121,7 +134,7 @@ lazy_static! {
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!("reverse a gif"),
-            examples: vec![],
+            examples: vec![box_str!("312715611413413889")],
             usage: box_str!("[image]")
         },
         name: box_str!("reverse"),
@@ -134,7 +147,7 @@ lazy_static! {
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!("rotate an image"),
-            examples: vec![box_str!("@y21 45")],
+            examples: vec![box_str!("312715611413413889 45")],
             usage: box_str!("[image] [degrees]")
         },
         name: box_str!("rotate"),
@@ -147,7 +160,7 @@ lazy_static! {
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!("spin an image"),
-            examples: vec![],
+            examples: vec![box_str!("312715611413413889")],
             usage: box_str!("[image]")
         },
         name: box_str!("spin"),
@@ -160,7 +173,7 @@ lazy_static! {
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!("create a wall out of an image"),
-            examples: vec![],
+            examples: vec![box_str!("312715611413413889")],
             usage: box_str!("[image]")
         },
         name: box_str!("wall"),
@@ -173,7 +186,7 @@ lazy_static! {
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!("create a wave out of an image"),
-            examples: vec![],
+            examples: vec![box_str!("312715611413413889")],
             usage: box_str!("[image]")
         },
         name: box_str!("wave"),
@@ -186,7 +199,7 @@ lazy_static! {
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!("suck an image into a wormhole"),
-            examples: vec![],
+            examples: vec![box_str!("312715611413413889")],
             usage: box_str!("[image]")
         },
         name: box_str!("wormhole"),
@@ -199,7 +212,7 @@ lazy_static! {
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!("zoom into an image"),
-            examples: vec![],
+            examples: vec![box_str!("312715611413413889")],
             usage: box_str!("[image]")
         },
         name: box_str!("zoom"),
@@ -246,6 +259,21 @@ pub async fn run_caption_command(
     let text = force_as::text(&args[0]);
     context.reply_with_text("processing...").await?;
     let result = wsi::caption(context.assyst.clone(), image, text)
+        .await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
+}
+
+pub async fn run_gif_scramble_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let image = compress_if_large(context.clone(), raw_image).await?;
+    context.reply_with_text("processing...").await?;
+    let result = wsi::gif_scramble(context.assyst.clone(), image)
         .await
         .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
