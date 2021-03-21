@@ -39,7 +39,7 @@ lazy_static! {
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!("enlarge an image"),
-            examples: vec![],
+            examples: vec![box_str!("312715611413413889")],
             usage: box_str!("[image]")
         },
         name: box_str!("enlarge"),
@@ -52,8 +52,8 @@ lazy_static! {
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!("get help"),
-            examples: vec![],
-            usage: box_str!("")
+            examples: vec![box_str!(""), box_str!("caption")],
+            usage: box_str!("<command>")
         },
         name: box_str!("help"),
         cooldown_seconds: 2,
@@ -108,7 +108,7 @@ lazy_static! {
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!("run/benchmark rust code"),
-            examples: vec![],
+            examples: vec![box_str!("run stable break rust;")],
             usage: box_str!("[run|bench] [stable|nightly|beta] [code]")
         },
         name: box_str!("rust"),
@@ -121,7 +121,7 @@ lazy_static! {
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!("set a reminder"),
-            examples: vec![],
+            examples: vec![box_str!("1d hello"), box_str!("44m yea")],
             usage: box_str!("[when] [description]")
         },
         name: box_str!("remind"),
@@ -130,7 +130,7 @@ lazy_static! {
     };
     pub static ref TOP_COMMANDS_COMMAND: Command = Command {
         aliases: vec![box_str!("tcs")],
-        args: vec![],
+        args: vec![Argument::Optional(Box::new(Argument::String))],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!("get top command usage info"),
@@ -424,7 +424,7 @@ pub async fn run_remind_command(context: Arc<Context>, args: Vec<ParsedArgument>
 
 pub async fn run_top_commands_command(
     context: Arc<Context>,
-    _: Vec<ParsedArgument>,
+    args: Vec<ParsedArgument>,
 ) -> CommandResult {
     let top_commands = context
         .assyst
@@ -435,6 +435,7 @@ pub async fn run_top_commands_command(
 
     let top_commands_formatted_raw: Vec<(&str, String)> = top_commands
         .iter()
+        .take(20)
         .map(|t| (&t.command_name[..], t.uses.to_string()))
         .collect::<Vec<_>>();
 

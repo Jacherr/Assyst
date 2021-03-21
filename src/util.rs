@@ -155,8 +155,8 @@ pub async fn download_content(
         for byte in chunk {
             if data.len() > limit_bytes {
                 return Err(format!(
-                    "The download exceeded the specified limit of {} bytes",
-                    limit_bytes
+                    "The download exceeded the specified limit of {}MB",
+                    limit_bytes / 1000usize.pow(2)
                 ));
             }
             data.push(byte);
