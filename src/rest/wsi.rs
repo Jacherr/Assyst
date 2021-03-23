@@ -16,6 +16,7 @@ mod routes {
     pub const REVERSE: &str = "/reverse";
     pub const ROTATE: &str = "/rotate";
     pub const SPIN: &str = "/spin";
+    pub const SPREAD: &str = "/spread";
     pub const WALL: &str = "/wall";
     pub const WAVE: &str = "/wave";
     pub const WORMHOLE: &str = "/wormhole";
@@ -142,6 +143,10 @@ pub async fn rotate(assyst: Arc<Assyst>, image: Bytes, degrees: &str) -> Result<
 
 pub async fn spin(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::SPIN, image, &[]).await
+}
+
+pub async fn spread(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::SPREAD, image, &[]).await
 }
 
 pub async fn wall(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {

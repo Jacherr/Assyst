@@ -632,7 +632,7 @@ impl Assyst {
     }
 
     fn validate_message_attachment(&self, message: &Message) -> Option<String> {
-        Some(message.attachments.first()?.proxy_url.clone())
+        Some(message.attachments.first()?.url.clone())
     }
 
     async fn validate_previous_message_attachment(&self, message: &Message) -> Option<String> {
@@ -649,22 +649,22 @@ impl Assyst {
                     embed
                         .image
                         .as_ref()
-                        .and_then(|img| Some(Cow::Borrowed(img.proxy_url.as_ref()?)))
+                        .and_then(|img| Some(Cow::Borrowed(img.url.as_ref()?)))
                         .or_else(|| {
                             embed.thumbnail.as_ref().and_then(|thumbnail| {
-                                Some(Cow::Borrowed(thumbnail.proxy_url.as_ref()?))
+                                Some(Cow::Borrowed(thumbnail.url.as_ref()?))
                             })
                         })
                         .or_else(|| {
                             embed.video.as_ref().and_then(|video| {
                                 Some(Cow::Owned(format!(
-                                    "{}?format=png",
-                                    video.proxy_url.as_ref()?
+                                    "{}",
+                                    video.url.as_ref()?
                                 )))
                             })
                         })
                 } else {
-                    Some(Cow::Borrowed(&message.attachments.first()?.proxy_url))
+                    Some(Cow::Borrowed(&message.attachments.first()?.url))
                 }
             })
             .collect();

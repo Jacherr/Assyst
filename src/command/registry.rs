@@ -126,5 +126,6 @@ impl CommandRegistry {
         register_command!(self, TOP_COMMANDS_COMMAND, run_top_commands_command);
         register_command!(self, PREFIX_COMMAND, run_prefix_command);
         register_command!(self, GIF_SCRAMBLE_COMMAND, run_gif_scramble_command);
+        register_command!(self, SPREAD_COMMAND, run_spread_command);
     }
 }
