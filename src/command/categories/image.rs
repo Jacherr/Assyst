@@ -167,6 +167,19 @@ lazy_static! {
         cooldown_seconds: 4,
         category: "image"
     };
+    pub static ref SPREAD_COMMAND: Command = Command {
+        aliases: vec![],
+        args: vec![Argument::ImageBuffer],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: box_str!("pixel-spread an image"),
+            examples: vec![box_str!("312715611413413889")],
+            usage: box_str!("[image]")
+        },
+        name: box_str!("spread"),
+        cooldown_seconds: 4,
+        category: "image"
+    };
     pub static ref WALL_COMMAND: Command = Command {
         aliases: vec![],
         args: vec![Argument::ImageBuffer],
@@ -412,6 +425,21 @@ pub async fn run_spin_command(
     let image = compress_if_large(context.clone(), raw_image).await?;
     context.reply_with_text("processing...").await?;
     let result = wsi::spin(context.assyst.clone(), image)
+        .await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
+}
+
+pub async fn run_spread_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let image = compress_if_large(context.clone(), raw_image).await?;
+    context.reply_with_text("processing...").await?;
+    let result = wsi::spread(context.assyst.clone(), image)
         .await
         .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
