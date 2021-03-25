@@ -8,6 +8,7 @@ mod routes {
     pub const _3D_ROTATE: &str = "/3d_rotate";
     pub const CAPTION: &str = "/caption";
     pub const COMPRESS: &str = "/compress";
+    pub const GIF_LOOP: &str = "/gif_loop";
     pub const GIF_SCRAMBLE: &str = "/gif_scramble";
     pub const GIF_SPEED: &str = "/gif_speed";
     pub const IMAGEMAGICK_EVAL: &str = "/imagemagick_eval";
@@ -17,6 +18,7 @@ mod routes {
     pub const ROTATE: &str = "/rotate";
     pub const SPIN: &str = "/spin";
     pub const SPREAD: &str = "/spread";
+    pub const SWIRL: &str = "/swirl";
     pub const WALL: &str = "/wall";
     pub const WAVE: &str = "/wave";
     pub const WORMHOLE: &str = "/wormhole";
@@ -100,6 +102,13 @@ pub async fn motivate(
     .await
 }
 
+pub async fn gif_loop(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::GIF_LOOP, image, &[]).await
+}
+
 pub async fn gif_scramble(
     assyst: Arc<Assyst>,
     image: Bytes,
@@ -147,6 +156,10 @@ pub async fn spin(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestErr
 
 pub async fn spread(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::SPREAD, image, &[]).await
+}
+
+pub async fn swirl(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::SWIRL, image, &[]).await
 }
 
 pub async fn wall(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
