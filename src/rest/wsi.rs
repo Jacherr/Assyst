@@ -9,9 +9,11 @@ mod routes {
     pub const CAPTION: &str = "/caption";
     pub const COMPRESS: &str = "/compress";
     pub const GIF_LOOP: &str = "/gif_loop";
+    pub const GIF_MAGIK: &str = "/gif_magik";
     pub const GIF_SCRAMBLE: &str = "/gif_scramble";
     pub const GIF_SPEED: &str = "/gif_speed";
     pub const IMAGEMAGICK_EVAL: &str = "/imagemagick_eval";
+    pub const MAGIK: &str = "/magik";
     pub const MOTIVATE: &str = "/motivate";
     pub const RAINBOW: &str = "/rainbow";
     pub const REVERSE: &str = "/reverse";
@@ -102,17 +104,15 @@ pub async fn motivate(
     .await
 }
 
-pub async fn gif_loop(
-    assyst: Arc<Assyst>,
-    image: Bytes,
-) -> Result<Bytes, RequestError> {
+pub async fn gif_loop(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::GIF_LOOP, image, &[]).await
 }
 
-pub async fn gif_scramble(
-    assyst: Arc<Assyst>,
-    image: Bytes,
-) -> Result<Bytes, RequestError> {
+pub async fn gif_magik(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::GIF_MAGIK, image, &[]).await
+}
+
+pub async fn gif_scramble(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::GIF_SCRAMBLE, image, &[]).await
 }
 
@@ -138,6 +138,10 @@ pub async fn imagemagick_eval(
     .await
 }
 
+pub async fn magik(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::MAGIK, image, &[]).await
+}
+
 pub async fn rainbow(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::RAINBOW, image, &[]).await
 }
@@ -146,7 +150,11 @@ pub async fn reverse(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, Request
     request_bytes(assyst, routes::REVERSE, image, &[]).await
 }
 
-pub async fn rotate(assyst: Arc<Assyst>, image: Bytes, degrees: &str) -> Result<Bytes, RequestError> {
+pub async fn rotate(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    degrees: &str,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::ROTATE, image, &[("degrees", degrees)]).await
 }
 
