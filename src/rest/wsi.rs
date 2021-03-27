@@ -15,6 +15,7 @@ mod routes {
     pub const IMAGEMAGICK_EVAL: &str = "/imagemagick_eval";
     pub const MAGIK: &str = "/magik";
     pub const MOTIVATE: &str = "/motivate";
+    pub const PRINTER: &str = "/printer";
     pub const RAINBOW: &str = "/rainbow";
     pub const REVERSE: &str = "/reverse";
     pub const ROTATE: &str = "/rotate";
@@ -141,6 +142,11 @@ pub async fn imagemagick_eval(
 pub async fn magik(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::MAGIK, image, &[]).await
 }
+
+pub async fn printer(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::PRINTER, image, &[]).await
+}
+
 
 pub async fn rainbow(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::RAINBOW, image, &[]).await
