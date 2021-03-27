@@ -97,6 +97,19 @@ lazy_static! {
         cooldown_seconds: 4,
         category: "image"
     };
+    pub static ref GRAYSCALE_COMMAND: Command = Command {
+        aliases: vec![box_str!("gray")],
+        args: vec![Argument::ImageBuffer],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: box_str!("grayscale an image"),
+            examples: vec![box_str!("312715611413413889")],
+            usage: box_str!("[image]")
+        },
+        name: box_str!("grayscale"),
+        cooldown_seconds: 4,
+        category: "image"
+    };
     pub static ref IMAGEMAGICK_EVAL_COMMAND: Command = Command {
         aliases: vec![],
         args: vec![Argument::ImageBuffer, Argument::StringRemaining],
@@ -107,6 +120,19 @@ lazy_static! {
             usage: box_str!("[image] [script]")
         },
         name: box_str!("ime"),
+        cooldown_seconds: 4,
+        category: "image"
+    };
+    pub static ref INVERT_COMMAND: Command = Command {
+        aliases: vec![],
+        args: vec![Argument::ImageBuffer],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: box_str!("invert an image"),
+            examples: vec![box_str!("312715611413413889")],
+            usage: box_str!("[image]")
+        },
+        name: box_str!("invert"),
         cooldown_seconds: 4,
         category: "image"
     };
@@ -203,6 +229,19 @@ lazy_static! {
             usage: box_str!("[image] [degrees]")
         },
         name: box_str!("rotate"),
+        cooldown_seconds: 4,
+        category: "image"
+    };
+    pub static ref SET_LOOP_COMMAND: Command = Command {
+        aliases: vec![box_str!("setloop")],
+        args: vec![Argument::ImageBuffer, Argument::Choice(&["on", "off"])],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: box_str!("choose if you want a gif to loop or not"),
+            examples: vec![box_str!("312715611413413889")],
+            usage: box_str!("[image]")
+        },
+        name: box_str!("setlooping"),
         cooldown_seconds: 4,
         category: "image"
     };
@@ -405,6 +444,21 @@ pub async fn run_gif_speed_command(
     Ok(())
 }
 
+pub async fn run_grayscale_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let image = compress_if_large(context.clone(), raw_image).await?;
+    context.reply_with_text("processing...").await?;
+    let result = wsi::grayscale(context.assyst.clone(), image)
+        .await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
+}
+
 pub async fn run_imagemagick_eval_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
@@ -414,6 +468,21 @@ pub async fn run_imagemagick_eval_command(
     let text = force_as::text(&args[0]);
     context.reply_with_text("processing...").await?;
     let result = wsi::imagemagick_eval(context.assyst.clone(), image, text)
+        .await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
+}
+
+pub async fn run_invert_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let image = compress_if_large(context.clone(), raw_image).await?;
+    context.reply_with_text("processing...").await?;
+    let result = wsi::invert(context.assyst.clone(), image)
         .await
         .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
@@ -535,6 +604,26 @@ pub async fn run_rotate_command(
     let degrees = force_as::text(&args[0]);
     context.reply_with_text("processing...").await?;
     let result = wsi::rotate(context.assyst.clone(), image, degrees)
+        .await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
+}
+
+pub async fn run_set_loop_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let image = compress_if_large(context.clone(), raw_image).await?;
+    let looping = match force_as::choice(&args[0]) {
+        "on" => true,
+        "off" => false,
+        _ => unreachable!()
+    };
+    context.reply_with_text("processing...").await?;
+    let result = wsi::set_loop(context.assyst.clone(), image, looping)
         .await
         .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");

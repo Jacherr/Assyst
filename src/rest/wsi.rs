@@ -12,13 +12,16 @@ mod routes {
     pub const GIF_MAGIK: &str = "/gif_magik";
     pub const GIF_SCRAMBLE: &str = "/gif_scramble";
     pub const GIF_SPEED: &str = "/gif_speed";
+    pub const GRAYSCALE: &str = "/grayscale";
     pub const IMAGEMAGICK_EVAL: &str = "/imagemagick_eval";
+    pub const INVERT: &str = "/invert";
     pub const MAGIK: &str = "/magik";
     pub const MOTIVATE: &str = "/motivate";
     pub const PRINTER: &str = "/printer";
     pub const RAINBOW: &str = "/rainbow";
     pub const REVERSE: &str = "/reverse";
     pub const ROTATE: &str = "/rotate";
+    pub const SET_LOOP: &str = "/set_loop";
     pub const SPIN: &str = "/spin";
     pub const SPREAD: &str = "/spread";
     pub const SWIRL: &str = "/swirl";
@@ -117,6 +120,10 @@ pub async fn gif_scramble(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, Re
     request_bytes(assyst, routes::GIF_SCRAMBLE, image, &[]).await
 }
 
+pub async fn grayscale(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::GRAYSCALE, image, &[]).await
+}
+
 pub async fn gif_speed(
     assyst: Arc<Assyst>,
     image: Bytes,
@@ -137,6 +144,10 @@ pub async fn imagemagick_eval(
         &[("script", script)],
     )
     .await
+}
+
+pub async fn invert(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::INVERT, image, &[]).await
 }
 
 pub async fn magik(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
@@ -162,6 +173,10 @@ pub async fn rotate(
     degrees: &str,
 ) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::ROTATE, image, &[("degrees", degrees)]).await
+}
+
+pub async fn set_loop(assyst: Arc<Assyst>, image: Bytes, looping: bool) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::SET_LOOP, image, &[("loop", &looping.to_string())]).await
 }
 
 pub async fn spin(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
