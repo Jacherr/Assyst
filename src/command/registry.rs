@@ -131,5 +131,6 @@ impl CommandRegistry {
         register_command!(self, GIF_LOOP_COMMAND, run_gif_loop_command);
         register_command!(self, GIF_MAGIK_COMMAND, run_gif_magik_command);
         register_command!(self, MAGIK_COMMAND, run_magik_command);
+        register_command!(self, PRINTER_COMMAND, run_printer_command);
     }
 }

@@ -24,7 +24,7 @@ use crate::{
 use bytes::Bytes;
 use reqwest::Client as ReqwestClient;
 use serde::Deserialize;
-use std::{borrow::Borrow, hint::unreachable_unchecked, sync::Arc};
+use std::{borrow::Borrow, sync::Arc};
 use std::{borrow::Cow, time::Instant};
 use std::{collections::HashSet, fs::read_to_string};
 use tokio::sync::RwLock;
