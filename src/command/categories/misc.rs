@@ -298,6 +298,13 @@ pub async fn run_invite_command(context: Arc<Context>, _: Vec<ParsedArgument>) -
 
 pub async fn run_prefix_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
     let new_prefix = force_as::text(&args[0]);
+    if new_prefix.len() > 14 {
+        context
+            .reply_err("Prefixes cannot be longer than 14 characters")
+            .map_err(|e| e.to_string())
+            .await?;
+        return Ok(());
+    };
     context
         .assyst
         .database
