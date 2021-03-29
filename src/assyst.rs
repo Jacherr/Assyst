@@ -50,6 +50,7 @@ impl DatabaseInfo {
 #[derive(Clone, Deserialize)]
 pub struct Config {
     pub admins: HashSet<u64>,
+    pub annmarie_url: Box<str>,
     database: DatabaseInfo,
     pub default_prefix: Box<str>,
     pub disable_bad_translator: bool,
