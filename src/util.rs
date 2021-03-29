@@ -188,21 +188,7 @@ impl Uptime {
     }
 
     pub fn format(&self) -> String {
-        let time = self.0;
-
-        if time >= units::DAY {
-            let amount = time / units::DAY;
-            format!("{} {}", amount, pluralize("day", "s", amount))
-        } else if time >= units::HOUR {
-            let amount = time / units::HOUR;
-            format!("{} {}", amount, pluralize("hour", "s", amount))
-        } else if time >= units::MINUTE {
-            let amount = time / units::MINUTE;
-            format!("{} {}", amount, pluralize("minute", "s", amount))
-        } else {
-            let amount = time / units::SECOND;
-            format!("{} {}", amount, pluralize("second", "s", amount))
-        }
+        format_time(self.0)
     }
 }
 
@@ -236,4 +222,20 @@ pub fn parse_to_millis(input: &str) -> Result<u32, ParseIntError> {
 // TODO: Use allowed_mentions once it's out
 pub fn sanitize_message_content(content: &str) -> String {
     content.replace("@", "@\u{200b}")
+}
+
+pub fn format_time(input: u64) -> String {
+    if input >= units::DAY {
+        let amount = input / units::DAY;
+        format!("{} {}", amount, pluralize("day", "s", amount))
+    } else if input >= units::HOUR {
+        let amount = input / units::HOUR;
+        format!("{} {}", amount, pluralize("hour", "s", amount))
+    } else if input >= units::MINUTE {
+        let amount = input / units::MINUTE;
+        format!("{} {}", amount, pluralize("minute", "s", amount))
+    } else {
+        let amount = input / units::SECOND;
+        format!("{} {}", amount, pluralize("second", "s", amount))
+    }
 }
