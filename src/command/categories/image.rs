@@ -8,7 +8,7 @@ use crate::{
         registry::CommandResult,
     },
     consts::WORKING_FILESIZE_LIMIT_BYTES,
-    rest::wsi,
+    rest::{wsi, annmarie},
 };
 use crate::{
     rest,
@@ -97,6 +97,19 @@ lazy_static! {
         cooldown_seconds: 4,
         category: "image"
     };
+    pub static ref GLOBE_COMMAND: Command = Command {
+        aliases: vec![],
+        args: vec![Argument::ImageBuffer],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: box_str!("apply globe effect to image"),
+            examples: vec![box_str!("312715611413413889")],
+            usage: box_str!("[image]")
+        },
+        name: box_str!("globe"),
+        cooldown_seconds: 4,
+        category: "image"
+    };
     pub static ref GRAYSCALE_COMMAND: Command = Command {
         aliases: vec![box_str!("gray")],
         args: vec![Argument::ImageBuffer],
@@ -177,6 +190,19 @@ lazy_static! {
             usage: box_str!("[image] [text separated by a |]")
         },
         name: box_str!("motivate"),
+        cooldown_seconds: 4,
+        category: "image"
+    };
+    pub static ref NEON_COMMAND: Command = Command {
+        aliases: vec![],
+        args: vec![Argument::ImageBuffer, Argument::OptionalWithDefault(Box::new(Argument::String), "1")],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: box_str!("apply neon effect to image"),
+            examples: vec![box_str!("312715611413413889")],
+            usage: box_str!("[image] <radius>")
+        },
+        name: box_str!("neon"),
         cooldown_seconds: 4,
         category: "image"
     };
@@ -444,6 +470,21 @@ pub async fn run_gif_speed_command(
     Ok(())
 }
 
+pub async fn run_globe_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let image = compress_if_large(context.clone(), raw_image).await?;
+    context.reply_with_text("processing...").await?;
+    let result = annmarie::globe(context.assyst.clone(), image)
+        .await
+        .map_err(annmarie::format_err)?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
+}
+
 pub async fn run_grayscale_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
@@ -529,6 +570,22 @@ pub async fn run_motivate_command(
     let result = wsi::motivate(context.assyst.clone(), image, &top_text, &bottom_text)
         .await
         .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
+}
+
+pub async fn run_neon_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let image = compress_if_large(context.clone(), raw_image).await?;
+    let radius = force_as::text(&args[0]);
+    context.reply_with_text("processing...").await?;
+    let result = annmarie::neon(context.assyst.clone(), image, radius)
+        .await
+        .map_err(annmarie::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())

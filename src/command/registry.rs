@@ -135,5 +135,7 @@ impl CommandRegistry {
         register_command!(self, SET_LOOP_COMMAND, run_set_loop_command);
         register_command!(self, INVERT_COMMAND, run_invert_command);
         register_command!(self, GRAYSCALE_COMMAND, run_grayscale_command);
+        register_command!(self, NEON_COMMAND, run_neon_command);
+        register_command!(self, GLOBE_COMMAND, run_globe_command);
     }
 }

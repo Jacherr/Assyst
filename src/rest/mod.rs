@@ -4,6 +4,7 @@ use reqwest::{Client, Error};
 pub mod bt;
 pub mod rust;
 pub mod wsi;
+pub mod annmarie;
 
 mod routes {
     pub const CDN: &str = "https://cdn.jacher.io";
