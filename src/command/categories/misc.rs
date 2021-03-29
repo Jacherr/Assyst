@@ -8,7 +8,7 @@ use crate::{
         messagebuilder::MessageBuilder,
         registry::CommandResult,
     },
-    util::{codeblock, generate_list, generate_table, get_memory_usage, parse_codeblock},
+    util::{codeblock, generate_list, generate_table, get_memory_usage, parse_codeblock, format_time},
 };
 use crate::{
     database::Reminder,
@@ -120,8 +120,8 @@ lazy_static! {
         args: vec![Argument::String, Argument::StringRemaining],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("set a reminder"),
-            examples: vec![box_str!("1d hello"), box_str!("44m yea")],
+            description: box_str!("set a reminder, time format is xdyhzm (check examples)"),
+            examples: vec![box_str!("1d10h hello"), box_str!("44m yea")],
             usage: box_str!("[when] [description]")
         },
         name: box_str!("remind"),
@@ -398,13 +398,16 @@ pub async fn run_remind_command(context: Arc<Context>, args: Vec<ParsedArgument>
 
     let time = parse_to_millis(time).map_err(|e| e.to_string())? as u64;
 
-    // TODO: check if time is too large
+    if time == 0 {
+        return Err("An invalid time was provided".to_owned());
+    }
 
     let guild_id = match context.message.guild_id {
         Some(id) => id.0,
         None => return Err("This command can only be run in a server".to_owned()),
     };
 
+    let ftime = format_time(time);
     let time = get_current_millis() + time;
 
     // TODO: try_into
@@ -423,7 +426,7 @@ pub async fn run_remind_command(context: Arc<Context>, args: Vec<ParsedArgument>
         .map_err(|e| e.to_string())?;
 
     context
-        .reply(MessageBuilder::new().content("Reminder set."))
+        .reply_with_text(&format!("Reminder set for {} from now", ftime))
         .await
         .map_err(|e| e.to_string())
         .and_then(|_| Ok(()))
@@ -431,7 +434,7 @@ pub async fn run_remind_command(context: Arc<Context>, args: Vec<ParsedArgument>
 
 pub async fn run_top_commands_command(
     context: Arc<Context>,
-    args: Vec<ParsedArgument>,
+    _: Vec<ParsedArgument>,
 ) -> CommandResult {
     let top_commands = context
         .assyst
