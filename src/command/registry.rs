@@ -137,5 +137,7 @@ impl CommandRegistry {
         register_command!(self, GRAYSCALE_COMMAND, run_grayscale_command);
         register_command!(self, NEON_COMMAND, run_neon_command);
         register_command!(self, GLOBE_COMMAND, run_globe_command);
+        register_command!(self, CARD_COMMAND, run_card_command);
+        register_command!(self, ANNMARIE_COMMAND, run_annmarie_command);
     }
 }

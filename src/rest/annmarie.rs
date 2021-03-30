@@ -5,6 +5,7 @@ use serde::Deserialize;
 use std::sync::Arc;
 
 mod routes {
+    pub const CARD: &str = "/card";
     pub const GLOBE: &str = "/globe";
     pub const NEON: &str = "/neon";
 }
@@ -44,6 +45,10 @@ pub async fn request_bytes(
         let bytes = result.bytes().await.map_err(|e| RequestError::Reqwest(e.to_string()))?;
         Ok(bytes)
     };
+}
+
+pub async fn card(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::CARD, image, &[]).await
 }
 
 pub async fn globe(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {

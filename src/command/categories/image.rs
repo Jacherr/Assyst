@@ -1,4 +1,5 @@
 use crate::{
+    assyst::Assyst,
     box_str,
     command::{
         command::{
@@ -8,7 +9,10 @@ use crate::{
         registry::CommandResult,
     },
     consts::WORKING_FILESIZE_LIMIT_BYTES,
-    rest::{wsi, annmarie},
+    rest::{
+        annmarie,
+        wsi::{self, RequestError},
+    },
 };
 use crate::{
     rest,
@@ -16,7 +20,7 @@ use crate::{
 };
 use bytes::Bytes;
 use lazy_static::lazy_static;
-use std::sync::Arc;
+use std::{future::Future, pin::Pin, sync::Arc};
 
 lazy_static! {
     pub static ref _3D_ROTATE_COMMAND: Command = Command {
@@ -32,6 +36,19 @@ lazy_static! {
         cooldown_seconds: 4,
         category: "image"
     };
+    pub static ref ANNMARIE_COMMAND: Command = Command {
+        aliases: vec![box_str!("ann")],
+        args: vec![Argument::ImageBuffer, Argument::StringRemaining],
+        availability: CommandAvailability::Private,
+        metadata: CommandMetadata {
+            description: box_str!("run an image command from an annmarie endpoint"),
+            examples: vec![box_str!("312715611413413889 neon")],
+            usage: box_str!("[image] [endpoint]")
+        },
+        name: box_str!("annmarie"),
+        cooldown_seconds: 4,
+        category: "image"
+    };
     pub static ref CAPTION_COMMAND: Command = Command {
         aliases: vec![],
         args: vec![Argument::ImageBuffer, Argument::StringRemaining],
@@ -42,6 +59,19 @@ lazy_static! {
             usage: box_str!("[image] [caption]")
         },
         name: box_str!("caption"),
+        cooldown_seconds: 4,
+        category: "image"
+    };
+    pub static ref CARD_COMMAND: Command = Command {
+        aliases: vec![],
+        args: vec![Argument::ImageBuffer],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: box_str!("throw away an image on a card"),
+            examples: vec![box_str!("312715611413413889")],
+            usage: box_str!("[image]")
+        },
+        name: box_str!("card"),
         cooldown_seconds: 4,
         category: "image"
     };
@@ -59,7 +89,12 @@ lazy_static! {
         category: "image"
     };
     pub static ref GIF_MAGIK_COMMAND: Command = Command {
-        aliases: vec![box_str!("gmagik"), box_str!("gmagick"), box_str!("gmagic"), box_str!("gcas")],
+        aliases: vec![
+            box_str!("gmagik"),
+            box_str!("gmagick"),
+            box_str!("gmagic"),
+            box_str!("gcas")
+        ],
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
@@ -86,7 +121,10 @@ lazy_static! {
     };
     pub static ref GIF_SPEED_COMMAND: Command = Command {
         aliases: vec![box_str!("gspeed")],
-        args: vec![Argument::ImageBuffer, Argument::OptionalWithDefault(Box::new(Argument::StringRemaining), "2")],
+        args: vec![
+            Argument::ImageBuffer,
+            Argument::OptionalWithDefault(Box::new(Argument::StringRemaining), "2")
+        ],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!("change speed of gif"),
@@ -150,7 +188,12 @@ lazy_static! {
         category: "image"
     };
     pub static ref MAGIK_COMMAND: Command = Command {
-        aliases: vec![box_str!("magik"), box_str!("magick"), box_str!("magic"), box_str!("cas")],
+        aliases: vec![
+            box_str!("magik"),
+            box_str!("magick"),
+            box_str!("magic"),
+            box_str!("cas")
+        ],
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
@@ -195,7 +238,10 @@ lazy_static! {
     };
     pub static ref NEON_COMMAND: Command = Command {
         aliases: vec![],
-        args: vec![Argument::ImageBuffer, Argument::OptionalWithDefault(Box::new(Argument::String), "1")],
+        args: vec![
+            Argument::ImageBuffer,
+            Argument::OptionalWithDefault(Box::new(Argument::String), "1")
+        ],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: box_str!("apply neon effect to image"),
@@ -393,6 +439,27 @@ pub async fn run_3d_rotate_command(
     Ok(())
 }
 
+pub async fn run_annmarie_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let image = compress_if_large(context.clone(), raw_image).await?;
+    let endpoint = force_as::text(&args[0]);
+    context.reply_with_text("processing...").await?;
+    let result = annmarie::request_bytes(
+        context.assyst.clone(),
+        &format!("/{}", endpoint),
+        image,
+        &[],
+    )
+    .await
+    .map_err(annmarie::format_err)?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
+}
+
 pub async fn run_caption_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
@@ -409,19 +476,33 @@ pub async fn run_caption_command(
     Ok(())
 }
 
-pub async fn run_gif_loop_command(
+pub async fn run_card_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let image = compress_if_large(context.clone(), raw_image).await?;
     context.reply_with_text("processing...").await?;
-    let result = wsi::gif_loop(context.assyst.clone(), image)
+    let result = annmarie::card(context.assyst.clone(), image)
         .await
-        .map_err(wsi::format_err)?;
+        .map_err(annmarie::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
+}
+
+pub async fn run_gif_loop_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let wsi_fn = wsi::gif_loop;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
+    )
+    .await
 }
 
 pub async fn run_gif_magik_command(
@@ -429,14 +510,13 @@ pub async fn run_gif_magik_command(
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
-    context.reply_with_text("processing...").await?;
-    let result = wsi::gif_magik(context.assyst.clone(), image)
-        .await
-        .map_err(wsi::format_err)?;
-    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
-    context.reply_with_image(format, result).await?;
-    Ok(())
+    let wsi_fn = wsi::gif_magik;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
+    )
+    .await
 }
 
 pub async fn run_gif_scramble_command(
@@ -444,14 +524,13 @@ pub async fn run_gif_scramble_command(
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
-    context.reply_with_text("processing...").await?;
-    let result = wsi::gif_scramble(context.assyst.clone(), image)
-        .await
-        .map_err(wsi::format_err)?;
-    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
-    context.reply_with_image(format, result).await?;
-    Ok(())
+    let wsi_fn = wsi::gif_scramble;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
+    )
+    .await
 }
 
 pub async fn run_gif_speed_command(
@@ -490,14 +569,13 @@ pub async fn run_grayscale_command(
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
-    context.reply_with_text("processing...").await?;
-    let result = wsi::grayscale(context.assyst.clone(), image)
-        .await
-        .map_err(wsi::format_err)?;
-    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
-    context.reply_with_image(format, result).await?;
-    Ok(())
+    let wsi_fn = wsi::grayscale;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
+    )
+    .await
 }
 
 pub async fn run_imagemagick_eval_command(
@@ -521,14 +599,13 @@ pub async fn run_invert_command(
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
-    context.reply_with_text("processing...").await?;
-    let result = wsi::invert(context.assyst.clone(), image)
-        .await
-        .map_err(wsi::format_err)?;
-    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
-    context.reply_with_image(format, result).await?;
-    Ok(())
+    let wsi_fn = wsi::invert;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
+    )
+    .await
 }
 
 pub async fn run_magik_command(
@@ -536,14 +613,13 @@ pub async fn run_magik_command(
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
-    context.reply_with_text("processing...").await?;
-    let result = wsi::magik(context.assyst.clone(), image)
-        .await
-        .map_err(wsi::format_err)?;
-    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
-    context.reply_with_image(format, result).await?;
-    Ok(())
+    let wsi_fn = wsi::magik;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
+    )
+    .await
 }
 
 pub async fn run_motivate_command(
@@ -612,14 +688,13 @@ pub async fn run_printer_command(
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
-    context.reply_with_text("processing...").await?;
-    let result = wsi::printer(context.assyst.clone(), image)
-        .await
-        .map_err(wsi::format_err)?;
-    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
-    context.reply_with_image(format, result).await?;
-    Ok(())
+    let wsi_fn = wsi::printer;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
+    )
+    .await
 }
 
 pub async fn run_rainbow_command(
@@ -627,14 +702,13 @@ pub async fn run_rainbow_command(
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
-    context.reply_with_text("processing...").await?;
-    let result = wsi::rainbow(context.assyst.clone(), image)
-        .await
-        .map_err(wsi::format_err)?;
-    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
-    context.reply_with_image(format, result).await?;
-    Ok(())
+    let wsi_fn = wsi::rainbow;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
+    )
+    .await
 }
 
 pub async fn run_reverse_command(
@@ -642,14 +716,13 @@ pub async fn run_reverse_command(
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
-    context.reply_with_text("processing...").await?;
-    let result = wsi::reverse(context.assyst.clone(), image)
-        .await
-        .map_err(wsi::format_err)?;
-    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
-    context.reply_with_image(format, result).await?;
-    Ok(())
+    let wsi_fn = wsi::reverse;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
+    )
+    .await
 }
 
 pub async fn run_rotate_command(
@@ -677,7 +750,7 @@ pub async fn run_set_loop_command(
     let looping = match force_as::choice(&args[0]) {
         "on" => true,
         "off" => false,
-        _ => unreachable!()
+        _ => unreachable!(),
     };
     context.reply_with_text("processing...").await?;
     let result = wsi::set_loop(context.assyst.clone(), image, looping)
@@ -693,14 +766,13 @@ pub async fn run_spin_command(
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
-    context.reply_with_text("processing...").await?;
-    let result = wsi::spin(context.assyst.clone(), image)
-        .await
-        .map_err(wsi::format_err)?;
-    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
-    context.reply_with_image(format, result).await?;
-    Ok(())
+    let wsi_fn = wsi::spin;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
+    )
+    .await
 }
 
 pub async fn run_spread_command(
@@ -708,14 +780,13 @@ pub async fn run_spread_command(
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
-    context.reply_with_text("processing...").await?;
-    let result = wsi::spread(context.assyst.clone(), image)
-        .await
-        .map_err(wsi::format_err)?;
-    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
-    context.reply_with_image(format, result).await?;
-    Ok(())
+    let wsi_fn = wsi::spread;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
+    )
+    .await
 }
 
 pub async fn run_swirl_command(
@@ -723,14 +794,13 @@ pub async fn run_swirl_command(
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
-    context.reply_with_text("processing...").await?;
-    let result = wsi::swirl(context.assyst.clone(), image)
-        .await
-        .map_err(wsi::format_err)?;
-    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
-    context.reply_with_image(format, result).await?;
-    Ok(())
+    let wsi_fn = wsi::swirl;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
+    )
+    .await
 }
 
 pub async fn run_wall_command(
@@ -738,14 +808,13 @@ pub async fn run_wall_command(
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
-    context.reply_with_text("processing...").await?;
-    let result = wsi::wall(context.assyst.clone(), image)
-        .await
-        .map_err(wsi::format_err)?;
-    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
-    context.reply_with_image(format, result).await?;
-    Ok(())
+    let wsi_fn = wsi::wall;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
+    )
+    .await
 }
 
 pub async fn run_wave_command(
@@ -753,14 +822,13 @@ pub async fn run_wave_command(
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
-    context.reply_with_text("processing...").await?;
-    let result = wsi::wave(context.assyst.clone(), image)
-        .await
-        .map_err(wsi::format_err)?;
-    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
-    context.reply_with_image(format, result).await?;
-    Ok(())
+    let wsi_fn = wsi::wave;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
+    )
+    .await
 }
 
 pub async fn run_wormhole_command(
@@ -768,14 +836,13 @@ pub async fn run_wormhole_command(
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
-    context.reply_with_text("processing...").await?;
-    let result = wsi::wormhole(context.assyst.clone(), image)
-        .await
-        .map_err(wsi::format_err)?;
-    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
-    context.reply_with_image(format, result).await?;
-    Ok(())
+    let wsi_fn = wsi::wormhole;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
+    )
+    .await
 }
 
 pub async fn run_zoom_command(
@@ -783,9 +850,24 @@ pub async fn run_zoom_command(
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
+
+    let wsi_fn = wsi::zoom;
+
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
+    )
+    .await
+}
+
+async fn run_wsi_noarg_command(
+    context: Arc<Context>,
+    raw_image: Bytes,
+    function: wsi::NoArgFunction,
+) -> CommandResult {
     context.reply_with_text("processing...").await?;
-    let result = wsi::zoom(context.assyst.clone(), image)
+    let result = function(context.assyst.clone(), raw_image)
         .await
         .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
