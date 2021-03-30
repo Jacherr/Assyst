@@ -2,7 +2,9 @@ use crate::assyst::Assyst;
 use bytes::Bytes;
 use reqwest::Error;
 use serde::Deserialize;
-use std::sync::Arc;
+use std::{pin::Pin, sync::Arc, future::Future};
+
+pub type NoArgFunction = Box<dyn Fn(Arc<Assyst>, Bytes) -> Pin<Box<dyn Future<Output = Result<Bytes, RequestError>> + Send>> + Send + Sync>;
 
 mod routes {
     pub const _3D_ROTATE: &str = "/3d_rotate";
