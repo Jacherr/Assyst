@@ -10,6 +10,7 @@ mod routes {
     pub const _3D_ROTATE: &str = "/3d_rotate";
     pub const CAPTION: &str = "/caption";
     pub const COMPRESS: &str = "/compress";
+    pub const FIX_TRANSPARENCY: &str = "/fix_transparency";
     pub const GIF_LOOP: &str = "/gif_loop";
     pub const GIF_MAGIK: &str = "/gif_magik";
     pub const GIF_SCRAMBLE: &str = "/gif_scramble";
@@ -93,6 +94,10 @@ pub async fn compress(
         &[("level", &level.to_string())],
     )
     .await
+}
+
+pub async fn fix_transparency(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::FIX_TRANSPARENCY, image, &[]).await
 }
 
 pub async fn motivate(
