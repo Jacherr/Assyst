@@ -8,7 +8,9 @@ use crate::{
         messagebuilder::MessageBuilder,
         registry::CommandResult,
     },
-    util::{codeblock, generate_list, generate_table, get_memory_usage, parse_codeblock, format_time},
+    util::{
+        codeblock, format_time, generate_list, generate_table, get_memory_usage, parse_codeblock,
+    },
 };
 use crate::{
     database::Reminder,
@@ -211,9 +213,10 @@ pub async fn run_help_command(context: Arc<Context>, args: Vec<ParsedArgument>) 
         context
             .reply_with_text(
                 &format!(
-                    "{}\n*Do {}help [command] for more info on a command.*\nInvite the bot: <https://jacher.io/assyst>\nSupport server: <https://discord.gg/JBvJbBEDpA>",
+                    "{}\n*Do {}help [command] for more info on a command.*\nInvite the bot: <https://jacher.io/assyst>\nSupport server: <https://discord.gg/JBvJbBEDpA>\n**Note: The default bot prefix is `{}`**",
                     &command_help_entries.join("\n"),
-                    context.prefix
+                    context.prefix,
+                    context.assyst.config.default_prefix
                 )
             )
             .await
@@ -287,7 +290,10 @@ pub async fn run_invite_command(context: Arc<Context>, _: Vec<ParsedArgument>) -
         .reply(
             MessageBuilder::new()
                 .content(
-                    "Bot invite: <https://jacher.io/assyst>\nSupport server: <https://discord.gg/JBvJbBEDpA>",
+                    &format!(
+                        "Bot invite: <https://jacher.io/assyst>\nSupport server: <https://discord.gg/JBvJbBEDpA>\n**Note: The default bot prefix is `{}`**", 
+                        context.assyst.config.default_prefix
+                    ),
                 )
                 .clone(),
         )

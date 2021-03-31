@@ -16,10 +16,11 @@ use assyst::Assyst;
 use dotenv::dotenv;
 use futures::stream::StreamExt;
 use handler::handle_event;
+use util::get_current_millis;
 use std::env;
 use std::sync::Arc;
 use twilight_gateway::cluster::{Cluster, ShardScheme};
-use twilight_model::gateway::Intents;
+use twilight_model::gateway::{Intents, payload::update_status::UpdateStatusInfo, presence::{Activity, Status, ActivityType}};
 
 #[tokio::main]
 async fn main() {
@@ -27,6 +28,24 @@ async fn main() {
     let token = env::var("DISCORD_TOKEN").unwrap();
 
     let assyst = Arc::new(Assyst::new(&token).await);
+    let activity = Activity {
+        application_id: None,
+        assets: None,
+        created_at: None,
+        details: None,
+        emoji: None,
+        flags: None,
+        id: None,
+        instance: None,
+        kind: ActivityType::Playing,
+        name: format!("{}help | jacher.io/assyst", assyst.config.default_prefix),
+        party: None,
+        secrets: None,
+        state: None,
+        timestamps: None,
+        url: None
+    };
+    let presence = UpdateStatusInfo::new(vec![activity], false, None, Status::Online);
 
     // spawn as many shards as discord recommends
     let scheme = ShardScheme::Auto;
@@ -36,6 +55,7 @@ async fn main() {
     )
     .shard_scheme(scheme)
     .http_client(assyst.http.clone())
+    .presence(presence)
     .build()
     .await
     .unwrap();
