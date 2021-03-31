@@ -75,6 +75,19 @@ lazy_static! {
         cooldown_seconds: 4,
         category: "image"
     };
+    pub static ref FIX_TRANSPARENCY_COMMAND: Command = Command {
+        aliases: vec![box_str!("ft")],
+        args: vec![Argument::ImageBuffer],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: box_str!("if a command breaks the transparency of a gif, use this command to fix it"),
+            examples: vec![box_str!("312715611413413889")],
+            usage: box_str!("[image]")
+        },
+        name: box_str!("fixtransparency"),
+        cooldown_seconds: 4,
+        category: "image"
+    };
     pub static ref GIF_LOOP_COMMAND: Command = Command {
         aliases: vec![box_str!("gloop")],
         args: vec![Argument::ImageBuffer],
@@ -489,6 +502,20 @@ pub async fn run_card_command(
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
+}
+
+pub async fn run_fix_transparency_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let wsi_fn = wsi::fix_transparency;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
+    )
+    .await
 }
 
 pub async fn run_gif_loop_command(
