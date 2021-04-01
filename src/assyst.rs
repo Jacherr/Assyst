@@ -135,12 +135,14 @@ impl Assyst {
             return Ok(());
         }
         let prefix;
+        let mut prefix_is_mention = false;
         if self.config.prefix_override.len() == 0 {
             let mention_prefix = message_mention_prefix(&message.content);
 
             match mention_prefix {
                 Some(p) => {
                     prefix = Cow::Owned(p);
+                    prefix_is_mention = true;
                 }
                 None => {
                     let try_prefix = self
@@ -186,11 +188,13 @@ impl Assyst {
             processing_time_start: start,
         };
 
+        let display_prefix = if prefix_is_mention { "@Assyst " } else { prefix.borrow() };
+
         let context = Arc::new(Context::new(
             self.clone(),
             message.clone(),
             metrics,
-            String::from(prefix.clone()),
+            String::from(display_prefix.clone()),
             reply.clone(),
         ));
 
