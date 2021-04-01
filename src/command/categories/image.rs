@@ -1,5 +1,4 @@
 use crate::{
-    assyst::Assyst,
     box_str,
     command::{
         command::{
@@ -11,7 +10,7 @@ use crate::{
     consts::WORKING_FILESIZE_LIMIT_BYTES,
     rest::{
         annmarie,
-        wsi::{self, RequestError},
+        wsi::{self},
     },
 };
 use crate::{
@@ -20,7 +19,7 @@ use crate::{
 };
 use bytes::Bytes;
 use lazy_static::lazy_static;
-use std::{future::Future, pin::Pin, sync::Arc};
+use std::sync::Arc;
 
 lazy_static! {
     pub static ref _3D_ROTATE_COMMAND: Command = Command {

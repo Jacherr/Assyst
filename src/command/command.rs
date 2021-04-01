@@ -26,7 +26,6 @@ impl ParsedArgument {
 #[derive(PartialEq, Debug)]
 pub enum CommandAvailability {
     Public,
-    RequiresPermission(u16),
     GuildOwner,
     Private,
 }
@@ -35,8 +34,7 @@ impl CommandAvailability {
         match self {
             CommandAvailability::Private => "Private".to_owned(),
             CommandAvailability::Public => "Public".to_owned(),
-            CommandAvailability::GuildOwner => "Guild Owner".to_owned(),
-            CommandAvailability::RequiresPermission(p) => format!("Requires Permissions: {}", p)
+            CommandAvailability::GuildOwner => "Guild Owner".to_owned()
         }
     }
 }
@@ -57,11 +55,6 @@ pub struct CommandParseError<'a> {
     pub error_type: CommandParseErrorType
 }
 impl<'a> CommandParseError<'a> {
-    pub fn set_command(&mut self, command: &'a Command) -> &mut Self {
-        self.command = Some(command);
-        self
-    }
-
     pub fn with_reply(text: String, command: Option<&'a Command>, r#type: CommandParseErrorType) -> Self {
         CommandParseError {
             error: text,
