@@ -2,6 +2,7 @@ use crate::filetype;
 use bytes::Bytes;
 use futures_util::StreamExt;
 use std::{
+    process::Command,
     borrow::Cow,
     convert::TryInto,
     num::ParseIntError,
