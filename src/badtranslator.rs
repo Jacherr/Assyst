@@ -58,6 +58,13 @@ impl BadTranslator {
         Self::with_channels(HashMap::new())
     }
 
+    pub async fn add_channel(&self, id: Snowflake) {
+        if !self.is_disabled().await {
+            let mut lock = self.channels.write().await;
+            lock.insert(id, None);
+        }
+    }
+
     pub fn with_channels(channels: ChannelCache) -> Self {
         Self {
             channels: RwLock::new(channels),
@@ -232,7 +239,7 @@ fn is_webhook(user: &User) -> bool {
     user.system.unwrap_or(false) || user.discriminator == "0000"
 }
 
-fn is_ratelimit_message(assyst: &Assyst, message: &MessageCreate) -> bool {
+fn is_ratelimit_message(_: &Assyst, message: &MessageCreate) -> bool {
     // TODO: check if message was sent by the bot itself
     message.content.contains(constants::RATELIMITED_MESSAGE)
 }

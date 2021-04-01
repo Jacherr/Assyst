@@ -120,8 +120,8 @@ impl Database {
         Ok(channels)
     }
 
-    pub async fn delete_bt_channel(&self, id: u64) -> Result<(), sqlx::Error> {
-        let query = "DELETE FROM bt_channels WHERE id = $1";
+    pub async fn add_bt_channel(&self, id: u64) -> Result<(), sqlx::Error> {
+        let query = r#"INSERT INTO bt_channels VALUES ($1)"#;
 
         sqlx::query(query)
             .bind(id as i64)

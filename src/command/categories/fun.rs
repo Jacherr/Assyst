@@ -1,5 +1,4 @@
 use crate::{
-    box_str,
     command::{
         command::{
             force_as, Argument, Command, CommandAvailability, CommandMetadata, ParsedArgument,
@@ -18,28 +17,28 @@ use std::sync::Arc;
 
 lazy_static! {
     pub static ref BT_COMMAND: Command = Command {
-        aliases: vec![box_str!("bt")],
+        aliases: vec!["bt"],
         args: vec![Argument::StringRemaining],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("Badly translate a message"),
-            examples: vec![box_str!("hello this is a test")],
-            usage: box_str!("[text]")
+            description: "Badly translate a message",
+            examples: vec!["hello this is a test"],
+            usage: "[text]"
         },
-        name: box_str!("badtranslate"),
+        name: "badtranslate",
         cooldown_seconds: 2,
         category: "fun"
     };
     pub static ref OCRBT_COMMAND: Command = Command {
-        aliases: vec![box_str!("ocrbt")],
+        aliases: vec!["ocrbt"],
         args: vec![Argument::ImageUrl],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("OCR and then badly translate a message"),
-            examples: vec![box_str!("https://i.jacher.io/cat.gif")],
-            usage: box_str!("[text]")
+            description: "OCR and then badly translate a message",
+            examples: vec!["https://i.jacher.io/cat.gif"],
+            usage: "[text]"
         },
-        name: box_str!("ocrbadtranslate"),
+        name: "ocrbadtranslate",
         cooldown_seconds: 2,
         category: "fun"
     };
