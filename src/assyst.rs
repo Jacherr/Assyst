@@ -642,7 +642,7 @@ impl Assyst {
     async fn validate_emoji_argument(&self, argument: &str) -> Option<String> {
         let emoji_id = regexes::CUSTOM_EMOJI
             .captures(argument)
-            .and_then(|emoji_id_capture| emoji_id_capture.get(1))
+            .and_then(|emoji_id_capture| emoji_id_capture.get(2))
             .and_then(|id| Some(id.as_str()))
             .and_then(|id| id.parse::<u64>().ok())?;
 

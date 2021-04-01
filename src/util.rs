@@ -1,6 +1,7 @@
 use crate::filetype;
 use bytes::Bytes;
 use futures_util::StreamExt;
+use regex::Captures;
 use std::{
     process::Command,
     borrow::Cow,
@@ -21,7 +22,7 @@ pub mod regexes {
     use regex::Regex;
 
     lazy_static! {
-        pub static ref CUSTOM_EMOJI: Regex = Regex::new(r"<a?:\w+:(\d{16,20})>").unwrap();
+        pub static ref CUSTOM_EMOJI: Regex = Regex::new(r"<a?:(\w+):(\d{16,20})>").unwrap();
         pub static ref TENOR_GIF: Regex = Regex::new(r"https://media1\.tenor\.com/images/[a-zA-Z0-9]+/tenor\.gif").unwrap();
         pub static ref URL: Regex = Regex::new(r"https?://(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)").unwrap();
         pub static ref USER_MENTION: Regex = Regex::new(r"(?:<@!?)?(\d{16,20})>?").unwrap();
@@ -238,4 +239,9 @@ pub fn format_time(input: u64) -> String {
         let amount = input / units::SECOND;
         format!("{} {}", amount, pluralize("second", "s", amount))
     }
+}
+
+pub fn normalize_emojis<'a>(input: &'a str) -> Cow<'a, str> {
+    regexes::CUSTOM_EMOJI
+        .replace_all(input, |c: &Captures| c.get(1).unwrap().as_str().to_string())
 }

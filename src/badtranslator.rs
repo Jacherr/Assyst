@@ -1,5 +1,5 @@
 use crate::assyst::Assyst;
-use crate::{rest::bt, util::get_current_millis, util::sanitize_message_content};
+use crate::{rest::bt, util::get_current_millis, util::sanitize_message_content, util::normalize_emojis};
 use std::borrow::Cow;
 use std::{cmp::min, collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
@@ -35,6 +35,7 @@ mod constants {
     pub const RATELIMITED_MESSAGE: &'static str = "You are sending messages too quickly!";
 }
 
+#[derive(Debug)]
 struct BadTranslatorRatelimit(u64);
 
 impl BadTranslatorRatelimit {
@@ -124,7 +125,10 @@ impl BadTranslator {
         let cache = self.ratelimits.read().await;
 
         if let Some(entry) = cache.get(&id.0) {
-            return !entry.expired();
+            let expired = entry.expired();
+            if !expired {
+                return true
+            }
         }
 
         drop(cache);
@@ -170,9 +174,9 @@ impl BadTranslator {
             return;
         }
 
-        // TODO: transform content (turn ':emoji:' into 'emoji')
+        let content = normalize_emojis(&message.content);
 
-        let translation = match bt::translate(&assyst.reqwest_client, &message.content).await {
+        let translation = match bt::translate(&assyst.reqwest_client, &content).await {
             Ok(res) => Cow::Owned(res),
             Err(bt::TranslateError::Raw(msg)) => Cow::Borrowed(msg),
             _ => return,
