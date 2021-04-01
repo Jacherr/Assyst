@@ -1,5 +1,4 @@
 use crate::{
-    box_str,
     command::{
         command::{
             force_as, Argument, Command, CommandAvailability, CommandMetadata, ParsedArgument,
@@ -27,24 +26,24 @@ lazy_static! {
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("3d rotate an image"),
-            examples: vec![box_str!("312715611413413889")],
-            usage: box_str!("[image]")
+            description: "3d rotate an image",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
         },
-        name: box_str!("3drotate"),
+        name: "3drotate",
         cooldown_seconds: 4,
         category: "image"
     };
     pub static ref ANNMARIE_COMMAND: Command = Command {
-        aliases: vec![box_str!("ann")],
+        aliases: vec!["ann"],
         args: vec![Argument::ImageBuffer, Argument::StringRemaining],
         availability: CommandAvailability::Private,
         metadata: CommandMetadata {
-            description: box_str!("run an image command from an annmarie endpoint"),
-            examples: vec![box_str!("312715611413413889 neon")],
-            usage: box_str!("[image] [endpoint]")
+            description: "run an image command from an annmarie endpoint",
+            examples: vec!["312715611413413889 neon"],
+            usage: "[image] [endpoint]"
         },
-        name: box_str!("annmarie"),
+        name: "annmarie",
         cooldown_seconds: 4,
         category: "image"
     };
@@ -53,11 +52,11 @@ lazy_static! {
         args: vec![Argument::ImageBuffer, Argument::StringRemaining],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("add a caption to an image"),
-            examples: vec![box_str!("312715611413413889 yea")],
-            usage: box_str!("[image] [caption]")
+            description: "add a caption to an image",
+            examples: vec!["312715611413413889 yea"],
+            usage: "[image] [caption]"
         },
-        name: box_str!("caption"),
+        name: "caption",
         cooldown_seconds: 4,
         category: "image"
     };
@@ -66,84 +65,84 @@ lazy_static! {
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("throw away an image on a card"),
-            examples: vec![box_str!("312715611413413889")],
-            usage: box_str!("[image]")
+            description: "throw away an image on a card",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
         },
-        name: box_str!("card"),
+        name: "card",
         cooldown_seconds: 4,
         category: "image"
     };
     pub static ref FIX_TRANSPARENCY_COMMAND: Command = Command {
-        aliases: vec![box_str!("ft")],
+        aliases: vec!["ft"],
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("if a command breaks the transparency of a gif, use this command to fix it"),
-            examples: vec![box_str!("312715611413413889")],
-            usage: box_str!("[image]")
+            description: "if a command breaks the transparency of a gif, use this command to fix it",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
         },
-        name: box_str!("fixtransparency"),
+        name: "fixtransparency",
         cooldown_seconds: 4,
         category: "image"
     };
     pub static ref GIF_LOOP_COMMAND: Command = Command {
-        aliases: vec![box_str!("gloop")],
+        aliases: vec!["gloop"],
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("play a gif forwards then backwards"),
-            examples: vec![box_str!("312715611413413889")],
-            usage: box_str!("[image]")
+            description: "play a gif forwards then backwards",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
         },
-        name: box_str!("gifloop"),
+        name: "gifloop",
         cooldown_seconds: 4,
         category: "image"
     };
     pub static ref GIF_MAGIK_COMMAND: Command = Command {
         aliases: vec![
-            box_str!("gmagik"),
-            box_str!("gmagick"),
-            box_str!("gmagic"),
-            box_str!("gcas")
+            "gmagik",
+            "gmagick",
+            "gmagic",
+            "gcas"
         ],
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("perform content aware scaling recursively on an image"),
-            examples: vec![box_str!("312715611413413889")],
-            usage: box_str!("[image]")
+            description: "perform content aware scaling recursively on an image",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
         },
-        name: box_str!("gifmagik"),
+        name: "gifmagik",
         cooldown_seconds: 4,
         category: "image"
     };
     pub static ref GIF_SCRAMBLE_COMMAND: Command = Command {
-        aliases: vec![box_str!("gscramble")],
+        aliases: vec!["gscramble"],
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("scramble the frames in a gif"),
-            examples: vec![box_str!("312715611413413889")],
-            usage: box_str!("[image]")
+            description: "scramble the frames in a gif",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
         },
-        name: box_str!("gifscramble"),
+        name: "gifscramble",
         cooldown_seconds: 4,
         category: "image"
     };
     pub static ref GIF_SPEED_COMMAND: Command = Command {
-        aliases: vec![box_str!("gspeed")],
+        aliases: vec!["gspeed"],
         args: vec![
             Argument::ImageBuffer,
             Argument::OptionalWithDefault(Box::new(Argument::StringRemaining), "2")
         ],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("change speed of gif"),
-            examples: vec![box_str!("312715611413413889 2")],
-            usage: box_str!("[image] <delay>")
+            description: "change speed of gif",
+            examples: vec!["312715611413413889 2"],
+            usage: "[image] <delay>"
         },
-        name: box_str!("gifspeed"),
+        name: "gifspeed",
         cooldown_seconds: 4,
         category: "image"
     };
@@ -152,24 +151,24 @@ lazy_static! {
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("apply globe effect to image"),
-            examples: vec![box_str!("312715611413413889")],
-            usage: box_str!("[image]")
+            description: "apply globe effect to image",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
         },
-        name: box_str!("globe"),
+        name: "globe",
         cooldown_seconds: 4,
         category: "image"
     };
     pub static ref GRAYSCALE_COMMAND: Command = Command {
-        aliases: vec![box_str!("gray")],
+        aliases: vec!["gray"],
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("grayscale an image"),
-            examples: vec![box_str!("312715611413413889")],
-            usage: box_str!("[image]")
+            description: "grayscale an image",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
         },
-        name: box_str!("grayscale"),
+        name: "grayscale",
         cooldown_seconds: 4,
         category: "image"
     };
@@ -178,11 +177,11 @@ lazy_static! {
         args: vec![Argument::ImageBuffer, Argument::StringRemaining],
         availability: CommandAvailability::Private,
         metadata: CommandMetadata {
-            description: box_str!("evaluate an imagemagick script on an image"),
-            examples: vec![box_str!("312715611413413889 -reverse")],
-            usage: box_str!("[image] [script]")
+            description: "evaluate an imagemagick script on an image",
+            examples: vec!["312715611413413889 -reverse"],
+            usage: "[image] [script]"
         },
-        name: box_str!("ime"),
+        name: "ime",
         cooldown_seconds: 4,
         category: "image"
     };
@@ -191,42 +190,42 @@ lazy_static! {
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("invert an image"),
-            examples: vec![box_str!("312715611413413889")],
-            usage: box_str!("[image]")
+            description: "invert an image",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
         },
-        name: box_str!("invert"),
+        name: "invert",
         cooldown_seconds: 4,
         category: "image"
     };
     pub static ref MAGIK_COMMAND: Command = Command {
         aliases: vec![
-            box_str!("magik"),
-            box_str!("magick"),
-            box_str!("magic"),
-            box_str!("cas")
+            "magik",
+            "magick",
+            "magic",
+            "cas"
         ],
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("perform content aware scaling on an image"),
-            examples: vec![box_str!("312715611413413889")],
-            usage: box_str!("[image]")
+            description: "perform content aware scaling on an image",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
         },
-        name: box_str!("magik"),
+        name: "magik",
         cooldown_seconds: 4,
         category: "image"
     };
     pub static ref PRINTER_COMMAND: Command = Command {
-        aliases: vec![box_str!("print")],
+        aliases: vec!["print"],
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("apply printer effect to image"),
-            examples: vec![box_str!("312715611413413889")],
-            usage: box_str!("[image]")
+            description: "apply printer effect to image",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
         },
-        name: box_str!("printer"),
+        name: "printer",
         cooldown_seconds: 4,
         category: "image"
     };
@@ -235,16 +234,14 @@ lazy_static! {
         args: vec![Argument::ImageBuffer, Argument::StringRemaining],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!(
-                "add motivation caption to an image, separate top and bottom text with | divider"
-            ),
+            description: "add motivation caption to an image, separate top and bottom text with | divider",
             examples: vec![
-                box_str!("MOTIVATION this is funny"),
-                box_str!("HOLY SHIT | get a job")
+                "MOTIVATION this is funny",
+                "HOLY SHIT | get a job"
             ],
-            usage: box_str!("[image] [text separated by a |]")
+            usage: "[image] [text separated by a |]"
         },
-        name: box_str!("motivate"),
+        name: "motivate",
         cooldown_seconds: 4,
         category: "image"
     };
@@ -256,24 +253,24 @@ lazy_static! {
         ],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("apply neon effect to image"),
-            examples: vec![box_str!("312715611413413889")],
-            usage: box_str!("[image] <radius>")
+            description: "apply neon effect to image",
+            examples: vec!["312715611413413889"],
+            usage: "[image] <radius>"
         },
-        name: box_str!("neon"),
+        name: "neon",
         cooldown_seconds: 4,
         category: "image"
     };
     pub static ref OCR_COMMAND: Command = Command {
-        aliases: vec![box_str!("read")],
+        aliases: vec!["read"],
         args: vec![Argument::ImageUrl],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("read the text on an image"),
-            examples: vec![box_str!("312715611413413889")],
-            usage: box_str!("[image]")
+            description: "read the text on an image",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
         },
-        name: box_str!("ocr"),
+        name: "ocr",
         cooldown_seconds: 4,
         category: "image"
     };
@@ -282,11 +279,11 @@ lazy_static! {
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("make an image rainbow"),
-            examples: vec![box_str!("312715611413413889")],
-            usage: box_str!("[image]")
+            description: "make an image rainbow",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
         },
-        name: box_str!("rainbow"),
+        name: "rainbow",
         cooldown_seconds: 4,
         category: "image"
     };
@@ -295,11 +292,11 @@ lazy_static! {
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("reverse a gif"),
-            examples: vec![box_str!("312715611413413889")],
-            usage: box_str!("[image]")
+            description: "reverse a gif",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
         },
-        name: box_str!("reverse"),
+        name: "reverse",
         cooldown_seconds: 4,
         category: "image"
     };
@@ -308,24 +305,24 @@ lazy_static! {
         args: vec![Argument::ImageBuffer, Argument::String],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("rotate an image"),
-            examples: vec![box_str!("312715611413413889 45")],
-            usage: box_str!("[image] [degrees]")
+            description: "rotate an image",
+            examples: vec!["312715611413413889 45"],
+            usage: "[image] [degrees]"
         },
-        name: box_str!("rotate"),
+        name: "rotate",
         cooldown_seconds: 4,
         category: "image"
     };
     pub static ref SET_LOOP_COMMAND: Command = Command {
-        aliases: vec![box_str!("setloop")],
+        aliases: vec!["setloop"],
         args: vec![Argument::ImageBuffer, Argument::Choice(&["on", "off"])],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("choose if you want a gif to loop or not"),
-            examples: vec![box_str!("312715611413413889")],
-            usage: box_str!("[image]")
+            description: "choose if you want a gif to loop or not",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
         },
-        name: box_str!("setlooping"),
+        name: "setlooping",
         cooldown_seconds: 4,
         category: "image"
     };
@@ -334,11 +331,11 @@ lazy_static! {
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("spin an image"),
-            examples: vec![box_str!("312715611413413889")],
-            usage: box_str!("[image]")
+            description: "spin an image",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
         },
-        name: box_str!("spin"),
+        name: "spin",
         cooldown_seconds: 4,
         category: "image"
     };
@@ -347,11 +344,11 @@ lazy_static! {
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("pixel-spread an image"),
-            examples: vec![box_str!("312715611413413889")],
-            usage: box_str!("[image]")
+            description: "pixel-spread an image",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
         },
-        name: box_str!("spread"),
+        name: "spread",
         cooldown_seconds: 4,
         category: "image"
     };
@@ -360,11 +357,11 @@ lazy_static! {
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("swirl an image"),
-            examples: vec![box_str!("312715611413413889")],
-            usage: box_str!("[image]")
+            description: "swirl an image",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
         },
-        name: box_str!("swirl"),
+        name: "swirl",
         cooldown_seconds: 4,
         category: "image"
     };
@@ -373,11 +370,11 @@ lazy_static! {
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("create a wall out of an image"),
-            examples: vec![box_str!("312715611413413889")],
-            usage: box_str!("[image]")
+            description: "create a wall out of an image",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
         },
-        name: box_str!("wall"),
+        name: "wall",
         cooldown_seconds: 4,
         category: "image"
     };
@@ -386,11 +383,11 @@ lazy_static! {
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("create a wave out of an image"),
-            examples: vec![box_str!("312715611413413889")],
-            usage: box_str!("[image]")
+            description: "create a wave out of an image",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
         },
-        name: box_str!("wave"),
+        name: "wave",
         cooldown_seconds: 4,
         category: "image"
     };
@@ -399,11 +396,11 @@ lazy_static! {
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("suck an image into a wormhole"),
-            examples: vec![box_str!("312715611413413889")],
-            usage: box_str!("[image]")
+            description: "suck an image into a wormhole",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
         },
-        name: box_str!("wormhole"),
+        name: "wormhole",
         cooldown_seconds: 4,
         category: "image"
     };
@@ -412,11 +409,11 @@ lazy_static! {
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("zoom into an image"),
-            examples: vec![box_str!("312715611413413889")],
-            usage: box_str!("[image]")
+            description: "zoom into an image",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
         },
-        name: box_str!("zoom"),
+        name: "zoom",
         cooldown_seconds: 4,
         category: "image"
     };

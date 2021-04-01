@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 mod assyst;
 mod badtranslator;
 mod caching;

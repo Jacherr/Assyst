@@ -1,5 +1,4 @@
 use crate::{
-    box_str,
     command::{
         command::{
             force_as, Argument, Command, CommandAvailability, CommandMetadata, ParsedArgument,
@@ -23,28 +22,28 @@ use std::{collections::HashMap, sync::Arc, time::Instant};
 
 lazy_static! {
     pub static ref PING_COMMAND: Command = Command {
-        aliases: vec![box_str!("pong")],
+        aliases: vec!["pong"],
         args: vec![],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("Get Discord WebSocket and REST ping"),
+            description: "Get Discord WebSocket and REST ping",
             examples: vec![],
-            usage: box_str!("")
+            usage: ""
         },
-        name: box_str!("ping"),
+        name: "ping",
         cooldown_seconds: 2,
         category: "misc"
     };
     pub static ref ENLARGE_COMMAND: Command = Command {
-        aliases: vec![box_str!("e")],
+        aliases: vec!["e"],
         args: vec![Argument::ImageUrl],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("enlarge an image"),
-            examples: vec![box_str!("312715611413413889")],
-            usage: box_str!("[image]")
+            description: "enlarge an image",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
         },
-        name: box_str!("enlarge"),
+        name: "enlarge",
         cooldown_seconds: 2,
         category: "misc"
     };
@@ -53,11 +52,11 @@ lazy_static! {
         args: vec![Argument::Optional(Box::new(Argument::String))],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("get help"),
-            examples: vec![box_str!(""), box_str!("caption")],
-            usage: box_str!("<command>")
+            description: "get help",
+            examples: vec!["", "caption"],
+            usage: "<command>"
         },
-        name: box_str!("help"),
+        name: "help",
         cooldown_seconds: 2,
         category: "misc"
     };
@@ -66,11 +65,11 @@ lazy_static! {
         args: vec![],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("get bot invite"),
+            description: "get bot invite",
             examples: vec![],
-            usage: box_str!("")
+            usage: ""
         },
-        name: box_str!("invite"),
+        name: "invite",
         cooldown_seconds: 2,
         category: "misc"
     };
@@ -79,11 +78,11 @@ lazy_static! {
         args: vec![Argument::String],
         availability: CommandAvailability::GuildOwner,
         metadata: CommandMetadata {
-            description: box_str!("set bot prefix"),
-            examples: vec![box_str!("-")],
-            usage: box_str!("[new prefix]")
+            description: "set bot prefix",
+            examples: vec!["-"],
+            usage: "[new prefix]"
         },
-        name: box_str!("prefix"),
+        name: "prefix",
         cooldown_seconds: 2,
         category: "misc"
     };
@@ -92,11 +91,11 @@ lazy_static! {
         args: vec![],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("get bot statistics"),
+            description: "get bot statistics",
             examples: vec![],
-            usage: box_str!("")
+            usage: ""
         },
-        name: box_str!("stats"),
+        name: "stats",
         cooldown_seconds: 2,
         category: "misc"
     };
@@ -109,11 +108,11 @@ lazy_static! {
         ],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("run/benchmark rust code"),
-            examples: vec![box_str!("run stable break rust;")],
-            usage: box_str!("[run|bench] [stable|nightly|beta] [code]")
+            description: "run/benchmark rust code",
+            examples: vec!["run stable break rust;"],
+            usage: "[run|bench] [stable|nightly|beta] [code]"
         },
-        name: box_str!("rust"),
+        name: "rust",
         cooldown_seconds: 2,
         category: "misc"
     };
@@ -122,25 +121,38 @@ lazy_static! {
         args: vec![Argument::String, Argument::StringRemaining],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("set a reminder, time format is xdyhzm (check examples)"),
-            examples: vec![box_str!("1d10h hello"), box_str!("44m yea")],
-            usage: box_str!("[when] [description]")
+            description: "set a reminder, time format is xdyhzm (check examples)",
+            examples: vec!["1d10h hello", "44m yea"],
+            usage: "[when] [description]"
         },
-        name: box_str!("remind"),
+        name: "remind",
         cooldown_seconds: 2,
         category: "misc"
     };
     pub static ref TOP_COMMANDS_COMMAND: Command = Command {
-        aliases: vec![box_str!("tcs")],
+        aliases: vec!["tcs"],
         args: vec![Argument::Optional(Box::new(Argument::String))],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: box_str!("get top command usage info"),
+            description: "get top command usage info",
             examples: vec![],
-            usage: box_str!("")
+            usage: ""
         },
-        name: box_str!("topcmds"),
+        name: "topcmds",
         cooldown_seconds: 2,
+        category: "misc"
+    };
+    pub static ref BT_CHANNEL_COMMAND: Command = Command {
+        aliases: Vec::new(),
+        args: Vec::new(),
+        availability: CommandAvailability::GuildOwner,
+        metadata: CommandMetadata {
+            description: "configures the bad translator feature in this channel",
+            examples: Vec::new(),
+            usage: ""
+        },
+        name: "btchannel",
+        cooldown_seconds: 30,
         category: "misc"
     };
 }
@@ -182,7 +194,7 @@ pub async fn run_enlarge_command(
 
 pub async fn run_help_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
     if args[0].is_nothing() {
-        let mut unique_command_names: Vec<&Box<str>> = Vec::new();
+        let mut unique_command_names: Vec<&str> = Vec::new();
         let mut command_help_entries: Vec<String> = Vec::new();
         let mut command_categories: HashMap<&str, Vec<&str>> = HashMap::new();
 
@@ -467,4 +479,30 @@ pub async fn run_top_commands_command(
         .await
         .map_err(|e| e.to_string())?;
     Ok(())
+}
+
+pub async fn run_btchannel_command(
+    context: Arc<Context>,
+    _: Vec<ParsedArgument>
+) -> CommandResult {
+    let channel_id = context.message.channel_id;
+
+    context.http().create_webhook(channel_id, "Bad Translator")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    context.assyst.database.add_bt_channel(channel_id.0)
+        .await
+        .map_err(|e| {
+            eprintln!("{:?}", e);
+            "Registering BT channel failed. This is likely a bug. Please contact one of the bot developers".to_string()
+        })?;
+
+    context.assyst.badtranslator.add_channel(channel_id.0)
+        .await;
+
+    context.reply_with_text("ok")
+        .await
+        .map_err(|e| e.to_string())
+        .map(|_| ())
 }

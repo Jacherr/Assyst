@@ -75,9 +75,9 @@ impl<'a> CommandParseError<'a> {
 }
 #[derive(Debug)]
 pub struct CommandMetadata {
-    pub description: Box<str>,
-    pub examples: Vec<Box<str>>,
-    pub usage: Box<str>,
+    pub description: &'static str,
+    pub examples: Vec<&'static str>,
+    pub usage: &'static str,
 }
 #[derive(Debug)]
 pub struct ParsedCommand {
@@ -115,11 +115,11 @@ impl ParsedArgumentResult {
 }
 #[derive(Debug)]
 pub struct Command {
-    pub aliases: Vec<Box<str>>,
+    pub aliases: Vec<&'static str>,
     pub args: Vec<Argument>,
     pub availability: CommandAvailability,
     pub metadata: CommandMetadata,
-    pub name: Box<str>,
+    pub name: &'static str,
     pub cooldown_seconds: usize,
     pub category: &'static str
 }
