@@ -14,6 +14,7 @@ use crate::{
         Argument, Command, CommandParseError, CommandParseErrorType, ParsedArgument,
         ParsedArgumentResult, ParsedCommand,
     },
+    consts::BOT_ID,
     metrics::GlobalMetrics,
 };
 use crate::{
@@ -66,7 +67,7 @@ impl Config {
     }
 }
 
-pub fn get_command_and_args<'a>(content: &'a str, prefix: &str) -> Option<(&'a str, Vec<&'a str>)> {
+fn get_command_and_args<'a>(content: &'a str, prefix: &str) -> Option<(&'a str, Vec<&'a str>)> {
     return if !content.starts_with(&prefix) || content.len() == prefix.len() {
         None
     } else {
@@ -76,6 +77,19 @@ pub fn get_command_and_args<'a>(content: &'a str, prefix: &str) -> Option<(&'a s
         args.remove(0);
         Some((cmd, args))
     };
+}
+
+fn message_mention_prefix(content: &str) -> Option<String> {
+    let mention_no_nickname = format!("<@{}>", BOT_ID);
+    let mention_nickname = format!("<@!{}>", BOT_ID);
+
+    if content.starts_with(&mention_no_nickname) {
+        Some(mention_no_nickname)
+    } else if content.starts_with(&mention_nickname) {
+        Some(mention_nickname)
+    } else {
+        None
+    }
 }
 
 pub struct Assyst {
@@ -122,18 +136,30 @@ impl Assyst {
         }
         let prefix;
         if self.config.prefix_override.len() == 0 {
-            let try_prefix = self
-                .database
-                .get_or_set_prefix_for(message.guild_id.unwrap().0, &self.config.default_prefix)
-                .await
-                .map_err(|err| err.to_string())?;
+            let mention_prefix = message_mention_prefix(&message.content);
 
-            match try_prefix {
+            match mention_prefix {
                 Some(p) => {
-                    prefix = p;
+                    prefix = Cow::Owned(p);
                 }
-                None => return Ok(()),
-            };
+                None => {
+                    let try_prefix = self
+                        .database
+                        .get_or_set_prefix_for(
+                            message.guild_id.unwrap().0,
+                            &self.config.default_prefix,
+                        )
+                        .await
+                        .map_err(|err| err.to_string())?;
+
+                    match try_prefix {
+                        Some(p) => {
+                            prefix = p;
+                        }
+                        None => return Ok(()),
+                    };
+                }
+            }
         } else {
             prefix = Cow::Borrowed(&self.config.prefix_override);
         };
@@ -195,11 +221,7 @@ impl Assyst {
         let context_clone = context.clone();
 
         let mut ratelimit_lock = self.command_ratelimits.write().await;
-        let command_instance = &self
-            .registry
-            .commands
-            .get(command.calling_name)
-            .unwrap();
+        let command_instance = &self.registry.commands.get(command.calling_name).unwrap();
         let command_ratelimit = ratelimit_lock
             .time_until_guild_command_usable(message.guild_id.unwrap(), &command_instance.name);
         match command_ratelimit {
@@ -259,7 +281,7 @@ impl Assyst {
                 if !self.config.admins.contains(&message.author.id.0) {
                     Err(CommandParseError::without_reply(
                         "Insufficient Permissions".to_owned(),
-                        CommandParseErrorType::MissingPermissions
+                        CommandParseErrorType::MissingPermissions,
                     ))
                 } else {
                     Ok(())
@@ -270,12 +292,18 @@ impl Assyst {
                     .http
                     .guild(message.guild_id.unwrap())
                     .await
-                    .map_err(|e| CommandParseError::with_reply(e.to_string(), None, CommandParseErrorType::MediaDownloadFail))?
+                    .map_err(|e| {
+                        CommandParseError::with_reply(
+                            e.to_string(),
+                            None,
+                            CommandParseErrorType::MediaDownloadFail,
+                        )
+                    })?
                     .ok_or_else(|| {
                         CommandParseError::with_reply(
                             "Permission validator failed".to_owned(),
                             None,
-                            CommandParseErrorType::MissingPermissions
+                            CommandParseErrorType::MissingPermissions,
                         )
                     })?;
 
@@ -286,14 +314,10 @@ impl Assyst {
                 } else {
                     Err(CommandParseError::without_reply(
                         "Insufficient Permissions".to_owned(),
-                        CommandParseErrorType::MissingPermissions
+                        CommandParseErrorType::MissingPermissions,
                     ))
                 }
             }
-            _ => Err(CommandParseError::without_reply(
-                "Insufficient Permissions".to_owned(),
-                CommandParseErrorType::MissingPermissions
-            )),
         }?;
 
         let parsed_args = self
@@ -534,7 +558,7 @@ impl Assyst {
                 "This command expects an image as an argument, but no image could be found."
                     .to_owned(),
                 None,
-                CommandParseErrorType::MissingArgument
+                CommandParseErrorType::MissingArgument,
             )
         })?;
 
@@ -652,16 +676,14 @@ impl Assyst {
                         .as_ref()
                         .and_then(|img| Some(Cow::Borrowed(img.url.as_ref()?)))
                         .or_else(|| {
-                            embed.thumbnail.as_ref().and_then(|thumbnail| {
-                                Some(Cow::Borrowed(thumbnail.url.as_ref()?))
-                            })
+                            embed
+                                .thumbnail
+                                .as_ref()
+                                .and_then(|thumbnail| Some(Cow::Borrowed(thumbnail.url.as_ref()?)))
                         })
                         .or_else(|| {
                             embed.video.as_ref().and_then(|video| {
-                                Some(Cow::Owned(format!(
-                                    "{}",
-                                    video.url.as_ref()?
-                                )))
+                                Some(Cow::Owned(format!("{}", video.url.as_ref()?)))
                             })
                         })
                 } else {
