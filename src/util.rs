@@ -5,7 +5,6 @@ use std::{
     borrow::Cow,
     convert::TryInto,
     num::ParseIntError,
-    process::Command,
     time::{SystemTime, UNIX_EPOCH},
 };
 

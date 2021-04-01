@@ -6,20 +6,6 @@ use tokio::sync::RwLock;
 
 use crate::{badtranslator::ChannelCache, util::get_current_millis};
 
-macro_rules! generate_query_task {
-    ($query:expr, $pool:expr, $ret:tt, $($v:expr),+) => {{
-        let query = $query;
-        return match sqlx::query_as::<_, $ret>(query)
-            $(.bind($v))+
-            .fetch_one($pool)
-            .await
-            {
-                Ok(_) => Ok(()),
-                Err(err) => Err(err),
-            };
-    }}
-}
-
 #[derive(sqlx::FromRow, Debug)]
 pub struct Reminder {
     pub user_id: i64,

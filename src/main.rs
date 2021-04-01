@@ -16,7 +16,6 @@ use assyst::Assyst;
 use dotenv::dotenv;
 use futures::stream::StreamExt;
 use handler::handle_event;
-use util::get_current_millis;
 use std::env;
 use std::sync::Arc;
 use twilight_gateway::cluster::{Cluster, ShardScheme};
