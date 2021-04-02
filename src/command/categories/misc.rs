@@ -143,16 +143,29 @@ lazy_static! {
         category: "misc"
     };
     pub static ref BT_CHANNEL_COMMAND: Command = Command {
-        aliases: Vec::new(),
-        args: Vec::new(),
+        aliases: vec![],
+        args: vec![],
         availability: CommandAvailability::GuildOwner,
         metadata: CommandMetadata {
             description: "configures the bad translator feature in this channel",
-            examples: Vec::new(),
+            examples: vec![],
             usage: ""
         },
         name: "btchannel",
         cooldown_seconds: 30,
+        category: "misc"
+    };
+    pub static ref CHARS_COMMAND: Command = Command {
+        aliases: vec![],
+        args: vec![Argument::StringRemaining],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: "returns character information for given input",
+            examples: vec![],
+            usage: "[text]"
+        },
+        name: "chars",
+        cooldown_seconds: 1,
         category: "misc"
     };
 }
@@ -502,6 +515,23 @@ pub async fn run_btchannel_command(
         .await;
 
     context.reply_with_text("ok")
+        .await
+        .map_err(|e| e.to_string())
+        .map(|_| ())
+}
+
+pub async fn run_chars_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>
+) -> CommandResult {
+    let arg = force_as::text(&args[0]);
+
+    let output = arg.chars()
+        .take(50)
+        .map(|c| format!("http://www.fileformat.info/info/unicode/char/{:x}\n", c as u32))
+        .collect::<String>();
+
+    context.reply_with_text(&output)
         .await
         .map_err(|e| e.to_string())
         .map(|_| ())

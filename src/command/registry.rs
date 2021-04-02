@@ -140,6 +140,7 @@ impl CommandRegistry {
         register_command!(self, CARD_COMMAND, run_card_command);
         register_command!(self, ANNMARIE_COMMAND, run_annmarie_command);
         register_command!(self, FIX_TRANSPARENCY_COMMAND, run_fix_transparency_command);
-        register_command!(self, BT_CHANNEL_COMMAND, run_btchannel_command)
+        register_command!(self, BT_CHANNEL_COMMAND, run_btchannel_command);
+        register_command!(self, CHARS_COMMAND, run_chars_command);
     }
 }
