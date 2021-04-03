@@ -134,13 +134,13 @@ lazy_static! {
         aliases: vec!["gspeed"],
         args: vec![
             Argument::ImageBuffer,
-            Argument::OptionalWithDefault(Box::new(Argument::StringRemaining), "2")
+            Argument::OptionalWithDefault(Box::new(Argument::Integer), "2")
         ],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: "change speed of gif",
+            description: "change the speed of a gif by setting the delay between frames",
             examples: vec!["312715611413413889 2"],
-            usage: "[image] <delay>"
+            usage: "[image] <delay between frames (2 to 100)>"
         },
         name: "gifspeed",
         cooldown_seconds: 4,
