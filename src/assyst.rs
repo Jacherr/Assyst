@@ -188,7 +188,11 @@ impl Assyst {
             processing_time_start: start,
         };
 
-        let display_prefix = if prefix_is_mention { "@Assyst " } else { prefix.borrow() };
+        let display_prefix = if prefix_is_mention {
+            "@Assyst "
+        } else {
+            prefix.borrow()
+        };
 
         let context = Arc::new(Context::new(
             self.clone(),
@@ -364,6 +368,39 @@ impl Assyst {
         index: &usize,
     ) -> Result<ParsedArgumentResult, CommandParseError<'a>> {
         match arg {
+            Argument::Integer | Argument::Decimal => {
+                if args.len() <= *index {
+                    return Err(CommandParseError::with_reply(
+                        "This command expects a numerical argument, but no argument was provided.".to_owned(),
+                            Some(command),
+                            CommandParseErrorType::MissingArgument
+                    ));
+                }
+
+                let float = args[*index].parse::<f64>()
+                    .map_err(|_| CommandParseError::with_reply(
+                        format!("Invalid number provided: {}", args[*index]),
+                        Some(command),
+                        CommandParseErrorType::MissingArgument
+                    ))?;
+                
+                return match arg {
+                    Argument::Decimal => {
+                        Ok(ParsedArgumentResult::increment(ParsedArgument::Text(
+                            float.to_string()
+                        )))
+                    }
+
+                    Argument::Integer => {
+                        Ok(ParsedArgumentResult::increment(ParsedArgument::Text(
+                            format!("{:.0}", float)
+                        )))
+                    }
+
+                    _ => unreachable!()
+                }
+            }
+
             Argument::Choice(choices) => {
                 if args.len() <= *index {
                     return Err(CommandParseError::with_reply(
@@ -388,6 +425,7 @@ impl Assyst {
                     choice,
                 )))
             }
+
             Argument::ImageUrl | Argument::ImageBuffer => {
                 let argument_to_pass = if args.len() <= *index {
                     ""
@@ -397,6 +435,7 @@ impl Assyst {
                 self.parse_image_argument(message, argument_to_pass, arg)
                     .await
             }
+
             Argument::String => {
                 if args.len() <= *index {
                     return Err(CommandParseError::with_reply(
@@ -409,6 +448,7 @@ impl Assyst {
                     args[*index].to_owned(),
                 )))
             }
+
             Argument::StringRemaining => {
                 if args.len() <= *index {
                     return Err(CommandParseError::with_reply(
@@ -421,6 +461,7 @@ impl Assyst {
                     args[*index..].join(" "),
                 )))
             }
+
             Argument::Optional(a) => {
                 let result = self
                     .parse_argument_nonoptional(message, command, args, &**a, index)
@@ -438,6 +479,7 @@ impl Assyst {
                     }
                 }
             }
+
             Argument::OptionalWithDefault(a, d) => {
                 let result = self
                     .parse_argument_nonoptional(message, command, args, &**a, index)
@@ -469,6 +511,39 @@ impl Assyst {
         index: &usize,
     ) -> Result<ParsedArgumentResult, CommandParseError<'a>> {
         match arg {
+            Argument::Integer | Argument::Decimal => {
+                if args.len() <= *index {
+                    return Err(CommandParseError::with_reply(
+                        "This command expects a numerical argument, but no argument was provided.".to_owned(),
+                            Some(command),
+                            CommandParseErrorType::MissingArgument
+                    ));
+                }
+
+                let float = args[*index].parse::<f64>()
+                    .map_err(|_| CommandParseError::with_reply(
+                        format!("Invalid number provided: {}", args[*index]),
+                        Some(command),
+                        CommandParseErrorType::InvalidArgument
+                    ))?;
+                
+                return match arg {
+                    Argument::Decimal => {
+                        Ok(ParsedArgumentResult::increment(ParsedArgument::Text(
+                            float.to_string()
+                        )))
+                    }
+
+                    Argument::Integer => {
+                        Ok(ParsedArgumentResult::increment(ParsedArgument::Text(
+                            format!("{:.0}", float)
+                        )))
+                    }
+
+                    _ => unreachable!()
+                }
+            }
+
             Argument::Choice(choices) => {
                 if args.len() <= *index {
                     return Err(CommandParseError::with_reply(
