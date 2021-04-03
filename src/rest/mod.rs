@@ -1,26 +1,27 @@
 use bytes::Bytes;
 use reqwest::{Client, Error};
 
+pub mod annmarie;
 pub mod bt;
 pub mod rust;
 pub mod wsi;
-pub mod annmarie;
 
 mod routes {
     pub const CDN: &str = "https://cdn.jacher.io";
     pub const OCR: &str = "http://ocr.y21_.repl.co/?url=";
+    pub const CHARINFO: &str = "https://www.fileformat.info/info/unicode/char/";
 }
 
 pub enum OcrError {
     NetworkError,
-    HtmlResponse
+    HtmlResponse,
 }
 
 impl ToString for OcrError {
     fn to_string(&self) -> String {
         match self {
             Self::NetworkError => "An unknown network error occurred".to_string(),
-            Self::HtmlResponse => "Failed to parse response".to_string()
+            Self::HtmlResponse => "Failed to parse response".to_string(),
         }
     }
 }
@@ -34,12 +35,12 @@ pub async fn ocr_image(client: &Client, url: &str) -> Result<String, OcrError> {
         .text()
         .await
         .map_err(|_| OcrError::NetworkError)?;
-    
+
     if text.to_ascii_lowercase().starts_with("<!doctype html>") {
         return Err(OcrError::HtmlResponse);
     }
 
-    return Ok(text)
+    return Ok(text);
 }
 
 pub async fn upload_to_filer(
@@ -56,4 +57,10 @@ pub async fn upload_to_filer(
         .await?
         .text()
         .await
+}
+
+pub async fn get_char_info(client: &Client, ch: char) -> Result<(String, String), Error> {
+    let url = format!("{}{:x}", routes::CHARINFO, ch as u32);
+
+    Ok((client.get(&url).send().await?.text().await?, url))
 }
