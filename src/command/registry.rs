@@ -122,6 +122,7 @@ impl CommandRegistry {
         register_command!(self, RUST_COMMAND, run_rust_command);
         register_command!(self, REMINDER_COMMAND, run_remind_command);
         register_command!(self, BT_COMMAND, run_bt_command);
+        register_command!(self, BTDEBUG_COMMAND, run_btdebug_command);
         register_command!(self, OCRBT_COMMAND, run_ocrbt_command);
         register_command!(self, TOP_COMMANDS_COMMAND, run_top_commands_command);
         register_command!(self, PREFIX_COMMAND, run_prefix_command);

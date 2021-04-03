@@ -29,6 +29,19 @@ lazy_static! {
         cooldown_seconds: 2,
         category: "fun"
     };
+    pub static ref BTDEBUG_COMMAND: Command = Command {
+        aliases: vec![],
+        args: vec![Argument::StringRemaining],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: "Badly translate a message and returns debug information",
+            examples: vec!["hello this is a test"],
+            usage: "[text]"
+        },
+        name: "btdebug",
+        cooldown_seconds: 2,
+        category: "fun"
+    };
     pub static ref OCRBT_COMMAND: Command = Command {
         aliases: vec!["ocrbt"],
         args: vec![Argument::ImageUrl],
@@ -53,7 +66,19 @@ pub async fn run_bt_command(context: Arc<Context>, args: Vec<ParsedArgument>) ->
             TranslateError::Reqwest(e) => e.to_string(),
         })?;
 
-    
+    let output = format!("**Output**\n{}", translated.result.text);
+    context.reply_with_text(&output).await?;
+    Ok(())
+}
+
+pub async fn run_btdebug_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
+    let text = force_as::text(&args[0]);
+    let translated = translate(&context.assyst.reqwest_client, text)
+        .await
+        .map_err(|e| match e {
+            TranslateError::Raw(e) => e.to_string(),
+            TranslateError::Reqwest(e) => e.to_string(),
+        })?;
 
     let chain = translated.translations.iter()
         .enumerate()
