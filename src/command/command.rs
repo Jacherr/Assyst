@@ -6,6 +6,8 @@ pub enum Argument {
     ImageUrl,
     ImageBuffer,
     StringRemaining,
+    Integer,
+    Decimal,
     Choice(&'static [&'static str]),
     Optional(Box<Argument>),
     OptionalWithDefault(Box<Argument>, &'static str)
