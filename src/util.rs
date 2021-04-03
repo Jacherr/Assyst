@@ -3,10 +3,10 @@ use bytes::Bytes;
 use futures_util::StreamExt;
 use regex::Captures;
 use std::{
-    process::Command,
     borrow::Cow,
     convert::TryInto,
     num::ParseIntError,
+    process::Command,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -242,6 +242,19 @@ pub fn format_time(input: u64) -> String {
 }
 
 pub fn normalize_emojis<'a>(input: &'a str) -> Cow<'a, str> {
-    regexes::CUSTOM_EMOJI
-        .replace_all(input, |c: &Captures| c.get(1).unwrap().as_str().to_string())
+    regexes::CUSTOM_EMOJI.replace_all(input, |c: &Captures| c.get(1).unwrap().as_str().to_string())
+}
+
+pub fn extract_page_title(input: &str) -> Option<String> {
+    let dom = tl::parse(input);
+
+    let tag = dom.find_node(|node| {
+        if let Some(tag) = node.as_tag() {
+            return tag.name() == &Some("title".into());
+        }
+
+        false
+    })?;
+
+    Some(tag.inner_text().into_owned())
 }

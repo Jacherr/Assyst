@@ -8,12 +8,13 @@ use crate::{
         registry::CommandResult,
     },
     util::{
-        codeblock, format_time, generate_list, generate_table, get_memory_usage, parse_codeblock,
+        codeblock, extract_page_title, format_time, generate_list, generate_table,
+        get_memory_usage, parse_codeblock,
     },
 };
 use crate::{
     database::Reminder,
-    rest::rust,
+    rest::{get_char_info, rust},
     util::{get_current_millis, parse_to_millis},
 };
 use futures::TryFutureExt;
@@ -156,7 +157,7 @@ lazy_static! {
         category: "misc"
     };
     pub static ref CHARS_COMMAND: Command = Command {
-        aliases: vec![],
+        aliases: vec!["char"],
         args: vec![Argument::StringRemaining],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
@@ -494,13 +495,12 @@ pub async fn run_top_commands_command(
     Ok(())
 }
 
-pub async fn run_btchannel_command(
-    context: Arc<Context>,
-    _: Vec<ParsedArgument>
-) -> CommandResult {
+pub async fn run_btchannel_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
     let channel_id = context.message.channel_id;
 
-    context.http().create_webhook(channel_id, "Bad Translator")
+    context
+        .http()
+        .create_webhook(channel_id, "Bad Translator")
         .await
         .map_err(|e| e.to_string())?;
 
@@ -511,27 +511,34 @@ pub async fn run_btchannel_command(
             "Registering BT channel failed. This is likely a bug. Please contact one of the bot developers".to_string()
         })?;
 
-    context.assyst.badtranslator.add_channel(channel_id.0)
-        .await;
+    context.assyst.badtranslator.add_channel(channel_id.0).await;
 
-    context.reply_with_text("ok")
+    context
+        .reply_with_text("ok")
         .await
         .map_err(|e| e.to_string())
         .map(|_| ())
 }
 
-pub async fn run_chars_command(
-    context: Arc<Context>,
-    args: Vec<ParsedArgument>
-) -> CommandResult {
+pub async fn run_chars_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
     let arg = force_as::text(&args[0]);
 
-    let output = arg.chars()
-        .take(50)
-        .map(|c| format!("http://www.fileformat.info/info/unicode/char/{:x}\n", c as u32))
-        .collect::<String>();
+    let chars = arg.chars().take(10);
 
-    context.reply_with_text(&output)
+    let mut output = String::new();
+
+    for ch in chars {
+        let (html, url) = get_char_info(&context.assyst.reqwest_client, ch)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let title = extract_page_title(&html).unwrap_or_else(|| "<unknown>".to_owned());
+
+        output.push_str(&format!("`{}` — **{}** ({})\n", ch, title, url));
+    }
+
+    context
+        .reply_with_text(&output)
         .await
         .map_err(|e| e.to_string())
         .map(|_| ())
