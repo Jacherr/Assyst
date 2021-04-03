@@ -46,13 +46,22 @@ lazy_static! {
 
 pub async fn run_bt_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
     let text = force_as::text(&args[0]);
-    let result = translate(&context.assyst.reqwest_client, text)
+    let translated = translate(&context.assyst.reqwest_client, text)
         .await
         .map_err(|e| match e {
             TranslateError::Raw(e) => e.to_string(),
             TranslateError::Reqwest(e) => e.to_string(),
         })?;
-    context.reply_with_text(&result).await?;
+
+    
+
+    let chain = translated.translations.iter()
+        .enumerate()
+        .map(|(index, translation)| format!("{}) {}: {}\n", index + 1, translation.lang, translation.text))
+        .collect::<String>();
+
+    let output = format!("**Output**\n{}\n\n**Language Chain**\n{}", translated.result.text, chain);
+    context.reply_with_text(&output).await?;
     Ok(())
 }
 
@@ -66,14 +75,16 @@ pub async fn run_ocrbt_command(
         .await
         .map_err(|e| e.to_string())?;
     if result.is_empty() {
-        Err("No text detected")?;
+        return Err("No text detected".into());
     };
+
     let translated = translate(&context.assyst.reqwest_client, &result)
         .await
         .map_err(|e| match e {
             TranslateError::Raw(e) => e.to_string(),
             TranslateError::Reqwest(e) => e.to_string(),
         })?;
-    context.reply_with_text(&codeblock(&translated, "")).await?;
+
+    context.reply_with_text(&codeblock(&translated.result.text, "")).await?;
     Ok(())
 }

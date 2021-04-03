@@ -1,39 +1,47 @@
 use reqwest::{Client, Error as ReqwestError};
+use serde::Deserialize;
 
 const API_BASE: &str = "http://translate.y21_.repl.co";
 const MAX_ATTEMPTS: u8 = 5;
 
+#[derive(Debug)]
 pub enum TranslateError {
     Reqwest(ReqwestError),
     Raw(&'static str),
 }
 
-async fn translate_retry(client: &Client, text: &str) -> Result<String, TranslateError> {
+#[derive(Deserialize)]
+pub struct Translation {
+    pub lang: String,
+    pub text: String
+}
+
+#[derive(Deserialize)]
+pub struct TranslateResult {
+    pub translations: Vec<Translation>,
+    pub result: Translation
+}
+
+async fn translate_retry(client: &Client, text: &str) -> Result<TranslateResult, TranslateError> {
     client
         .get(API_BASE)
         .query(&[("text", text)])
         .send()
         .await
         .map_err(TranslateError::Reqwest)?
-        .text()
+        .json()
         .await
         .map_err(TranslateError::Reqwest)
 }
 
-pub async fn translate(client: &Client, text: &str) -> Result<String, TranslateError> {
+pub async fn translate(client: &Client, text: &str) -> Result<TranslateResult, TranslateError> {
     let mut attempt = 0;
 
     while attempt <= MAX_ATTEMPTS {
-        let result = translate_retry(client, text).await?;
-
-        // A bit hacky but if it starts with <!doctype html>, we're assuming we got HTML as response
-        // which probably means the proxy failed for an unknown reason
-        // in which case we're not going to return and keep retrying
-        if !result.starts_with("<!doctype html>") {
-            return Ok(result);
-        }
-
-        eprintln!("Proxy failed! Raw response: {}", result);
+        match translate_retry(client, text).await {
+            Ok(result) => return Ok(result),
+            Err(e) => eprintln!("Proxy failed! {:?}", e)
+        };
 
         attempt += 1;
     }
