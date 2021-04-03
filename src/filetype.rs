@@ -40,7 +40,6 @@ fn check_mp4(that: &[u8]) -> bool {
 }
 
 fn check_webp(that: &[u8]) -> bool {
-    println!("{:?}", &that[bounded_range(0, 12, that.len())]);
     let bytes_offset_removed = &that[bounded_range(8, 12, that.len())];
     sig(bytes_offset_removed, &WEBP)
 }
