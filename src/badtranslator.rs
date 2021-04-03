@@ -177,7 +177,7 @@ impl BadTranslator {
         let content = normalize_emojis(&message.content);
 
         let translation = match bt::translate(&assyst.reqwest_client, &content).await {
-            Ok(res) => Cow::Owned(res),
+            Ok(res) => Cow::Owned(res.result.text),
             Err(bt::TranslateError::Raw(msg)) => Cow::Borrowed(msg),
             _ => return,
         };
