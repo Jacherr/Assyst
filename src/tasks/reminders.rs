@@ -17,8 +17,9 @@ async fn process_single_reminder(
         .build()
         .content(&format!(
             "<@{}> Reminder: {}\n{}",
-            message_link(reminder.guild_id as u64, reminder.channel_id as u64, reminder.message_id as u64),
-            reminder.user_id, reminder.message
+            reminder.user_id,
+            reminder.message,
+            message_link(reminder.guild_id as u64, reminder.channel_id as u64, reminder.message_id as u64)
         ))?
         .await?;
 
