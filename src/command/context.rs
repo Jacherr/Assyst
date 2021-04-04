@@ -90,7 +90,11 @@ impl Context {
     }
 
     pub async fn reply_with_text(&self, text: &str) -> Result<Arc<Message>, String> {
-        let checked_text = if text.len() == 0 { "[Empty Response]" } else { text };
+        let checked_text = if text.len() == 0 {
+            "[Empty Response]"
+        } else {
+            text
+        };
         let builder = MessageBuilder::new().content(checked_text);
         self.reply(builder).await.map_err(|e| e.to_string())
     }

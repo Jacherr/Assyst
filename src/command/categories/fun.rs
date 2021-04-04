@@ -71,7 +71,10 @@ pub async fn run_bt_command(context: Arc<Context>, args: Vec<ParsedArgument>) ->
     Ok(())
 }
 
-pub async fn run_btdebug_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
+pub async fn run_btdebug_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+) -> CommandResult {
     let text = force_as::text(&args[0]);
     let translated = translate(&context.assyst.reqwest_client, text)
         .await
@@ -80,12 +83,24 @@ pub async fn run_btdebug_command(context: Arc<Context>, args: Vec<ParsedArgument
             TranslateError::Reqwest(e) => e.to_string(),
         })?;
 
-    let chain = translated.translations.iter()
+    let chain = translated
+        .translations
+        .iter()
         .enumerate()
-        .map(|(index, translation)| format!("{}) {}: {}\n", index + 1, translation.lang, translation.text))
+        .map(|(index, translation)| {
+            format!(
+                "{}) {}: {}\n",
+                index + 1,
+                translation.lang,
+                translation.text
+            )
+        })
         .collect::<String>();
 
-    let output = format!("**Output**\n{}\n\n**Language Chain**\n{}", translated.result.text, chain);
+    let output = format!(
+        "**Output**\n{}\n\n**Language Chain**\n{}",
+        translated.result.text, chain
+    );
     context.reply_with_text(&output).await?;
     Ok(())
 }
@@ -110,6 +125,8 @@ pub async fn run_ocrbt_command(
             TranslateError::Reqwest(e) => e.to_string(),
         })?;
 
-    context.reply_with_text(&codeblock(&translated.result.text, "")).await?;
+    context
+        .reply_with_text(&codeblock(&translated.result.text, ""))
+        .await?;
     Ok(())
 }

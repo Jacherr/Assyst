@@ -260,5 +260,8 @@ pub fn extract_page_title(input: &str) -> Option<String> {
 }
 
 pub fn message_link(guild_id: u64, channel_id: u64, message_id: u64) -> String {
-    format!("https://discord.com/channels/{}/{}/{}", guild_id, channel_id, message_id)
+    format!(
+        "https://discord.com/channels/{}/{}/{}",
+        guild_id, channel_id, message_id
+    )
 }
