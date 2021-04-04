@@ -13,13 +13,13 @@ pub enum TranslateError {
 #[derive(Deserialize)]
 pub struct Translation {
     pub lang: String,
-    pub text: String
+    pub text: String,
 }
 
 #[derive(Deserialize)]
 pub struct TranslateResult {
     pub translations: Vec<Translation>,
-    pub result: Translation
+    pub result: Translation,
 }
 
 async fn translate_retry(client: &Client, text: &str) -> Result<TranslateResult, TranslateError> {
@@ -40,7 +40,7 @@ pub async fn translate(client: &Client, text: &str) -> Result<TranslateResult, T
     while attempt <= MAX_ATTEMPTS {
         match translate_retry(client, text).await {
             Ok(result) => return Ok(result),
-            Err(e) => eprintln!("Proxy failed! {:?}", e)
+            Err(e) => eprintln!("Proxy failed! {:?}", e),
         };
 
         attempt += 1;

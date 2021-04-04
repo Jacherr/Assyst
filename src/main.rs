@@ -21,7 +21,11 @@ use handler::handle_event;
 use std::env;
 use std::sync::Arc;
 use twilight_gateway::cluster::{Cluster, ShardScheme};
-use twilight_model::gateway::{Intents, payload::update_status::UpdateStatusInfo, presence::{Activity, Status, ActivityType}};
+use twilight_model::gateway::{
+    payload::update_status::UpdateStatusInfo,
+    presence::{Activity, ActivityType, Status},
+    Intents,
+};
 
 #[tokio::main]
 async fn main() {
@@ -44,7 +48,7 @@ async fn main() {
         secrets: None,
         state: None,
         timestamps: None,
-        url: None
+        url: None,
     };
     let presence = UpdateStatusInfo::new(vec![activity], false, None, Status::Online);
 

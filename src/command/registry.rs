@@ -72,7 +72,10 @@ impl CommandRegistry {
         *lock = true;
 
         let command_name = &self.commands.get(parsed_command.calling_name).unwrap().name;
-        assyst.database.increment_command_uses(&command_name).await
+        assyst
+            .database
+            .increment_command_uses(&command_name)
+            .await
             .map_err(|e| e.to_string())?;
 
         result

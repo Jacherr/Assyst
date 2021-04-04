@@ -2,9 +2,13 @@ use crate::assyst::Assyst;
 use bytes::Bytes;
 use reqwest::Error;
 use serde::Deserialize;
-use std::{pin::Pin, sync::Arc, future::Future};
+use std::{future::Future, pin::Pin, sync::Arc};
 
-pub type NoArgFunction = Box<dyn Fn(Arc<Assyst>, Bytes) -> Pin<Box<dyn Future<Output = Result<Bytes, RequestError>> + Send>> + Send + Sync>;
+pub type NoArgFunction = Box<
+    dyn Fn(Arc<Assyst>, Bytes) -> Pin<Box<dyn Future<Output = Result<Bytes, RequestError>> + Send>>
+        + Send
+        + Sync,
+>;
 
 mod routes {
     pub const _3D_ROTATE: &str = "/3d_rotate";
@@ -165,7 +169,6 @@ pub async fn printer(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, Request
     request_bytes(assyst, routes::PRINTER, image, &[]).await
 }
 
-
 pub async fn rainbow(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::RAINBOW, image, &[]).await
 }
@@ -182,8 +185,18 @@ pub async fn rotate(
     request_bytes(assyst, routes::ROTATE, image, &[("degrees", degrees)]).await
 }
 
-pub async fn set_loop(assyst: Arc<Assyst>, image: Bytes, looping: bool) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::SET_LOOP, image, &[("loop", &looping.to_string())]).await
+pub async fn set_loop(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    looping: bool,
+) -> Result<Bytes, RequestError> {
+    request_bytes(
+        assyst,
+        routes::SET_LOOP,
+        image,
+        &[("loop", &looping.to_string())],
+    )
+    .await
 }
 
 pub async fn spin(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
