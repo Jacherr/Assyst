@@ -183,7 +183,6 @@ impl Assyst {
         drop(reply_lock);
         drop(replies);
 
-        let t_command = self.parse_command(&message, &prefix).await;
         let metrics = Metrics {
             processing_time_start: start,
         };
@@ -201,6 +200,8 @@ impl Assyst {
             String::from(display_prefix.clone()),
             reply.clone(),
         ));
+
+        let t_command = self.parse_command(&context, &prefix).await;
 
         let command = match t_command {
             Ok(res) => match res {
@@ -270,10 +271,10 @@ impl Assyst {
 
     pub async fn parse_command(
         &self,
-        message: &Message,
+        context: &Arc<Context>,
         prefix: &str,
     ) -> Result<Option<ParsedCommand>, CommandParseError<'_>> {
-        let content = &message.content;
+        let content = &context.message.content;
         let command_details = get_command_and_args(&content, &prefix).unwrap_or(("", vec![]));
         let try_command = self
             .registry
@@ -286,7 +287,7 @@ impl Assyst {
         match command.availability {
             CommandAvailability::Public => Ok(()),
             CommandAvailability::Private => {
-                if !self.config.admins.contains(&message.author.id.0) {
+                if !self.config.admins.contains(&context.message.author.id.0) {
                     Err(CommandParseError::without_reply(
                         "Insufficient Permissions".to_owned(),
                         CommandParseErrorType::MissingPermissions,
@@ -298,7 +299,7 @@ impl Assyst {
             CommandAvailability::GuildOwner => {
                 let guild = self
                     .http
-                    .guild(message.guild_id.unwrap())
+                    .guild(context.message.guild_id.unwrap())
                     .await
                     .map_err(|e| {
                         CommandParseError::with_reply(
@@ -315,8 +316,8 @@ impl Assyst {
                         )
                     })?;
 
-                if guild.owner_id == message.author.id
-                    || self.config.admins.contains(&message.author.id.0)
+                if guild.owner_id == context.message.author.id
+                    || self.config.admins.contains(&context.message.author.id.0)
                 {
                     Ok(())
                 } else {
@@ -329,7 +330,7 @@ impl Assyst {
         }?;
 
         let parsed_args = self
-            .parse_arguments(&message, &command, command_details.1)
+            .parse_arguments(context, &command, command_details.1)
             .await?;
         Ok(Some(ParsedCommand {
             calling_name: &command.name,
@@ -339,7 +340,7 @@ impl Assyst {
 
     async fn parse_arguments<'a>(
         &self,
-        message: &Message,
+        context: &Arc<Context>,
         command: &'a Command,
         args: Vec<&str>,
     ) -> Result<Vec<ParsedArgument>, CommandParseError<'a>> {
@@ -347,7 +348,7 @@ impl Assyst {
         let mut index: usize = 0;
         for arg in &command.args {
             let result = self
-                .parse_argument(message, command, &args, arg, &index)
+                .parse_argument(context, command, &args, arg, &index)
                 .await?;
             parsed_args.push(result.value);
             if result.should_break {
@@ -361,7 +362,7 @@ impl Assyst {
 
     async fn parse_argument<'a>(
         &self,
-        message: &Message,
+        context: &Arc<Context>,
         command: &'a Command,
         args: &Vec<&str>,
         arg: &Argument,
@@ -432,7 +433,7 @@ impl Assyst {
                 } else {
                     args[*index]
                 };
-                self.parse_image_argument(message, argument_to_pass, arg)
+                self.parse_image_argument(&context.message, argument_to_pass, arg)
                     .await
             }
 
@@ -464,7 +465,7 @@ impl Assyst {
 
             Argument::Optional(a) => {
                 let result = self
-                    .parse_argument_nonoptional(message, command, args, &**a, index)
+                    .parse_argument_nonoptional(&context.message, command, args, &**a, index)
                     .await;
                 match result {
                     Ok(p) => Ok(p),
@@ -482,7 +483,7 @@ impl Assyst {
 
             Argument::OptionalWithDefault(a, d) => {
                 let result = self
-                    .parse_argument_nonoptional(message, command, args, &**a, index)
+                    .parse_argument_nonoptional(&context.message, command, args, &**a, index)
                     .await;
                 match result {
                     Ok(p) => Ok(p),
@@ -492,6 +493,25 @@ impl Assyst {
                                 return Ok(ParsedArgumentResult::increment(ParsedArgument::Text(
                                     d.to_owned().to_owned(),
                                 )))
+                            }
+                            _ => (),
+                        }
+                        Err(e)
+                    }
+                }
+            }
+
+            Argument::OptionalWithDefaultDynamic(arg, default) => {
+                let result = self
+                    .parse_argument_nonoptional(&context.message, command, args, &**arg, index)
+                    .await;
+
+                match result {
+                    Ok(p) => Ok(p),
+                    Err(e) => {
+                        match e.error_type {
+                            CommandParseErrorType::MissingArgument => {
+                                return Ok(ParsedArgumentResult::increment(default(context.clone())))
                             }
                             _ => (),
                         }
