@@ -145,6 +145,16 @@ impl Database {
             .and_then(|_| Ok(()))
     }
 
+    pub async fn fetch_user_reminders(&self, user: u64, count: u64) -> Result<Vec<Reminder>, sqlx::Error> {
+        let query = r#"SELECT * FROM reminders WHERE user_id = $1 ORDER BY timestamp ASC LIMIT $2"#;
+
+        sqlx::query_as::<_, Reminder>(query)
+            .bind(user as i64)
+            .bind(count as i64)
+            .fetch_all(&self.pool)
+            .await
+    }
+
     pub async fn fetch_reminders(&self, time_delta: i64) -> Result<Vec<Reminder>, sqlx::Error> {
         let query = "SELECT * FROM reminders WHERE timestamp < $1";
 
