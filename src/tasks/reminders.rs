@@ -1,4 +1,4 @@
-use crate::{assyst::Assyst, database::Reminder};
+use crate::{assyst::Assyst, database::Reminder, util::message_link};
 use std::{sync::Arc, time::Duration};
 use tokio::time::sleep;
 use twilight_model::id::{ChannelId, UserId};
@@ -16,7 +16,8 @@ async fn process_single_reminder(
         .parse_specific_users(vec![UserId::from(reminder.user_id as u64)])
         .build()
         .content(&format!(
-            "<@{}> Reminder: {}",
+            "<@{}> Reminder: {}\n{}",
+            message_link(reminder.guild_id as u64, reminder.channel_id as u64, reminder.message_id as u64),
             reminder.user_id, reminder.message
         ))?
         .await?;

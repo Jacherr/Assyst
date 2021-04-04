@@ -119,12 +119,17 @@ lazy_static! {
     };
     pub static ref REMINDER_COMMAND: Command = Command {
         aliases: vec![],
-        args: vec![Argument::String, Argument::StringRemaining],
+        args: vec![
+            Argument::String,
+            Argument::OptionalWithDefaultDynamic(Box::new(Argument::StringRemaining), |_| {
+                ParsedArgument::Text(String::from("..."))
+            })
+        ],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
             description: "set a reminder, time format is xdyhzm (check examples)",
             examples: vec!["1d10h hello", "44m yea"],
-            usage: "[when] [description]"
+            usage: "[when|list] <[description]>"
         },
         name: "remind",
         cooldown_seconds: 2,
@@ -426,7 +431,29 @@ pub async fn run_rust_command(context: Arc<Context>, args: Vec<ParsedArgument>) 
 
 pub async fn run_remind_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
     let time = force_as::text(&args[0]);
-    let comment = force_as::text(&args[1]);
+
+    if time == "list" {
+        let user_id = context.message.author.id.0;
+
+        // If the first argument is "list", then we want to fetch a list of reminders
+        let reminders = context.assyst.database
+            .fetch_user_reminders(user_id, 10)
+            .await
+            .map_err(|e| e.to_string())?
+            .iter()
+            .map(|reminder| format!("In {}: `{}`\n", format_time(reminder.timestamp as u64 - get_current_millis()), reminder.message))
+            .collect::<String>();
+
+        let output = format!(":calendar: Upcoming Reminders\n\n{}", reminders);
+    
+        context.reply_with_text(&output).await.unwrap();
+        return Ok(());
+    }
+
+    let comment = match args.get(1) {
+        Some(ParsedArgument::Text(arg)) => arg,
+        _ => return Err("No comment provided".to_owned())
+    };
 
     let time = parse_to_millis(time).map_err(|e| e.to_string())? as u64;
 
