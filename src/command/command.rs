@@ -1,4 +1,8 @@
+use std::sync::Arc;
+
 use bytes::Bytes;
+
+use super::context::Context;
 
 #[derive(Debug)]
 pub enum Argument {
@@ -10,7 +14,8 @@ pub enum Argument {
     Decimal,
     Choice(&'static [&'static str]),
     Optional(Box<Argument>),
-    OptionalWithDefault(Box<Argument>, &'static str)
+    OptionalWithDefault(Box<Argument>, &'static str),
+    OptionalWithDefaultDynamic(Box<Argument>, fn(Arc<Context>) -> ParsedArgument)
 }
 #[derive(Debug, PartialEq)]
 pub enum ParsedArgument {
