@@ -12,7 +12,7 @@ mod routes {
 
 #[derive(Deserialize)]
 pub struct AnnmarieError {
-    pub message: Box<str>
+    pub message: Box<str>,
 }
 
 pub enum RequestError {
@@ -42,7 +42,10 @@ pub async fn request_bytes(
             .map_err(|err| RequestError::Reqwest(err.to_string()))?;
         Err(RequestError::Annmarie(json, status))
     } else {
-        let bytes = result.bytes().await.map_err(|e| RequestError::Reqwest(e.to_string()))?;
+        let bytes = result
+            .bytes()
+            .await
+            .map_err(|e| RequestError::Reqwest(e.to_string()))?;
         Ok(bytes)
     };
 }

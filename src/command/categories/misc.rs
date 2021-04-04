@@ -436,23 +436,35 @@ pub async fn run_remind_command(context: Arc<Context>, args: Vec<ParsedArgument>
         let user_id = context.message.author.id.0;
 
         // If the first argument is "list", then we want to fetch a list of reminders
-        let reminders = context.assyst.database
+        let reminders = context
+            .assyst
+            .database
             .fetch_user_reminders(user_id, 10)
             .await
             .map_err(|e| e.to_string())?
             .iter()
-            .map(|reminder| format!("In {}: `{}`\n", format_time(reminder.timestamp as u64 - get_current_millis()), reminder.message))
+            .map(|reminder| {
+                format!(
+                    "In {}: `{}`\n",
+                    format_time(reminder.timestamp as u64 - get_current_millis()),
+                    reminder.message
+                )
+            })
             .collect::<String>();
 
-        let output = format!(":calendar: Upcoming Reminders\n\n{}", reminders);
-    
+        let output = if reminders.len() > 0 {
+            format!(":calendar: **Upcoming Reminders:**\n\n{}", reminders)
+        } else {
+            ":calendar: You have no set reminders.".to_owned()
+        };
+
         context.reply_with_text(&output).await.unwrap();
         return Ok(());
     }
 
     let comment = match args.get(1) {
         Some(ParsedArgument::Text(arg)) => arg,
-        _ => return Err("No comment provided".to_owned())
+        _ => return Err("No comment provided".to_owned()),
     };
 
     let time = parse_to_millis(time).map_err(|e| e.to_string())? as u64;

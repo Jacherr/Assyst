@@ -372,34 +372,32 @@ impl Assyst {
             Argument::Integer | Argument::Decimal => {
                 if args.len() <= *index {
                     return Err(CommandParseError::with_reply(
-                        "This command expects a numerical argument, but no argument was provided.".to_owned(),
-                            Some(command),
-                            CommandParseErrorType::MissingArgument
+                        "This command expects a numerical argument, but no argument was provided."
+                            .to_owned(),
+                        Some(command),
+                        CommandParseErrorType::MissingArgument,
                     ));
                 }
 
-                let float = args[*index].parse::<f64>()
-                    .map_err(|_| CommandParseError::with_reply(
+                let float = args[*index].parse::<f64>().map_err(|_| {
+                    CommandParseError::with_reply(
                         format!("Invalid number provided: {}", args[*index]),
                         Some(command),
-                        CommandParseErrorType::MissingArgument
-                    ))?;
-                
+                        CommandParseErrorType::MissingArgument,
+                    )
+                })?;
+
                 return match arg {
-                    Argument::Decimal => {
-                        Ok(ParsedArgumentResult::increment(ParsedArgument::Text(
-                            float.to_string()
-                        )))
-                    }
+                    Argument::Decimal => Ok(ParsedArgumentResult::increment(ParsedArgument::Text(
+                        float.to_string(),
+                    ))),
 
-                    Argument::Integer => {
-                        Ok(ParsedArgumentResult::increment(ParsedArgument::Text(
-                            format!("{:.0}", float)
-                        )))
-                    }
+                    Argument::Integer => Ok(ParsedArgumentResult::increment(ParsedArgument::Text(
+                        format!("{:.0}", float),
+                    ))),
 
-                    _ => unreachable!()
-                }
+                    _ => unreachable!(),
+                };
             }
 
             Argument::Choice(choices) => {
@@ -511,7 +509,9 @@ impl Assyst {
                     Err(e) => {
                         match e.error_type {
                             CommandParseErrorType::MissingArgument => {
-                                return Ok(ParsedArgumentResult::increment(default(context.clone())))
+                                return Ok(ParsedArgumentResult::increment(default(
+                                    context.clone(),
+                                )))
                             }
                             _ => (),
                         }
@@ -534,34 +534,32 @@ impl Assyst {
             Argument::Integer | Argument::Decimal => {
                 if args.len() <= *index {
                     return Err(CommandParseError::with_reply(
-                        "This command expects a numerical argument, but no argument was provided.".to_owned(),
-                            Some(command),
-                            CommandParseErrorType::MissingArgument
+                        "This command expects a numerical argument, but no argument was provided."
+                            .to_owned(),
+                        Some(command),
+                        CommandParseErrorType::MissingArgument,
                     ));
                 }
 
-                let float = args[*index].parse::<f64>()
-                    .map_err(|_| CommandParseError::with_reply(
+                let float = args[*index].parse::<f64>().map_err(|_| {
+                    CommandParseError::with_reply(
                         format!("Invalid number provided: {}", args[*index]),
                         Some(command),
-                        CommandParseErrorType::InvalidArgument
-                    ))?;
-                
+                        CommandParseErrorType::InvalidArgument,
+                    )
+                })?;
+
                 return match arg {
-                    Argument::Decimal => {
-                        Ok(ParsedArgumentResult::increment(ParsedArgument::Text(
-                            float.to_string()
-                        )))
-                    }
+                    Argument::Decimal => Ok(ParsedArgumentResult::increment(ParsedArgument::Text(
+                        float.to_string(),
+                    ))),
 
-                    Argument::Integer => {
-                        Ok(ParsedArgumentResult::increment(ParsedArgument::Text(
-                            format!("{:.0}", float)
-                        )))
-                    }
+                    Argument::Integer => Ok(ParsedArgumentResult::increment(ParsedArgument::Text(
+                        format!("{:.0}", float),
+                    ))),
 
-                    _ => unreachable!()
-                }
+                    _ => unreachable!(),
+                };
             }
 
             Argument::Choice(choices) => {

@@ -145,7 +145,11 @@ impl Database {
             .and_then(|_| Ok(()))
     }
 
-    pub async fn fetch_user_reminders(&self, user: u64, count: u64) -> Result<Vec<Reminder>, sqlx::Error> {
+    pub async fn fetch_user_reminders(
+        &self,
+        user: u64,
+        count: u64,
+    ) -> Result<Vec<Reminder>, sqlx::Error> {
         let query = r#"SELECT * FROM reminders WHERE user_id = $1 ORDER BY timestamp ASC LIMIT $2"#;
 
         sqlx::query_as::<_, Reminder>(query)
@@ -189,10 +193,7 @@ impl Database {
 
     pub async fn increment_command_uses(&self, command: &str) -> Result<(), sqlx::Error> {
         let query = "insert into command_uses (command_name, uses) values ($1, 1) on conflict (command_name) do update set uses = command_uses.uses + 1 where command_uses.command_name = $1;";
-        sqlx::query(query)
-            .bind(command)
-            .execute(&self.pool)
-            .await?;
+        sqlx::query(query).bind(command).execute(&self.pool).await?;
         Ok(())
     }
 }
