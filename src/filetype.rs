@@ -6,7 +6,7 @@ pub enum Type {
     JPEG,
     MP4,
     PNG,
-    WEBP
+    WEBP,
 }
 impl Type {
     pub fn as_str(&self) -> &'static str {
@@ -15,7 +15,7 @@ impl Type {
             Type::JPEG => "jpeg",
             Type::MP4 => "mp4",
             Type::PNG => "png",
-            Type::WEBP => "webp"
+            Type::WEBP => "webp",
         }
     }
 }
@@ -45,11 +45,20 @@ fn check_webp(that: &[u8]) -> bool {
 }
 
 pub fn get_sig(buf: &[u8]) -> Option<Type> {
-    if buf.len() < 8 { return None };
-    if sig(buf, &GIF) { Some(Type::GIF) }
-    else if sig(buf, &JPEG) { Some(Type::JPEG) }
-    else if check_mp4(buf) { Some(Type::MP4) }
-    else if sig(buf, &PNG) { Some(Type::PNG) }
-    else if check_webp(buf) { Some(Type::WEBP) }
-    else { None }
+    if buf.len() < 8 {
+        return None;
+    };
+    if sig(buf, &GIF) {
+        Some(Type::GIF)
+    } else if sig(buf, &JPEG) {
+        Some(Type::JPEG)
+    } else if check_mp4(buf) {
+        Some(Type::MP4)
+    } else if sig(buf, &PNG) {
+        Some(Type::PNG)
+    } else if check_webp(buf) {
+        Some(Type::WEBP)
+    } else {
+        None
+    }
 }

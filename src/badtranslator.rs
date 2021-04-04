@@ -1,5 +1,7 @@
 use crate::assyst::Assyst;
-use crate::{rest::bt, util::get_current_millis, util::sanitize_message_content, util::normalize_emojis};
+use crate::{
+    rest::bt, util::get_current_millis, util::normalize_emojis, util::sanitize_message_content,
+};
 use std::borrow::Cow;
 use std::{cmp::min, collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
@@ -127,7 +129,7 @@ impl BadTranslator {
         if let Some(entry) = cache.get(&id.0) {
             let expired = entry.expired();
             if !expired {
-                return true
+                return true;
             }
         }
 

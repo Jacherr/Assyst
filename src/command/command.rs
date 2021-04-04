@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use bytes::Bytes;
 
@@ -15,14 +15,14 @@ pub enum Argument {
     Choice(&'static [&'static str]),
     Optional(Box<Argument>),
     OptionalWithDefault(Box<Argument>, &'static str),
-    OptionalWithDefaultDynamic(Box<Argument>, fn(Arc<Context>) -> ParsedArgument)
+    OptionalWithDefaultDynamic(Box<Argument>, fn(Arc<Context>) -> ParsedArgument),
 }
 #[derive(Debug, PartialEq)]
 pub enum ParsedArgument {
     Text(String),
     Binary(Bytes),
     Choice(&'static str),
-    Nothing
+    Nothing,
 }
 impl ParsedArgument {
     pub fn is_nothing(&self) -> bool {
@@ -41,7 +41,7 @@ impl CommandAvailability {
         match self {
             CommandAvailability::Private => "Private".to_owned(),
             CommandAvailability::Public => "Public".to_owned(),
-            CommandAvailability::GuildOwner => "Guild Owner".to_owned()
+            CommandAvailability::GuildOwner => "Guild Owner".to_owned(),
         }
     }
 }
@@ -52,22 +52,26 @@ pub enum CommandParseErrorType {
     InvalidArgument,
     MediaDownloadFail,
     MissingPermissions,
-    Other
+    Other,
 }
 #[derive(Debug)]
 pub struct CommandParseError<'a> {
     pub error: String,
     pub should_reply: bool,
     pub command: Option<&'a Command>,
-    pub error_type: CommandParseErrorType
+    pub error_type: CommandParseErrorType,
 }
 impl<'a> CommandParseError<'a> {
-    pub fn with_reply(text: String, command: Option<&'a Command>, r#type: CommandParseErrorType) -> Self {
+    pub fn with_reply(
+        text: String,
+        command: Option<&'a Command>,
+        r#type: CommandParseErrorType,
+    ) -> Self {
         CommandParseError {
             error: text,
             should_reply: true,
             command,
-            error_type: r#type
+            error_type: r#type,
         }
     }
 
@@ -76,7 +80,7 @@ impl<'a> CommandParseError<'a> {
             error: text,
             should_reply: false,
             command: None,
-            error_type: r#type
+            error_type: r#type,
         }
     }
 }
@@ -128,7 +132,7 @@ pub struct Command {
     pub metadata: CommandMetadata,
     pub name: &'static str,
     pub cooldown_seconds: usize,
-    pub category: &'static str
+    pub category: &'static str,
 }
 
 pub mod force_as {
@@ -157,3 +161,13 @@ pub mod force_as {
         }
     }
 }
+
+pub enum FlagInnerType {
+    Boolean,
+    String,
+    Integer,
+    Decimal,
+    Choice(&'static [&'static str]),
+}
+
+pub type Flags = HashMap<&'static str, Option<&'static str>>;

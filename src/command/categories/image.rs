@@ -78,7 +78,8 @@ lazy_static! {
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: "if a command breaks the transparency of a gif, use this command to fix it",
+            description:
+                "if a command breaks the transparency of a gif, use this command to fix it",
             examples: vec!["312715611413413889"],
             usage: "[image]"
         },
@@ -100,12 +101,7 @@ lazy_static! {
         category: "image"
     };
     pub static ref GIF_MAGIK_COMMAND: Command = Command {
-        aliases: vec![
-            "gmagik",
-            "gmagick",
-            "gmagic",
-            "gcas"
-        ],
+        aliases: vec!["gmagik", "gmagick", "gmagic", "gcas"],
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
@@ -199,12 +195,7 @@ lazy_static! {
         category: "image"
     };
     pub static ref MAGIK_COMMAND: Command = Command {
-        aliases: vec![
-            "magik",
-            "magick",
-            "magic",
-            "cas"
-        ],
+        aliases: vec!["magik", "magick", "magic", "cas"],
         args: vec![Argument::ImageBuffer],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
@@ -234,11 +225,9 @@ lazy_static! {
         args: vec![Argument::ImageBuffer, Argument::StringRemaining],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
-            description: "add motivation caption to an image, separate top and bottom text with | divider",
-            examples: vec![
-                "MOTIVATION this is funny",
-                "HOLY SHIT | get a job"
-            ],
+            description:
+                "add motivation caption to an image, separate top and bottom text with | divider",
+            examples: vec!["MOTIVATION this is funny", "HOLY SHIT | get a job"],
             usage: "[image] [text separated by a |]"
         },
         name: "motivate",

@@ -1,3 +1,3 @@
+pub mod fun;
 pub mod image;
 pub mod misc;
-pub mod fun;
