@@ -193,7 +193,7 @@ impl Uptime {
     }
 }
 
-fn unit_to_ms(u: &str) -> u32 {
+fn unit_to_ms(u: &str) -> u64 {
     match u {
         "s" => 1000,
         "m" => 1000 * 60,
@@ -203,13 +203,13 @@ fn unit_to_ms(u: &str) -> u32 {
     }
 }
 
-pub fn parse_to_millis(input: &str) -> Result<u32, ParseIntError> {
+pub fn parse_to_millis(input: &str) -> Result<u64, ParseIntError> {
     let matches = regexes::TIME_STRING.captures_iter(input);
 
-    let mut total = 0u32;
+    let mut total = 0;
 
     for current in matches {
-        let amount = current[1].parse::<u32>()?;
+        let amount = current[1].parse::<u64>()?;
         let unit = unit_to_ms(&current[2]);
 
         total += amount * unit;
