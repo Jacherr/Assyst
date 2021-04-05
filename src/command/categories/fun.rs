@@ -1,4 +1,5 @@
 use crate::{
+    consts,
     command::{
         command::{
             force_as, Argument, Command, CommandAvailability, CommandMetadata, ParsedArgument,
@@ -88,12 +89,20 @@ pub async fn run_btdebug_command(
         .iter()
         .enumerate()
         .map(|(index, translation)| {
-            format!(
+            let output = format!(
                 "{}) {}: {}\n",
                 index + 1,
                 translation.lang,
                 translation.text
-            )
+            );
+
+            let suffix = if output.len() > consts::MAX_CHAIN_LENGTH {
+                "…\n"
+            } else {
+                "\n"
+            };
+
+            output.chars().take(consts::MAX_CHAIN_LENGTH).collect::<String>() + suffix
         })
         .collect::<String>();
 
