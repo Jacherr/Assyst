@@ -230,6 +230,6 @@ pub async fn zoom(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestErr
 pub fn format_err(err: RequestError) -> String {
     match err {
         RequestError::Reqwest(e) => e.to_string(),
-        RequestError::Wsi(e) => format!("Error {}: {}", e.code, e.message),
+        RequestError::Wsi(e) => e.message.to_string()
     }
 }

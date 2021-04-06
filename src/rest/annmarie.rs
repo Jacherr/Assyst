@@ -65,6 +65,6 @@ pub async fn neon(assyst: Arc<Assyst>, image: Bytes, radius: &str) -> Result<Byt
 pub fn format_err(err: RequestError) -> String {
     match err {
         RequestError::Reqwest(e) => e,
-        RequestError::Annmarie(e, c) => format!("Error {}: {}", c.as_u16(), e.message),
+        RequestError::Annmarie(e, c) => e.message.to_string(),
     }
 }
