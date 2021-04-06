@@ -2,6 +2,7 @@ use crate::filetype;
 use bytes::Bytes;
 use futures_util::StreamExt;
 use regex::Captures;
+use twilight_model::channel::Message;
 use std::{
     borrow::Cow,
     convert::TryInto,
@@ -264,4 +265,13 @@ pub fn message_link(guild_id: u64, channel_id: u64, message_id: u64) -> String {
         "https://discord.com/channels/{}/{}/{}",
         guild_id, channel_id, message_id
     )
+}
+
+pub fn get_sticker_url_from_message(message: &Message) -> Option<String> {
+    message.stickers.get(0).and_then(|s| {
+        Some(format!(
+            "https://distok.top/stickers/{}/{}-small.gif",
+            s.pack_id, s.id
+        ))
+    })
 }

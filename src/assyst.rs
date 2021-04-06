@@ -20,7 +20,7 @@ use crate::{
 use crate::{
     command::{context::Context, registry::CommandRegistry},
     consts::ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES,
-    util::{download_content, regexes},
+    util::{download_content, get_sticker_url_from_message, regexes},
 };
 use bytes::Bytes;
 use reqwest::Client as ReqwestClient;
@@ -754,14 +754,11 @@ impl Assyst {
     }
 
     fn validate_message_attachment(&self, message: &Message) -> Option<String> {
-        message.attachments.first().and_then(|a| Some(a.url.clone())).or_else(|| {
-            message.stickers.get(0).and_then(|s| {
-                Some(format!(
-                    "https://distok.top/stickers/{}/{}.gif",
-                    s.pack_id, s.id
-                ))
-            })
-        })
+        message
+            .attachments
+            .first()
+            .and_then(|a| Some(a.url.clone()))
+            .or_else(|| get_sticker_url_from_message(message))
     }
 
     async fn validate_previous_message_attachment(&self, message: &Message) -> Option<String> {
@@ -795,14 +792,7 @@ impl Assyst {
                         .attachments
                         .first()
                         .and_then(|a| Some(Cow::Borrowed(&a.url)))
-                        .or_else(|| {
-                            message.stickers.get(0).and_then(|s| {
-                                Some(Cow::Owned(format!(
-                                    "https://distok.top/stickers/{}/{}.gif",
-                                    s.pack_id, s.id
-                                )))
-                            })
-                        })
+                        .or_else(|| Some(Cow::Owned(get_sticker_url_from_message(message)?)))
                 }
             })
             .collect();
