@@ -784,7 +784,18 @@ impl Assyst {
                             })
                         })
                 } else {
-                    Some(Cow::Borrowed(&message.attachments.first()?.url))
+                    message
+                        .attachments
+                        .first()
+                        .and_then(|a| Some(Cow::Borrowed(&a.url)))
+                        .or_else(|| {
+                            message.stickers.get(0).and_then(|s| {
+                                Some(Cow::Owned(format!(
+                                    "https://distok.top/stickers/{}/{}.gif",
+                                    s.pack_id, s.id
+                                )))
+                            })
+                        })
                 }
             })
             .collect();
