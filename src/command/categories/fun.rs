@@ -9,7 +9,8 @@ use crate::{
     },
     rest::{
         self,
-        bt::{translate, TranslateError},
+        bt::bad_translate,
+        bt::translate_single
     },
     util::codeblock,
 };
@@ -56,16 +57,26 @@ lazy_static! {
         cooldown_seconds: 2,
         category: "fun"
     };
+    pub static ref OCRTR_COMMAND: Command = Command {
+        aliases: vec!["ocrtr"],
+        args: vec![Argument::String, Argument::ImageUrl],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: "OCR and then translate a message",
+            examples: vec!["https://i.jacher.io/cat.gif"],
+            usage: "[lang] [text]"
+        },
+        name: "ocrtranslate",
+        cooldown_seconds: 2,
+        category: "fun"
+    };
 }
 
 pub async fn run_bt_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
     let text = force_as::text(&args[0]);
-    let translated = translate(&context.assyst.reqwest_client, text)
+    let translated = bad_translate(&context.assyst.reqwest_client, text)
         .await
-        .map_err(|e| match e {
-            TranslateError::Raw(e) => e.to_string(),
-            TranslateError::Reqwest(e) => e.to_string(),
-        })?;
+        .map_err(|e| e.to_string())?;
 
     let output = format!("**Output**\n{}", translated.result.text);
     context.reply_with_text(&output).await?;
@@ -77,12 +88,9 @@ pub async fn run_btdebug_command(
     args: Vec<ParsedArgument>,
 ) -> CommandResult {
     let text = force_as::text(&args[0]);
-    let translated = translate(&context.assyst.reqwest_client, text)
+    let translated = bad_translate(&context.assyst.reqwest_client, text)
         .await
-        .map_err(|e| match e {
-            TranslateError::Raw(e) => e.to_string(),
-            TranslateError::Reqwest(e) => e.to_string(),
-        })?;
+        .map_err(|e| e.to_string())?;
 
     let chain = translated
         .translations
@@ -127,12 +135,33 @@ pub async fn run_ocrbt_command(
         return Err("No text detected".into());
     };
 
-    let translated = translate(&context.assyst.reqwest_client, &result)
+    let translated = bad_translate(&context.assyst.reqwest_client, &result)
         .await
-        .map_err(|e| match e {
-            TranslateError::Raw(e) => e.to_string(),
-            TranslateError::Reqwest(e) => e.to_string(),
-        })?;
+        .map_err(|e| e.to_string())?;
+
+    context
+        .reply_with_text(&codeblock(&translated.result.text, ""))
+        .await?;
+    Ok(())
+}
+
+pub async fn run_ocrtr_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let lang = force_as::text(&args[0]);
+    let image = force_as::text(&args[1]);
+
+    let result = rest::ocr_image(&context.assyst.reqwest_client, image)
+        .await
+        .map_err(|e| e.to_string())?;
+    if result.is_empty() {
+        return Err("No text detected".into());
+    };
+
+    let translated = translate_single(&context.assyst.reqwest_client, &result, lang)
+        .await
+        .map_err(|e| e.to_string())?;
 
     context
         .reply_with_text(&codeblock(&translated.result.text, ""))

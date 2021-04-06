@@ -14,7 +14,7 @@ use crate::{
 };
 use crate::{
     database::Reminder,
-    rest::{get_char_info, rust},
+    rest::{get_char_info, rust, bt::{translate_single}},
     util::{get_current_millis, parse_to_millis},
 };
 use futures::TryFutureExt;
@@ -171,6 +171,19 @@ lazy_static! {
             usage: "[text]"
         },
         name: "chars",
+        cooldown_seconds: 1,
+        category: "misc"
+    };
+    pub static ref TRANSLATE_COMMAND: Command = Command {
+        aliases: vec!["tr"],
+        args: vec![Argument::String, Argument::StringRemaining],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: "translates given text",
+            examples: vec![],
+            usage: "[language] [text]"
+        },
+        name: "translate",
         cooldown_seconds: 1,
         category: "misc"
     };
@@ -581,4 +594,21 @@ pub async fn run_chars_command(context: Arc<Context>, args: Vec<ParsedArgument>)
         .await
         .map_err(|e| e.to_string())
         .map(|_| ())
+}
+
+pub async fn run_translate_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
+    let lang = force_as::text(&args[0]);
+    let text = force_as::text(&args[1]);
+
+    let translation = translate_single(
+        &context.assyst.reqwest_client,
+        text,
+        lang
+    ).await.map_err(|e| e.to_string())?;
+
+    context.reply_with_text(&translation.result.text)
+        .await
+        .unwrap();
+
+    Ok(())
 }
