@@ -754,7 +754,14 @@ impl Assyst {
     }
 
     fn validate_message_attachment(&self, message: &Message) -> Option<String> {
-        Some(message.attachments.first()?.url.clone())
+        message.attachments.first().and_then(|a| Some(a.url.clone())).or_else(|| {
+            message.stickers.get(0).and_then(|s| {
+                Some(format!(
+                    "https://distok.top/stickers/{}/{}.gif",
+                    s.pack_id, s.id
+                ))
+            })
+        })
     }
 
     async fn validate_previous_message_attachment(&self, message: &Message) -> Option<String> {
