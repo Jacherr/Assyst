@@ -114,7 +114,7 @@ impl Context {
         };
         if let Some(content) = message_builder.content {
             create_message =
-                create_message.content(&content[0..std::cmp::min(content.len(), 1999)])?;
+                create_message.content(&content.chars().take(2000).collect::<String>())?
         };
         if let Some(embed) = message_builder.embed {
             create_message = create_message.embed(embed)?;

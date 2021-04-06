@@ -146,5 +146,7 @@ impl CommandRegistry {
         register_command!(self, FIX_TRANSPARENCY_COMMAND, run_fix_transparency_command);
         register_command!(self, BT_CHANNEL_COMMAND, run_btchannel_command);
         register_command!(self, CHARS_COMMAND, run_chars_command);
+        register_command!(self, TRANSLATE_COMMAND, run_translate_command);
+        register_command!(self, OCRTR_COMMAND, run_ocrtr_command);
     }
 }
