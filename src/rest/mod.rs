@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use bytes::Bytes;
 use reqwest::{Client, Error};
 
@@ -5,6 +7,7 @@ pub mod annmarie;
 pub mod bt;
 pub mod rust;
 pub mod wsi;
+mod maryjane;
 
 mod routes {
     pub const CDN: &str = "https://cdn.jacher.io";
@@ -63,4 +66,8 @@ pub async fn get_char_info(client: &Client, ch: char) -> Result<(String, String)
     let url = format!("{}{:x}", routes::CHARINFO, ch as u32);
 
     Ok((client.get(&url).send().await?.text().await?, url))
+}
+
+pub fn parse_path_parameter(path: String, param: (&str, &str)) -> String {
+        path.replace(&format!(":{}", param.0), param.1)
 }
