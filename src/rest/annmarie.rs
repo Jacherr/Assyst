@@ -29,6 +29,10 @@ pub async fn request_bytes(
     let result = assyst
         .reqwest_client
         .post(&format!("{}{}", assyst.config.annmarie_url, route))
+        .header(
+            reqwest::header::AUTHORIZATION,
+            assyst.config.annmarie_auth.as_ref(),
+        )
         .query(query)
         .body(image)
         .send()

@@ -52,9 +52,11 @@ impl DatabaseInfo {
 pub struct Config {
     pub admins: HashSet<u64>,
     pub annmarie_url: Box<str>,
+    pub annmarie_auth: Box<str>,
     database: DatabaseInfo,
     pub default_prefix: Box<str>,
     pub disable_bad_translator: bool,
+    pub maryjane_url: Box<str>,
     pub prefix_override: Box<str>,
     pub user_blacklist: HashSet<u64>,
     pub wsi_url: Box<str>,
