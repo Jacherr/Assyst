@@ -149,5 +149,7 @@ impl CommandRegistry {
         register_command!(self, TRANSLATE_COMMAND, run_translate_command);
         register_command!(self, OCRTR_COMMAND, run_ocrtr_command);
         register_command!(self, AHSHIT_COMMAND, run_ahshit_command);
+        register_command!(self, ZOOM_BLUR_COMMAND, run_zoom_blur_command);
+        register_command!(self, PAINT_COMMAND, run_paint_command);
     }
 }

@@ -16,6 +16,8 @@ mod routes {
     pub const CARD: &str = "/card";
     pub const GLOBE: &str = "/globe";
     pub const NEON: &str = "/neon";
+    pub const PAINT: &str = "/paint";
+    pub const ZOOM_BLUR: &str = "/zoom-blur";
 }
 
 #[derive(Deserialize)]
@@ -51,12 +53,14 @@ pub async fn request_bytes(
         .send()
         .await
         .map_err(|_| RequestError::Reqwest("A network error occurred".to_owned()))?;
+
     let status = result.status();
+
     return if status != reqwest::StatusCode::OK {
         let json = result
             .json::<AnnmarieError>()
             .await
-            .map_err(|err| RequestError::Reqwest(err.to_string()))?;
+            .map_err(|_| RequestError::Reqwest("There was an error decoding the response.".to_owned()))?;
         Err(RequestError::Annmarie(json, status))
     } else {
         let bytes = result
@@ -81,6 +85,14 @@ pub async fn globe(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestEr
 
 pub async fn neon(assyst: Arc<Assyst>, image: Bytes, radius: &str) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::NEON, image, &[("radius", radius)]).await
+}
+
+pub async fn paint(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::PAINT, image, &[]).await
+}
+
+pub async fn zoom_blur(assyst: Arc<Assyst>, image: Bytes, power: &str) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::ZOOM_BLUR, image, &[("power", power)]).await
 }
 
 pub fn format_err(err: RequestError) -> String {
