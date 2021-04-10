@@ -276,6 +276,19 @@ lazy_static! {
         cooldown_seconds: 4,
         category: "image"
     };
+    pub static ref PAINT_COMMAND: Command = Command {
+        aliases: vec![],
+        args: vec![Argument::ImageBuffer],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: "paint an image",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
+        },
+        name: "paint",
+        cooldown_seconds: 4,
+        category: "image"
+    };
     pub static ref RAINBOW_COMMAND: Command = Command {
         aliases: vec![],
         args: vec![Argument::ImageBuffer],
@@ -419,28 +432,29 @@ lazy_static! {
         cooldown_seconds: 4,
         category: "image"
     };
-}
-
-async fn compress_if_large(context: Arc<Context>, image: Bytes) -> Result<Bytes, String> {
-    let five_mb = 5000000;
-    if image.len() > WORKING_FILESIZE_LIMIT_BYTES {
-        let comparator = image.len() - WORKING_FILESIZE_LIMIT_BYTES;
-        let fuzz_level = comparator / five_mb;
-        context.reply_with_text("compressing...").await?;
-        wsi::compress(context.assyst.clone(), image, fuzz_level)
-            .await
-            .map_err(wsi::format_err)
-    } else {
-        Ok(image)
-    }
+    pub static ref ZOOM_BLUR_COMMAND: Command = Command {
+        aliases: vec!["zb"],
+        args: vec![
+            Argument::ImageBuffer,
+            Argument::OptionalWithDefault(Box::new(Argument::String), "1")
+        ],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: "apply zoom blur effect to image",
+            examples: vec!["312715611413413889"],
+            usage: "[image] <power>"
+        },
+        name: "zoomblur",
+        cooldown_seconds: 4,
+        category: "image"
+    };
 }
 
 pub async fn run_3d_rotate_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
-    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
+    let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     context.reply_with_text("processing...").await?;
     let result = wsi::_3d_rotate(context.assyst.clone(), image)
         .await
@@ -468,8 +482,7 @@ pub async fn run_annmarie_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
-    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
+    let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let endpoint = force_as::text(&args[0]);
     context.reply_with_text("processing...").await?;
     let result = annmarie::request_bytes(
@@ -489,8 +502,7 @@ pub async fn run_caption_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
-    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
+    let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let text = force_as::text(&args[0]);
     context.reply_with_text("processing...").await?;
     let result = wsi::caption(context.assyst.clone(), image, text)
@@ -575,8 +587,7 @@ pub async fn run_gif_speed_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
-    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
+    let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let delay = force_as::text(&args[0]);
     context.reply_with_text("processing...").await?;
     let result = wsi::gif_speed(context.assyst.clone(), image, delay)
@@ -619,8 +630,7 @@ pub async fn run_imagemagick_eval_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
-    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
+    let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let text = force_as::text(&args[0]);
     context.reply_with_text("processing...").await?;
     let result = wsi::imagemagick_eval(context.assyst.clone(), image, text)
@@ -663,8 +673,7 @@ pub async fn run_motivate_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
-    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
+    let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let text = force_as::text(&args[0]);
 
     let divider: String;
@@ -692,8 +701,7 @@ pub async fn run_neon_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
-    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
+    let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let radius = force_as::text(&args[0]);
     context.reply_with_text("processing...").await?;
     let result = annmarie::neon(context.assyst.clone(), image, radius)
@@ -718,6 +726,20 @@ pub async fn run_ocr_command(
     };
     context.reply_with_text(&codeblock(&result, "")).await?;
     Ok(())
+}
+
+pub async fn run_paint_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let annmarie_fn = annmarie::paint;
+    run_annmarie_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(annmarie_fn(assyst, bytes))),
+    )
+    .await
 }
 
 pub async fn run_printer_command(
@@ -766,8 +788,7 @@ pub async fn run_rotate_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
-    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
+    let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let degrees = force_as::text(&args[0]);
     context.reply_with_text("processing...").await?;
     let result = wsi::rotate(context.assyst.clone(), image, degrees)
@@ -782,8 +803,7 @@ pub async fn run_set_loop_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
-    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
+    let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let looping = match force_as::choice(&args[0]) {
         "on" => true,
         "off" => false,
@@ -896,6 +916,21 @@ pub async fn run_zoom_command(
         Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
     )
     .await
+}
+
+pub async fn run_zoom_blur_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let power = force_as::text(&args[0]);
+    context.reply_with_text("processing...").await?;
+    let result = annmarie::zoom_blur(context.assyst.clone(), image, power)
+        .await
+        .map_err(annmarie::format_err)?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
 }
 
 async fn run_wsi_noarg_command(
