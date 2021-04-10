@@ -18,6 +18,7 @@ pub struct AnnmarieError {
 pub enum RequestError {
     Reqwest(String),
     Annmarie(AnnmarieError, StatusCode),
+    InvalidStatus(reqwest::StatusCode)
 }
 
 pub async fn request_bytes(
@@ -70,5 +71,6 @@ pub fn format_err(err: RequestError) -> String {
     match err {
         RequestError::Reqwest(e) => e,
         RequestError::Annmarie(e, _) => e.message.to_string(),
+        RequestError::InvalidStatus(e) => e.to_string()
     }
 }

@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use bytes::Bytes;
 use reqwest::{Client, Error};
 
@@ -7,7 +5,7 @@ pub mod annmarie;
 pub mod bt;
 pub mod rust;
 pub mod wsi;
-mod maryjane;
+pub mod maryjane;
 
 mod routes {
     pub const CDN: &str = "https://cdn.jacher.io";

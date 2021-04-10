@@ -13,30 +13,30 @@ mod routes {
 
 #[derive(Deserialize)]
 pub struct Application {
-    applicaton: ApplicationApp,
-    bot: ApplicationBot,
-}
-
-#[derive(Deserialize)]
-pub struct ApplicationBot {
-    id: usize,
-    name: String,
-    icon: Option<String>,
-    description: Option<String>,
-    summary: Option<String>,
-    bot_public: bool,
-    bot_require_code_grant: bool,
+    pub application: ApplicationApp,
+    pub bot: ApplicationBot,
 }
 
 #[derive(Deserialize)]
 pub struct ApplicationApp {
-    id: usize,
-    username: String,
-    avatar: Option<String>,
-    discriminator: u16,
-    flags: u32,
-    bot: bool,
-    guilds: usize,
+    pub id: String,
+    pub name: String,
+    pub icon: Option<String>,
+    pub description: Option<String>,
+    pub summary: Option<String>,
+    pub bot_public: bool,
+    pub bot_require_code_grant: bool,
+}
+
+#[derive(Deserialize)]
+pub struct ApplicationBot {
+    pub id: String,
+    pub username: String,
+    pub avatar: Option<String>,
+    pub discriminator: String,
+    pub flags: u32,
+    pub bot: bool,
+    pub guild_count: usize,
 }
 
 pub async fn get<'a, T: DeserializeOwned>(
@@ -44,9 +44,11 @@ pub async fn get<'a, T: DeserializeOwned>(
     route: &str,
     query: &[(&str, &str)],
 ) -> Result<T, RequestError> {
+    let url = format!("{}{}", assyst.config.maryjane_url, route);
+
     let result = assyst
         .reqwest_client
-        .post(&format!("{}{}", assyst.config.maryjane_url, route))
+        .get(&url)
         .header(
             reqwest::header::AUTHORIZATION,
             assyst.config.annmarie_auth.as_ref(),
@@ -56,12 +58,17 @@ pub async fn get<'a, T: DeserializeOwned>(
         .await
         .map_err(|_| RequestError::Reqwest("A network error occurred".to_owned()))?;
 
+    let status = result.status();
+    if status != reqwest::StatusCode::OK {
+        return Err(RequestError::InvalidStatus(status));
+    };
+
     result
         .json::<T>()
         .await
         .map_err(|e| RequestError::Reqwest(e.to_string()))
 }
 
-pub async fn get_application(assyst: Arc<Assyst>, id: &str) -> Result<Application, RequestError> {
-    get(assyst, &parse_path_parameter(routes::APPLICATION.to_owned(), ("id", id)), &[]).await
+pub async fn get_application(assyst: Arc<Assyst>, id: u64) -> Result<Application, RequestError> {
+    get::<Application>(assyst, &parse_path_parameter(routes::APPLICATION.to_owned(), ("id", &id.to_string())), &[]).await
 }
