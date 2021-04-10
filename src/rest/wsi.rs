@@ -24,6 +24,7 @@ mod routes {
     pub const INVERT: &str = "/invert";
     pub const MAGIK: &str = "/magik";
     pub const MOTIVATE: &str = "/motivate";
+    pub const PREPROCESS: &str = "/preprocess";
     pub const PRINTER: &str = "/printer";
     pub const RAINBOW: &str = "/rainbow";
     pub const REVERSE: &str = "/reverse";
@@ -163,6 +164,10 @@ pub async fn invert(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestE
 
 pub async fn magik(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::MAGIK, image, &[]).await
+}
+
+pub async fn preprocess(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::PREPROCESS, image, &[]).await
 }
 
 pub async fn printer(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
