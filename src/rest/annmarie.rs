@@ -13,6 +13,7 @@ pub type NoArgFunction = Box<
 
 mod routes {
     pub const AHSHIT: &str = "/ahshit";
+    pub const APRILFOOLS: &str = "/april-fools";
     pub const CARD: &str = "/card";
     pub const GLOBE: &str = "/globe";
     pub const NEON: &str = "/neon";
@@ -73,6 +74,10 @@ pub async fn request_bytes(
 
 pub async fn ahshit(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::AHSHIT, image, &[]).await
+}
+
+pub async fn aprilfools(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::APRILFOOLS, image, &[]).await
 }
 
 pub async fn card(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {

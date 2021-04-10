@@ -448,6 +448,19 @@ lazy_static! {
         cooldown_seconds: 4,
         category: "image"
     };
+    pub static ref APRIL_FOOLS_COMMAND: Command = Command {
+        aliases: vec![],
+        args: vec![Argument::ImageBuffer],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: "april fools",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
+        },
+        name: "aprilfools",
+        cooldown_seconds: 4,
+        category: "image"
+    };
 }
 
 pub async fn run_3d_rotate_command(
@@ -959,4 +972,18 @@ async fn run_annmarie_noarg_command(
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
+}
+
+pub async fn run_aprilfools_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let annmarie_fn = annmarie::aprilfools;
+    run_annmarie_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(annmarie_fn(assyst, bytes))),
+    )
+    .await
 }
