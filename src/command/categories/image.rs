@@ -34,6 +34,19 @@ lazy_static! {
         cooldown_seconds: 4,
         category: "image"
     };
+    pub static ref AHSHIT_COMMAND: Command = Command {
+        aliases: vec![],
+        args: vec![Argument::ImageBuffer],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: "ah shit here we go again",
+            examples: vec!["312715611413413889"],
+            usage: "[image]"
+        },
+        name: "ahshit",
+        cooldown_seconds: 4,
+        category: "image"
+    };
     pub static ref ANNMARIE_COMMAND: Command = Command {
         aliases: vec!["ann"],
         args: vec![Argument::ImageBuffer, Argument::StringRemaining],
@@ -437,6 +450,20 @@ pub async fn run_3d_rotate_command(
     Ok(())
 }
 
+pub async fn run_ahshit_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let annmarie_fn = annmarie::ahshit;
+    run_annmarie_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(annmarie_fn(assyst, bytes))),
+    )
+    .await
+}
+
 pub async fn run_annmarie_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
@@ -479,14 +506,13 @@ pub async fn run_card_command(
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
-    context.reply_with_text("processing...").await?;
-    let result = annmarie::card(context.assyst.clone(), image)
-        .await
-        .map_err(annmarie::format_err)?;
-    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
-    context.reply_with_image(format, result).await?;
-    Ok(())
+    let annmarie_fn = annmarie::card;
+    run_annmarie_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(annmarie_fn(assyst, bytes))),
+    )
+    .await
 }
 
 pub async fn run_fix_transparency_command(
@@ -566,14 +592,13 @@ pub async fn run_globe_command(
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let image = compress_if_large(context.clone(), raw_image).await?;
-    context.reply_with_text("processing...").await?;
-    let result = annmarie::globe(context.assyst.clone(), image)
-        .await
-        .map_err(annmarie::format_err)?;
-    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
-    context.reply_with_image(format, result).await?;
-    Ok(())
+    let annmarie_fn = annmarie::globe;
+    run_annmarie_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(annmarie_fn(assyst, bytes))),
+    )
+    .await
 }
 
 pub async fn run_grayscale_command(
@@ -882,6 +907,20 @@ async fn run_wsi_noarg_command(
     let result = function(context.assyst.clone(), raw_image)
         .await
         .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
+}
+
+async fn run_annmarie_noarg_command(
+    context: Arc<Context>,
+    raw_image: Bytes,
+    function: annmarie::NoArgFunction,
+) -> CommandResult {
+    context.reply_with_text("processing...").await?;
+    let result = function(context.assyst.clone(), raw_image)
+        .await
+        .map_err(annmarie::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
