@@ -25,6 +25,7 @@ use crate::{
 use bytes::Bytes;
 use reqwest::Client as ReqwestClient;
 use serde::Deserialize;
+use twilight_gateway::Cluster;
 use std::{borrow::Borrow, sync::Arc};
 use std::{borrow::Cow, time::Instant};
 use std::{collections::HashSet, fs::read_to_string};
@@ -53,6 +54,7 @@ pub struct Config {
     pub admins: HashSet<u64>,
     pub annmarie_url: Box<str>,
     pub annmarie_auth: Box<str>,
+    pub bot_id: u64,
     database: DatabaseInfo,
     pub default_prefix: Box<str>,
     pub disable_bad_translator: bool,
@@ -95,6 +97,7 @@ fn message_mention_prefix(content: &str) -> Option<String> {
 }
 
 pub struct Assyst {
+    cluster: Option<Cluster>,
     pub command_ratelimits: RwLock<Ratelimits>,
     pub config: Config,
     pub database: Database,
@@ -112,6 +115,7 @@ impl Assyst {
         let config = Config::new();
         let database = Database::new(2, config.database.to_url()).await.unwrap();
         let mut assyst = Assyst {
+            cluster: None,
             command_ratelimits: RwLock::new(Ratelimits::new()),
             config,
             database,
@@ -128,6 +132,10 @@ impl Assyst {
         };
         assyst.registry.register_commands();
         assyst
+    }
+
+    pub fn set_cluster(&mut self, cluster: Cluster) {
+        self.cluster = Some(cluster);
     }
 
     pub async fn handle_command(self: &Arc<Self>, _message: Message) -> Result<(), String> {

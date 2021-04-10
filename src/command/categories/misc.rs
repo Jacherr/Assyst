@@ -14,7 +14,7 @@ use crate::{
 };
 use crate::{
     database::Reminder,
-    rest::{get_char_info, rust, bt::{translate_single}},
+    rest::{bt::translate_single, get_char_info, rust, annmarie::format_err},
     util::{get_current_millis, parse_to_millis},
 };
 use futures::TryFutureExt;
@@ -368,23 +368,16 @@ pub async fn run_prefix_command(context: Arc<Context>, args: Vec<ParsedArgument>
 }
 
 pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
-    let guilds = context
-        .assyst
-        .http
-        .current_user_guilds()
-        .limit(100)
-        .map_err(|e| e.to_string())?
-        .await
-        .map_err(|e| e.to_string())?
-        .len()
-        .to_string();
+    let app =
+        crate::rest::maryjane::get_application(context.assyst.clone(), context.assyst.config.bot_id).await
+        .map_err(|e| format_err(e))?;
 
     let memory = get_memory_usage().unwrap_or("Unknown".to_owned());
     let commands = context.assyst.registry.get_command_count().to_string();
     let proc_time = (context.assyst.get_average_processing_time().await / 1e3).to_string();
 
     let table = generate_table(&[
-        ("Guilds", &guilds),
+        ("Guilds", &app.bot.guild_count.to_string()),
         ("Memory", &memory),
         ("Commands", &commands),
         ("Avg Processing Time", &format!("{:.4}s", proc_time)),
@@ -596,17 +589,19 @@ pub async fn run_chars_command(context: Arc<Context>, args: Vec<ParsedArgument>)
         .map(|_| ())
 }
 
-pub async fn run_translate_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
+pub async fn run_translate_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+) -> CommandResult {
     let lang = force_as::text(&args[0]);
     let text = force_as::text(&args[1]);
 
-    let translation = translate_single(
-        &context.assyst.reqwest_client,
-        text,
-        lang
-    ).await.map_err(|e| e.to_string())?;
+    let translation = translate_single(&context.assyst.reqwest_client, text, lang)
+        .await
+        .map_err(|e| e.to_string())?;
 
-    context.reply_with_text(&translation.result.text)
+    context
+        .reply_with_text(&translation.result.text)
         .await
         .unwrap();
 
