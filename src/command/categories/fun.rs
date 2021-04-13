@@ -1,5 +1,4 @@
 use crate::{
-    consts,
     command::{
         command::{
             force_as, Argument, Command, CommandAvailability, CommandMetadata, ParsedArgument,
@@ -7,11 +6,8 @@ use crate::{
         context::Context,
         registry::CommandResult,
     },
-    rest::{
-        self,
-        bt::bad_translate,
-        bt::translate_single
-    },
+    consts,
+    rest::{self, bt::bad_translate, bt::translate_single},
     util::codeblock,
 };
 use lazy_static::lazy_static;
@@ -110,7 +106,11 @@ pub async fn run_btdebug_command(
                 "\n"
             };
 
-            output.chars().take(consts::MAX_CHAIN_LENGTH).collect::<String>() + suffix
+            output
+                .chars()
+                .take(consts::MAX_CHAIN_LENGTH)
+                .collect::<String>()
+                + suffix
         })
         .collect::<String>();
 
@@ -145,10 +145,7 @@ pub async fn run_ocrbt_command(
     Ok(())
 }
 
-pub async fn run_ocrtr_command(
-    context: Arc<Context>,
-    args: Vec<ParsedArgument>,
-) -> CommandResult {
+pub async fn run_ocrtr_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
     let lang = force_as::text(&args[0]);
     let image = force_as::text(&args[1]);
 

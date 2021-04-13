@@ -2,7 +2,6 @@ use crate::filetype;
 use bytes::Bytes;
 use futures_util::StreamExt;
 use regex::Captures;
-use twilight_model::channel::Message;
 use std::{
     borrow::Cow,
     convert::TryInto,
@@ -10,6 +9,7 @@ use std::{
     process::Command,
     time::{SystemTime, UNIX_EPOCH},
 };
+use twilight_model::channel::Message;
 
 #[macro_export]
 macro_rules! box_str {

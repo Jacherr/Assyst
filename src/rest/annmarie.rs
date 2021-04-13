@@ -30,7 +30,7 @@ pub enum RequestError {
     Reqwest(String),
     Annmarie(AnnmarieError, StatusCode),
     InvalidStatus(reqwest::StatusCode),
-    Wsi(crate::rest::wsi::RequestError)
+    Wsi(crate::rest::wsi::RequestError),
 }
 
 pub async fn request_bytes(
@@ -39,7 +39,8 @@ pub async fn request_bytes(
     image: Bytes,
     query: &[(&str, &str)],
 ) -> Result<Bytes, RequestError> {
-    let new_image = preprocess(assyst.clone(), image).await
+    let new_image = preprocess(assyst.clone(), image)
+        .await
         .map_err(|e| RequestError::Wsi(e))?;
 
     let result = assyst
@@ -58,10 +59,9 @@ pub async fn request_bytes(
     let status = result.status();
 
     return if status != reqwest::StatusCode::OK {
-        let json = result
-            .json::<AnnmarieError>()
-            .await
-            .map_err(|_| RequestError::Reqwest("There was an error decoding the response.".to_owned()))?;
+        let json = result.json::<AnnmarieError>().await.map_err(|_| {
+            RequestError::Reqwest("There was an error decoding the response.".to_owned())
+        })?;
         Err(RequestError::Annmarie(json, status))
     } else {
         let bytes = result
@@ -96,7 +96,11 @@ pub async fn paint(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestEr
     request_bytes(assyst, routes::PAINT, image, &[]).await
 }
 
-pub async fn zoom_blur(assyst: Arc<Assyst>, image: Bytes, power: &str) -> Result<Bytes, RequestError> {
+pub async fn zoom_blur(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    power: &str,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::ZOOM_BLUR, image, &[("power", power)]).await
 }
 
@@ -105,6 +109,6 @@ pub fn format_err(err: RequestError) -> String {
         RequestError::Reqwest(e) => e,
         RequestError::Annmarie(e, _) => e.message.to_string(),
         RequestError::InvalidStatus(e) => e.to_string(),
-        RequestError::Wsi(e) => crate::rest::wsi::format_err(e)
+        RequestError::Wsi(e) => crate::rest::wsi::format_err(e),
     }
 }
