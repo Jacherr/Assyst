@@ -36,7 +36,7 @@ async fn translate_retry(
     text: &str,
     target: Option<&str>,
     count: Option<u32>,
-    additional_headers: Option<&[(&str, String)]>,
+    additional_data: Option<&[(&str, String)]>,
 ) -> Result<TranslateResult, TranslateError> {
     let mut query_args = vec![("text", text.to_owned())];
 
@@ -46,6 +46,12 @@ async fn translate_retry(
 
     if let Some(count) = count {
         query_args.push(("count", count.to_string()));
+    }
+
+    if let Some(data) = additional_data {
+        for (k, v) in data.into_iter() {
+            query_args.push((k, v.to_string()));
+        }
     }
 
     client
@@ -64,12 +70,12 @@ async fn translate(
     text: &str,
     target: Option<&str>,
     count: Option<u32>,
-    additional_headers: Option<&[(&str, String)]>,
+    additional_data: Option<&[(&str, String)]>,
 ) -> Result<TranslateResult, TranslateError> {
     let mut attempt = 0;
 
     while attempt <= MAX_ATTEMPTS {
-        match translate_retry(client, text, target, count, additional_headers).await {
+        match translate_retry(client, text, target, count, additional_data).await {
             Ok(result) => return Ok(result),
             Err(e) => eprintln!("Proxy failed! {:?}", e),
         };
@@ -99,8 +105,8 @@ pub async fn bad_translate_debug(
     guild_id: u64,
 ) -> Result<TranslateResult, TranslateError> {
     let headers = vec![
-        ("x-user-id", user_id.to_string()),
-        ("x-guild-id", guild_id.to_string()),
+        ("user", user_id.to_string()),
+        ("guild", guild_id.to_string()),
     ];
 
     translate(client, text, None, None, Some(&headers)).await
