@@ -122,6 +122,21 @@ impl BadTranslator {
         Some(webhook.clone())
     }
 
+    pub async fn delete_bt_channel(
+        &self,
+        assyst: &Arc<Assyst>,
+        id: &ChannelId
+    ) {
+        match assyst.database.delete_bt_channel(id.0).await {
+            Err(e) => eprintln!("Deleting BT channel failed: {:?}", e),
+            _ => {}
+        };
+
+        self.channels.write()
+            .await
+            .remove(&id.0);        
+    }
+
     /// Returns true if given user ID is ratelimited
     pub async fn try_ratelimit(&self, id: &UserId) -> bool {
         let cache = self.ratelimits.read().await;
@@ -178,7 +193,14 @@ impl BadTranslator {
 
         let content = normalize_emojis(&message.content);
 
-        let translation = match bt::bad_translate(&assyst.reqwest_client, &content).await {
+        let guild = message.guild_id.unwrap();
+
+        let translation = match bt::bad_translate_debug(
+            &assyst.reqwest_client,
+            &content,
+            message.author.id.0,
+            guild.0
+        ).await {
             Ok(res) => Cow::Owned(res.result.text),
             Err(bt::TranslateError::Raw(msg)) => Cow::Borrowed(msg),
             _ => return,
@@ -190,10 +212,10 @@ impl BadTranslator {
             .delete_message(message.channel_id, message.id)
             .await;
 
-        let webhook = unwrap_or_eprintln!(
-            self.get_or_fetch_webhook(assyst, &message.channel_id).await,
-            "Could not find webhook for channel"
-        );
+        let webhook = match self.get_or_fetch_webhook(assyst, &message.channel_id).await {
+            Some(webhook) => webhook,
+            None => return self.delete_bt_channel(assyst, &message.channel_id).await
+        };
 
         let token = unwrap_or_eprintln!(webhook.token.as_ref(), "Failed to extract token");
 
