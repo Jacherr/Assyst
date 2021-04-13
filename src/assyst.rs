@@ -25,11 +25,11 @@ use crate::{
 use bytes::Bytes;
 use reqwest::Client as ReqwestClient;
 use serde::Deserialize;
-use twilight_gateway::Cluster;
 use std::{borrow::Borrow, sync::Arc};
 use std::{borrow::Cow, time::Instant};
 use std::{collections::HashSet, fs::read_to_string};
 use tokio::sync::RwLock;
+use twilight_gateway::Cluster;
 use twilight_http::Client as HttpClient;
 use twilight_model::channel::Message;
 use twilight_model::id::UserId;
