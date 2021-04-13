@@ -14,7 +14,7 @@ impl ToString for TranslateError {
     fn to_string(&self) -> String {
         match self {
             Self::Reqwest(_) => "A network error occurred".to_owned(),
-            Self::Raw(r) => r.to_string()
+            Self::Raw(r) => r.to_string(),
         }
     }
 }
@@ -35,7 +35,8 @@ async fn translate_retry(
     client: &Client,
     text: &str,
     target: Option<&str>,
-    count: Option<u32>
+    count: Option<u32>,
+    additional_headers: Option<&[(&str, String)]>,
 ) -> Result<TranslateResult, TranslateError> {
     let mut query_args = vec![("text", text.to_owned())];
 
@@ -62,12 +63,13 @@ async fn translate(
     client: &Client,
     text: &str,
     target: Option<&str>,
-    count: Option<u32>
+    count: Option<u32>,
+    additional_headers: Option<&[(&str, String)]>,
 ) -> Result<TranslateResult, TranslateError> {
     let mut attempt = 0;
 
     while attempt <= MAX_ATTEMPTS {
-        match translate_retry(client, text, target, count).await {
+        match translate_retry(client, text, target, count, additional_headers).await {
             Ok(result) => return Ok(result),
             Err(e) => eprintln!("Proxy failed! {:?}", e),
         };
@@ -79,13 +81,35 @@ async fn translate(
 }
 
 pub async fn bad_translate(client: &Client, text: &str) -> Result<TranslateResult, TranslateError> {
-    translate(client, text, None, None).await
+    translate(client, text, None, None, None).await
 }
 
-pub async fn bad_translate_with_count(client: &Client, text: &str, count: u32) -> Result<TranslateResult, TranslateError> {
-    translate(client, text, None, Some(count)).await
+pub async fn bad_translate_with_count(
+    client: &Client,
+    text: &str,
+    count: u32,
+) -> Result<TranslateResult, TranslateError> {
+    translate(client, text, None, Some(count), None).await
 }
 
-pub async fn translate_single(client: &Client, text: &str, target: &str) -> Result<TranslateResult, TranslateError> {
-    translate(client, text, Some(target), Some(1)).await
+pub async fn bad_translate_debug(
+    client: &Client,
+    text: &str,
+    user_id: u64,
+    guild_id: u64,
+) -> Result<TranslateResult, TranslateError> {
+    let headers = vec![
+        ("x-user-id", user_id.to_string()),
+        ("x-guild-id", guild_id.to_string()),
+    ];
+
+    translate(client, text, None, None, Some(&headers)).await
+}
+
+pub async fn translate_single(
+    client: &Client,
+    text: &str,
+    target: &str,
+) -> Result<TranslateResult, TranslateError> {
+    translate(client, text, Some(target), Some(1), None).await
 }
