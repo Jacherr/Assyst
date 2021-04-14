@@ -40,7 +40,7 @@ lazy_static! {
         .cooldown(Duration::from_secs(2))
         .category(CATEGORY_NAME)
         .build();
-    pub static ref HELP_COMMAND: Command = CommandBuilder::new("enlarge")
+    pub static ref HELP_COMMAND: Command = CommandBuilder::new("help")
         .arg(Argument::Optional(Box::new(Argument::String)))
         .public()
         .description("get help")
