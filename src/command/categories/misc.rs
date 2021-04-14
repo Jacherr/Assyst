@@ -1,5 +1,4 @@
-use crate::{
-    command::{
+use crate::{command::{
         command::{
             force_as, Argument, Command, CommandAvailability, CommandBuilder, CommandMetadata,
             ParsedArgument,
@@ -7,12 +6,7 @@ use crate::{
         context::Context,
         messagebuilder::MessageBuilder,
         registry::CommandResult,
-    },
-    util::{
-        codeblock, extract_page_title, format_time, generate_list, generate_table,
-        get_memory_usage, parse_codeblock,
-    },
-};
+    }, util::{codeblock, exec_sync, extract_page_title, format_time, generate_list, generate_table, get_memory_usage, parse_codeblock}};
 use crate::{
     consts::Y21,
     database::Reminder,
@@ -132,6 +126,16 @@ lazy_static! {
         .description("translate input text")
         .example("it hello")
         .usage("[language] [text]")
+        .cooldown(Duration::from_secs(2))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref EXEC_COMMAND: Command = CommandBuilder::new("exec")
+        .alias("ex")
+        .arg(Argument::StringRemaining)
+        .availability(CommandAvailability::Private)
+        .description("execute shell command")
+        .example("echo hello")
+        .usage("[command]")
         .cooldown(Duration::from_secs(2))
         .category(CATEGORY_NAME)
         .build();
@@ -553,6 +557,31 @@ pub async fn run_translate_command(
 
     context
         .reply_with_text(&translation.result.text)
+        .await
+        .unwrap();
+
+    Ok(())
+}
+
+pub async fn run_exec_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let command = force_as::text(&args[0]);
+
+    let result = exec_sync(command)
+        .map_err(|e| e.to_string())?;
+
+    let mut output = "".to_owned();
+    if !result.stdout.is_empty() {
+        output = format!("`stdout`: ```{}```\n", result.stdout);
+    }
+    if !result.stderr.is_empty() {
+        output = format!("{}`stderr`: ```{}```", output, result.stderr);
+    }
+
+    context
+        .reply_with_text(&output)
         .await
         .unwrap();
 

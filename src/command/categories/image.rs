@@ -1,12 +1,13 @@
 use crate::{
     command::{
         command::{
-            force_as, Argument, Command, CommandAvailability, CommandMetadata, ParsedArgument,
+            force_as, Argument, Command, CommandAvailability, CommandBuilder, CommandMetadata,
+            ParsedArgument,
         },
         context::Context,
         registry::CommandResult,
     },
-    consts::WORKING_FILESIZE_LIMIT_BYTES,
+    consts::Y21,
     rest::{
         annmarie,
         wsi::{self},
@@ -19,47 +20,41 @@ use crate::{
 use bytes::Bytes;
 use lazy_static::lazy_static;
 use std::sync::Arc;
+use std::time::Duration;
+
+const CATEGORY_NAME: &str = "image";
 
 lazy_static! {
-    pub static ref _3D_ROTATE_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![Argument::ImageBuffer],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "3d rotate an image",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "3drotate",
-        cooldown_seconds: 4,
-        category: "image"
-    };
-    pub static ref AHSHIT_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![Argument::ImageBuffer],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "ah shit here we go again",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "ahshit",
-        cooldown_seconds: 4,
-        category: "image"
-    };
-    pub static ref ANNMARIE_COMMAND: Command = Command {
-        aliases: vec!["ann"],
-        args: vec![Argument::ImageBuffer, Argument::StringRemaining],
-        availability: CommandAvailability::Private,
-        metadata: CommandMetadata {
-            description: "run an image command from an annmarie endpoint",
-            examples: vec!["312715611413413889 neon"],
-            usage: "[image] [endpoint]"
-        },
-        name: "annmarie",
-        cooldown_seconds: 4,
-        category: "image"
-    };
+    pub static ref _3D_ROTATE_COMMAND: Command = CommandBuilder::new("3drotate")
+        .alias("3d")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("3d rotate an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref AHSHIT_COMMAND: Command = CommandBuilder::new("ahshit")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("ah shit here we go again")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref ANNMARIE_COMMAND: Command = CommandBuilder::new("annmarie")
+        .alias("ann")
+        .arg(Argument::ImageBuffer)
+        .arg(Argument::StringRemaining)
+        .availability(CommandAvailability::Private)
+        .description("run annmarie command on endpoint")
+        .example("312715611413413889 paint")
+        .usage("[image] [endoint]?[query params]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref CAPTION_COMMAND: Command = Command {
         aliases: vec![],
         args: vec![Argument::ImageBuffer, Argument::StringRemaining],
@@ -100,6 +95,24 @@ lazy_static! {
         cooldown_seconds: 4,
         category: "image"
     };
+    pub static ref FLIP_COMMAND: Command = CommandBuilder::new("flip")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("flip an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref FLOP_COMMAND: Command = CommandBuilder::new("flop")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("flop an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref GIF_LOOP_COMMAND: Command = Command {
         aliases: vec!["gloop"],
         args: vec![Argument::ImageBuffer],
@@ -380,6 +393,15 @@ lazy_static! {
         cooldown_seconds: 4,
         category: "image"
     };
+    pub static ref TEHI_COMMAND: Command = CommandBuilder::new("tehi")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("tehi")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref WALL_COMMAND: Command = Command {
         aliases: vec![],
         args: vec![Argument::ImageBuffer],
@@ -511,6 +533,20 @@ pub async fn run_annmarie_command(
     Ok(())
 }
 
+pub async fn run_aprilfools_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let annmarie_fn = annmarie::aprilfools;
+    run_annmarie_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(annmarie_fn(assyst, bytes))),
+    )
+    .await
+}
+
 pub async fn run_caption_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
@@ -546,6 +582,34 @@ pub async fn run_fix_transparency_command(
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let wsi_fn = wsi::fix_transparency;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
+    )
+    .await
+}
+
+pub async fn run_flip_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let wsi_fn = wsi::flip;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
+    )
+    .await
+}
+
+pub async fn run_flop_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let wsi_fn = wsi::flop;
     run_wsi_noarg_command(
         context,
         raw_image,
@@ -873,6 +937,20 @@ pub async fn run_swirl_command(
     .await
 }
 
+pub async fn run_tehi_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let wsi_fn = wsi::tehi;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
+    )
+    .await
+}
+
 pub async fn run_wall_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
@@ -972,18 +1050,4 @@ async fn run_annmarie_noarg_command(
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
-}
-
-pub async fn run_aprilfools_command(
-    context: Arc<Context>,
-    mut args: Vec<ParsedArgument>,
-) -> CommandResult {
-    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let annmarie_fn = annmarie::aprilfools;
-    run_annmarie_noarg_command(
-        context,
-        raw_image,
-        Box::new(move |assyst, bytes| Box::pin(annmarie_fn(assyst, bytes))),
-    )
-    .await
 }

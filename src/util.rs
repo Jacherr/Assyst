@@ -275,3 +275,21 @@ pub fn get_sticker_url_from_message(message: &Message) -> Option<String> {
         ))
     })
 }
+
+
+pub struct CommandOutput {
+    pub stdout: String,
+    pub stderr: String
+}
+
+pub fn exec_sync(command: &str) -> Result<CommandOutput, std::io::Error> {
+    let mut cmd = Command::new("bash");
+    cmd.args(&["-c", command]);
+
+    let output = cmd.output()?;
+
+    Ok(CommandOutput {
+        stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+        stderr: String::from_utf8_lossy(&output.stderr).to_string()
+    })
+}

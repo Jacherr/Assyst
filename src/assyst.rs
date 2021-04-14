@@ -331,8 +331,9 @@ impl Assyst {
                 {
                     Ok(())
                 } else {
-                    Err(CommandParseError::without_reply(
-                        "Insufficient Permissions".to_owned(),
+                    Err(CommandParseError::with_reply(
+                        "Only the owner of the server can use this command.".to_owned(),
+                        None,
                         CommandParseErrorType::MissingPermissions,
                     ))
                 }
