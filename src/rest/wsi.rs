@@ -15,6 +15,8 @@ mod routes {
     pub const CAPTION: &str = "/caption";
     pub const COMPRESS: &str = "/compress";
     pub const FIX_TRANSPARENCY: &str = "/fix_transparency";
+    pub const FLIP: &str = "/flip";
+    pub const FLOP: &str = "/flop";
     pub const GIF_LOOP: &str = "/gif_loop";
     pub const GIF_MAGIK: &str = "/gif_magik";
     pub const GIF_SCRAMBLE: &str = "/gif_scramble";
@@ -33,6 +35,7 @@ mod routes {
     pub const SPIN: &str = "/spin";
     pub const SPREAD: &str = "/spread";
     pub const SWIRL: &str = "/swirl";
+    pub const TEHI: &str = "/tehi";
     pub const WALL: &str = "/wall";
     pub const WAVE: &str = "/wave";
     pub const WORMHOLE: &str = "/wormhole";
@@ -103,6 +106,14 @@ pub async fn compress(
 
 pub async fn fix_transparency(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::FIX_TRANSPARENCY, image, &[]).await
+}
+
+pub async fn flip(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::FLIP, image, &[]).await
+}
+
+pub async fn flop(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::FLOP, image, &[]).await
 }
 
 pub async fn motivate(
@@ -214,6 +225,10 @@ pub async fn spread(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestE
 
 pub async fn swirl(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::SWIRL, image, &[]).await
+}
+
+pub async fn tehi(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::TEHI, image, &[]).await
 }
 
 pub async fn wall(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
