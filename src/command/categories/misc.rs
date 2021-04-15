@@ -34,6 +34,7 @@ lazy_static! {
     pub static ref ENLARGE_COMMAND: Command = CommandBuilder::new("enlarge")
         .alias("e")
         .public()
+        .arg(Argument::ImageUrl)
         .description("get url of an avatar or emoji")
         .usage("[image]")
         .example(Y21) // you

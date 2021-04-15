@@ -655,6 +655,12 @@ impl Assyst {
             };
         };
         if try_url.is_none() {
+            try_url = self.validate_message_reply_attachment(message);
+            if try_url.is_some() {
+                should_increment = false
+            };
+        }
+        if try_url.is_none() {
             try_url = self.validate_previous_message_attachment(message).await;
             if try_url.is_some() {
                 should_increment = false
@@ -772,32 +778,47 @@ impl Assyst {
             .or_else(|| get_sticker_url_from_message(message))
     }
 
+    fn validate_message_embed<'a>(&self, message: &'a Message) -> Option<Cow<'a, String>> {
+        let embed = message.embeds.first()?;
+
+        if let Some(e) = &embed.url {
+            if e.starts_with("https://tenor.com/view/") {
+                return Some(Cow::Borrowed(e));
+            };
+        }
+
+        embed
+            .image
+            .as_ref()
+            .and_then(|img| Some(Cow::Borrowed(img.url.as_ref()?)))
+            .or_else(|| {
+                embed
+                    .thumbnail
+                    .as_ref()
+                    .and_then(|thumbnail| Some(Cow::Borrowed(thumbnail.url.as_ref()?)))
+            })
+            .or_else(|| {
+                embed.video.as_ref().and_then(|video| {
+                    Some(Cow::Owned(format!("{}", video.url.as_ref()?)))
+                })
+            })
+    }
+
+    fn validate_message_reply_attachment(&self, message: &Message) -> Option<String> {
+        let reply = message.referenced_message.as_ref()?;
+        let attachment = self.validate_message_attachment(reply);
+        if attachment.is_some() { return attachment };
+        let embed = self.validate_message_embed(reply)?;
+        Some(embed.to_string())
+    }
+
     async fn validate_previous_message_attachment(&self, message: &Message) -> Option<String> {
         let messages = self.http.channel_messages(message.channel_id).await.ok()?;
         let message_attachment_urls: Vec<Option<Cow<String>>> = messages
             .iter()
             .map(|message| {
-                if let Some(embed) = message.embeds.first() {
-                    if let Some(e) = &embed.url {
-                        if e.starts_with("https://tenor.com/view/") {
-                            return Some(Cow::Borrowed(e));
-                        };
-                    }
-                    embed
-                        .image
-                        .as_ref()
-                        .and_then(|img| Some(Cow::Borrowed(img.url.as_ref()?)))
-                        .or_else(|| {
-                            embed
-                                .thumbnail
-                                .as_ref()
-                                .and_then(|thumbnail| Some(Cow::Borrowed(thumbnail.url.as_ref()?)))
-                        })
-                        .or_else(|| {
-                            embed.video.as_ref().and_then(|video| {
-                                Some(Cow::Owned(format!("{}", video.url.as_ref()?)))
-                            })
-                        })
+                if let Some(_) = message.embeds.first() {
+                    self.validate_message_embed(message)
                 } else {
                     message
                         .attachments
