@@ -216,7 +216,7 @@ impl Database {
     pub async fn increment_badtranslator_messages(&self, guild_id: u64) -> Result<(), sqlx::Error> {
         let query = "insert into bt_messages (guild_id, message_count) values ($1, 1) on conflict (guild_id) do update set message_count = bt_messages.message_count + 1 where bt_messages.guild_id = $1;";
         sqlx::query(query)
-            .bind(guild_id.to_string())
+            .bind(guild_id as i64)
             .execute(&self.pool)
             .await?;
         Ok(())
