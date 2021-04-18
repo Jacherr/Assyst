@@ -341,6 +341,8 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
     .await
     .map_err(|e| format_err(e))?;
 
+    let guild_id = context.message.guild_id.unwrap().0;
+
     let memory = get_memory_usage().unwrap_or("Unknown".to_owned());
     let commands = context.assyst.registry.get_command_count().to_string();
     let proc_time = (context.assyst.get_average_processing_time().await / 1e3).to_string();
@@ -352,15 +354,10 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
         ("Avg Processing Time", &format!("{:.4}s", proc_time)),
         ("Uptime", &context.assyst.uptime().format()),
         ("BadTranslator Messages", &{
-            let read_lock = context.assyst.metrics.read().await;
-            let total = read_lock.bt_messages.sum();
-            let guild_count = context
-                .message
-                .guild_id
-                .and_then(|id| read_lock.bt_messages.0.get(&id.0))
-                .unwrap_or(&0);
+            let (total, guild) = context.assyst.database.get_badtranslator_message_stats(guild_id).await
+                .map_err(|e| e.to_string())?;
 
-            format!("Total: {}, Server: {}", total, guild_count)
+            format!("Total: {}, Server: {}", total, guild)
         }),
     ]);
 

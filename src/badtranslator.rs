@@ -122,19 +122,13 @@ impl BadTranslator {
         Some(webhook.clone())
     }
 
-    pub async fn delete_bt_channel(
-        &self,
-        assyst: &Arc<Assyst>,
-        id: &ChannelId
-    ) {
+    pub async fn delete_bt_channel(&self, assyst: &Arc<Assyst>, id: &ChannelId) {
         match assyst.database.delete_bt_channel(id.0).await {
             Err(e) => eprintln!("Deleting BT channel failed: {:?}", e),
             _ => {}
         };
 
-        self.channels.write()
-            .await
-            .remove(&id.0);        
+        self.channels.write().await.remove(&id.0);
     }
 
     /// Returns true if given user ID is ratelimited
@@ -199,8 +193,10 @@ impl BadTranslator {
             &assyst.reqwest_client,
             &content,
             message.author.id.0,
-            guild.0
-        ).await {
+            guild.0,
+        )
+        .await
+        {
             Ok(res) => Cow::Owned(res.result.text),
             Err(bt::TranslateError::Raw(msg)) => Cow::Borrowed(msg),
             _ => return,
@@ -214,7 +210,7 @@ impl BadTranslator {
 
         let webhook = match self.get_or_fetch_webhook(assyst, &message.channel_id).await {
             Some(webhook) => webhook,
-            None => return self.delete_bt_channel(assyst, &message.channel_id).await
+            None => return self.delete_bt_channel(assyst, &message.channel_id).await,
         };
 
         let token = unwrap_or_eprintln!(webhook.token.as_ref(), "Failed to extract token");
@@ -233,9 +229,26 @@ impl BadTranslator {
         // Increase metrics counter for this guild
         // BadTranslator is only available in guilds, so it's safe to unwrap
         let guild_id = message.guild_id.unwrap().0;
-        let mut metrics_lock = assyst.metrics.write().await;
-        *metrics_lock.bt_messages.0.entry(guild_id).or_insert(0) += 1;
+        let _ = register_badtranslated_message_to_db(assyst.clone(), guild_id)
+            .await
+            .map_err(|e| {
+                eprintln!(
+                    "Error updating BadTranslator message metric for guild_id {}: {}",
+                    guild_id,
+                    e.to_string()
+                )
+            });
     }
+}
+
+async fn register_badtranslated_message_to_db(
+    assyst: Arc<Assyst>,
+    guild_id: u64,
+) -> Result<(), sqlx::Error> {
+    assyst
+        .database
+        .increment_badtranslator_messages(guild_id)
+        .await
 }
 
 fn get_default_avatar_url(user: &User) -> String {
