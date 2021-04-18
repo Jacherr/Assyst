@@ -1,4 +1,5 @@
 use bytes::Bytes;
+use serde::{Serialize, Deserialize};
 use reqwest::{Client, Error};
 
 pub mod annmarie;
@@ -11,6 +12,7 @@ mod routes {
     pub const CDN: &str = "https://cdn.jacher.io";
     pub const OCR: &str = "http://ocr.y21_.repl.co/?url=";
     pub const CHARINFO: &str = "https://www.fileformat.info/info/unicode/char/";
+    pub const FAKE_EVAL: &str = "https://jacher.io/eval";
 }
 
 pub enum OcrError {
@@ -25,6 +27,16 @@ impl ToString for OcrError {
             Self::HtmlResponse => "Failed to parse response".to_string(),
         }
     }
+}
+
+#[derive(Serialize)]
+struct FakeEvalBody {
+    pub code: String
+}
+
+#[derive(Deserialize)]
+pub struct FakeEvalResponse {
+    pub message: String
 }
 
 pub async fn ocr_image(client: &Client, url: &str) -> Result<String, OcrError> {
@@ -68,4 +80,18 @@ pub async fn get_char_info(client: &Client, ch: char) -> Result<(String, String)
 
 pub fn parse_path_parameter(path: String, param: (&str, &str)) -> String {
         path.replace(&format!(":{}", param.0), param.1)
+}
+
+pub async fn fake_eval(
+    client: &Client,
+    code: &str
+) -> Result<FakeEvalResponse, Error> {
+    client.post(routes::FAKE_EVAL)
+        .json(&FakeEvalBody {
+            code: code.to_string()
+        })
+        .send()
+        .await?
+        .json()
+        .await
 }
