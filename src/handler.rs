@@ -13,15 +13,21 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
         Event::MessageUpdate(message) => {
             message_update::handle(assyst, message).await;
         }
-        Event::ShardConnected(d) => {
-            println!("Shard {}: READY", d.shard_id);
+        Event::Ready(r) => {
+            println!("Shards {:?}: READY", r.shard.unwrap_or_default())
         }
+        Event::ShardConnected(d) => {
+            println!("Shard {}: CONNECTED", d.shard_id);
+        },
         Event::ShardDisconnected(d) => {
             println!(
                 "Shard {}: DISCONNECTED, {:?}",
                 d.shard_id,
                 d.reason.to_owned()
             );
+        }
+        Event::ShardReconnecting(r) => {
+            println!("Shard {}: RECONNECTING", r.shard_id);
         }
         _ => {}
     }
