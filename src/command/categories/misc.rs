@@ -1,17 +1,14 @@
-use crate::{
-    command::{
+use crate::{command::{
         command::{
             force_as, Argument, Command, CommandAvailability, CommandMetadata, ParsedArgument,
         },
         context::Context,
         messagebuilder::MessageBuilder,
         registry::CommandResult,
-    },
-    util::{
+    }, rest::fake_eval, util::{
         codeblock, extract_page_title, format_time, generate_list, generate_table,
         get_memory_usage, parse_codeblock,
-    },
-};
+    }};
 use crate::{
     database::Reminder,
     rest::{bt::translate_single, get_char_info, rust, annmarie::format_err},
@@ -184,6 +181,19 @@ lazy_static! {
             usage: "[language] [text]"
         },
         name: "translate",
+        cooldown_seconds: 1,
+        category: "misc"
+    };
+    pub static ref FAKE_EVAL_COMMAND: Command = Command {
+        aliases: Vec::new(),
+        args: vec![Argument::StringRemaining],
+        availability: CommandAvailability::Public,
+        metadata: CommandMetadata {
+            description: "Evaluate javascript code",
+            examples: vec!["41 + 1 /* what is it */"],
+            usage: "[code]"
+        },
+        name: "eval",
         cooldown_seconds: 1,
         category: "misc"
     };
@@ -606,4 +616,19 @@ pub async fn run_translate_command(
         .unwrap();
 
     Ok(())
+}
+
+pub async fn run_fake_eval_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>
+) -> CommandResult {
+    let code = force_as::text(&args[0]);
+
+    let response = fake_eval(&context.assyst.reqwest_client, code)
+        .await
+        .map_err(|e| e.to_string())?;
+    
+    context.reply_with_text(&codeblock(&response.message, "js"))
+        .await
+        .map(|_| ())
 }
