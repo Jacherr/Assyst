@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use bytes::Bytes;
 
@@ -133,6 +133,105 @@ pub struct Command {
     pub name: &'static str,
     pub cooldown_seconds: usize,
     pub category: &'static str,
+}
+
+pub struct CommandBuilder {
+    aliases: Vec<&'static str>,
+    args: Vec<Argument>,
+    availability: Option<CommandAvailability>,
+    metadata: CommandMetadata,
+    name: &'static str,
+    cooldown_seconds: Option<usize>,
+    category: Option<&'static str>,
+}
+impl CommandBuilder {
+    pub fn new(name: &'static str) -> Self {
+        Self {
+            aliases: vec![],
+            args: vec![],
+            availability: None,
+            metadata: CommandMetadata {
+                description: "",
+                examples: vec![],
+                usage: "",
+            },
+            name,
+            cooldown_seconds: None,
+            category: None,
+        }
+    }
+
+    pub fn alias(mut self, alias: &'static str) -> Self {
+        self.aliases.push(alias);
+        self
+    }
+
+    pub fn arg(mut self, argument: Argument) -> Self {
+        self.args.push(argument);
+        self
+    }
+
+    pub fn availability(mut self, availability: CommandAvailability) -> Self {
+        self.availability = Some(availability);
+        self
+    }
+
+    pub fn category(mut self, category: &'static str) -> Self {
+        self.category = Some(category);
+        self
+    }
+
+    pub fn cooldown(mut self, cooldown: Duration) -> Self {
+        self.cooldown_seconds = Some(cooldown.as_secs() as usize);
+        self
+    }
+
+    pub fn description(mut self, description: &'static str) -> Self {
+        self.metadata.description = description;
+        self
+    }
+
+    pub fn example(mut self, example: &'static str) -> Self {
+        self.metadata.examples.push(example);
+        self
+    }
+
+    pub fn public(mut self) -> Self {
+        self.availability = Some(CommandAvailability::Public);
+        self
+    }
+
+    pub fn usage(mut self, usage: &'static str) -> Self {
+        self.metadata.usage = usage;
+        self
+    }
+
+    pub fn build(self) -> Command {
+        let category = self.category.expect("Command must belong to a category");
+        let cooldown = self.cooldown_seconds.unwrap_or(4);
+        let availability = self
+            .availability
+            .expect("Command must have a defined availability");
+        let description = if self.metadata.description.is_empty() {
+            panic!("Command must have a description")
+        } else {
+            self.metadata.description
+        };
+
+        Command {
+            aliases: self.aliases,
+            args: self.args,
+            metadata: CommandMetadata {
+                description,
+                examples: self.metadata.examples,
+                usage: self.metadata.usage,
+            },
+            name: self.name,
+            availability,
+            category,
+            cooldown_seconds: cooldown,
+        }
+    }
 }
 
 pub mod force_as {
