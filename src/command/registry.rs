@@ -153,5 +153,9 @@ impl CommandRegistry {
         register_command!(self, ZOOM_BLUR_COMMAND, run_zoom_blur_command);
         register_command!(self, PAINT_COMMAND, run_paint_command);
         register_command!(self, APRIL_FOOLS_COMMAND, run_aprilfools_command);
+        register_command!(self, EXEC_COMMAND, run_exec_command);
+        register_command!(self, FLIP_COMMAND, run_flip_command);
+        register_command!(self, FLOP_COMMAND, run_flop_command);
+        register_command!(self, TEHI_COMMAND, run_tehi_command);
     }
 }

@@ -1,189 +1,145 @@
 use crate::{command::{
         command::{
-            force_as, Argument, Command, CommandAvailability, CommandMetadata, ParsedArgument,
+            force_as, Argument, Command, CommandAvailability, CommandBuilder, CommandMetadata,
+            ParsedArgument,
         },
         context::Context,
         messagebuilder::MessageBuilder,
         registry::CommandResult,
-    }, rest::fake_eval, util::{
-        codeblock, extract_page_title, format_time, generate_list, generate_table,
-        get_memory_usage, parse_codeblock,
-    }};
+    }, rest::fake_eval, util::{codeblock, exec_sync, extract_page_title, format_time, generate_list, generate_table, get_memory_usage, parse_codeblock}};
 use crate::{
+    consts::Y21,
     database::Reminder,
-    rest::{bt::translate_single, get_char_info, rust, annmarie::format_err},
+    rest::{annmarie::format_err, bt::translate_single, get_char_info, rust},
     util::{get_current_millis, parse_to_millis},
 };
 use futures::TryFutureExt;
 use lazy_static::lazy_static;
-use std::{collections::HashMap, sync::Arc, time::Instant};
+use std::{
+    collections::HashMap,
+    sync::Arc,
+    time::{Duration, Instant},
+};
+
+const CATEGORY_NAME: &str = "misc";
 
 lazy_static! {
-    pub static ref PING_COMMAND: Command = Command {
-        aliases: vec!["pong"],
-        args: vec![],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "Get Discord WebSocket and REST ping",
-            examples: vec![],
-            usage: ""
-        },
-        name: "ping",
-        cooldown_seconds: 2,
-        category: "misc"
-    };
-    pub static ref ENLARGE_COMMAND: Command = Command {
-        aliases: vec!["e"],
-        args: vec![Argument::ImageUrl],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "enlarge an image",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "enlarge",
-        cooldown_seconds: 2,
-        category: "misc"
-    };
-    pub static ref HELP_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![Argument::Optional(Box::new(Argument::String))],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "get help",
-            examples: vec!["", "caption"],
-            usage: "<command>"
-        },
-        name: "help",
-        cooldown_seconds: 2,
-        category: "misc"
-    };
-    pub static ref INVITE_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "get bot invite",
-            examples: vec![],
-            usage: ""
-        },
-        name: "invite",
-        cooldown_seconds: 2,
-        category: "misc"
-    };
-    pub static ref PREFIX_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![Argument::String],
-        availability: CommandAvailability::GuildOwner,
-        metadata: CommandMetadata {
-            description: "set bot prefix",
-            examples: vec!["-"],
-            usage: "[new prefix]"
-        },
-        name: "prefix",
-        cooldown_seconds: 2,
-        category: "misc"
-    };
-    pub static ref STATS_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "get bot statistics",
-            examples: vec![],
-            usage: ""
-        },
-        name: "stats",
-        cooldown_seconds: 2,
-        category: "misc"
-    };
-    pub static ref RUST_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![
-            Argument::Choice(&["run", "bench"]),
-            Argument::Choice(&["stable", "beta", "nightly"]),
-            Argument::StringRemaining
-        ],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "run/benchmark rust code",
-            examples: vec!["run stable break rust;"],
-            usage: "[run|bench] [stable|nightly|beta] [code]"
-        },
-        name: "rust",
-        cooldown_seconds: 2,
-        category: "misc"
-    };
-    pub static ref REMINDER_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![
-            Argument::String,
-            Argument::OptionalWithDefaultDynamic(Box::new(Argument::StringRemaining), |_| {
-                ParsedArgument::Text(String::from("..."))
-            })
-        ],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "set a reminder, time format is xdyhzm (check examples)",
-            examples: vec!["1d10h hello", "44m yea"],
-            usage: "[when|list] <[description]>"
-        },
-        name: "remind",
-        cooldown_seconds: 2,
-        category: "misc"
-    };
-    pub static ref TOP_COMMANDS_COMMAND: Command = Command {
-        aliases: vec!["tcs"],
-        args: vec![Argument::Optional(Box::new(Argument::String))],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "get top command usage info",
-            examples: vec![],
-            usage: ""
-        },
-        name: "topcmds",
-        cooldown_seconds: 2,
-        category: "misc"
-    };
-    pub static ref BT_CHANNEL_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![],
-        availability: CommandAvailability::GuildOwner,
-        metadata: CommandMetadata {
-            description: "configures the bad translator feature in this channel",
-            examples: vec![],
-            usage: ""
-        },
-        name: "btchannel",
-        cooldown_seconds: 30,
-        category: "misc"
-    };
-    pub static ref CHARS_COMMAND: Command = Command {
-        aliases: vec!["char"],
-        args: vec![Argument::StringRemaining],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "returns character information for given input",
-            examples: vec![],
-            usage: "[text]"
-        },
-        name: "chars",
-        cooldown_seconds: 1,
-        category: "misc"
-    };
-    pub static ref TRANSLATE_COMMAND: Command = Command {
-        aliases: vec!["tr"],
-        args: vec![Argument::String, Argument::StringRemaining],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "translates given text",
-            examples: vec![],
-            usage: "[language] [text]"
-        },
-        name: "translate",
-        cooldown_seconds: 1,
-        category: "misc"
-    };
+    pub static ref PING_COMMAND: Command = CommandBuilder::new("ping")
+        .alias("pong")
+        .public()
+        .description("ping the discord api")
+        .cooldown(Duration::from_secs(2))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref ENLARGE_COMMAND: Command = CommandBuilder::new("enlarge")
+        .alias("e")
+        .public()
+        .arg(Argument::ImageUrl)
+        .description("get url of an avatar or emoji")
+        .usage("[image]")
+        .example(Y21) // you
+        .cooldown(Duration::from_secs(2))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref HELP_COMMAND: Command = CommandBuilder::new("help")
+        .arg(Argument::Optional(Box::new(Argument::String)))
+        .public()
+        .description("get help")
+        .usage("<command>")
+        .example("caption")
+        .cooldown(Duration::from_secs(2))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref INVITE_COMMAND: Command = CommandBuilder::new("invite")
+        .public()
+        .description("get bot invite")
+        .cooldown(Duration::from_secs(2))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref PREFIX_COMMAND: Command = CommandBuilder::new("prefix")
+        .arg(Argument::String)
+        .availability(CommandAvailability::GuildOwner)
+        .description("set the bot prefix in the current guild")
+        .usage("[new prefix]")
+        .example("¬")
+        .cooldown(Duration::from_secs(2))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref STATS_COMMAND: Command = CommandBuilder::new("stats")
+        .public()
+        .description("get bot stats")
+        .cooldown(Duration::from_secs(2))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref RUST_COMMAND: Command = CommandBuilder::new("rust")
+        .arg(Argument::Choice(&["run", "bench"]))
+        .arg(Argument::Choice(&["stable", "beta", "nightly"]))
+        .arg(Argument::StringRemaining)
+        .public()
+        .description("run/benchmark rust code")
+        .example("run stable break rust;")
+        .usage("[run|bench] [stable|nightly|beta] [code]")
+        .cooldown(Duration::from_secs(2))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref REMINDER_COMMAND: Command = CommandBuilder::new("remind")
+        .arg(Argument::String)
+        .arg(Argument::OptionalWithDefaultDynamic(Box::new(Argument::StringRemaining), |_| {
+            ParsedArgument::Text(String::from("..."))
+        }))
+        .public()
+        .description("get reminders or set a reminder, time format is xdyhzm (check examples)")
+        .example("1d10h hello")
+        .example("44m yea")
+        .example("list")
+        .usage("[when|list] <[description]>")
+        .cooldown(Duration::from_secs(2))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref TOP_COMMANDS_COMMAND: Command = CommandBuilder::new("topcmds")
+        .alias("tcs")
+        .public()
+        .description("get top command information")
+        .cooldown(Duration::from_secs(2))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref BT_CHANNEL_COMMAND: Command = CommandBuilder::new("btchannel")
+        .availability(CommandAvailability::GuildOwner)
+        .description("configures the bad translator feature in this channel")
+        .cooldown(Duration::from_secs(2))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref CHARS_COMMAND: Command = CommandBuilder::new("chars")
+        .arg(Argument::StringRemaining)
+        .alias("char")
+        .public()
+        .description("get character information of input")
+        .example("¬ ¦ y21")
+        .usage("[text]")
+        .cooldown(Duration::from_secs(2))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref TRANSLATE_COMMAND: Command = CommandBuilder::new("translate")
+        .arg(Argument::String)
+        .arg(Argument::StringRemaining)
+        .alias("tr")
+        .public()
+        .description("translate input text")
+        .example("it hello")
+        .usage("[language] [text]")
+        .cooldown(Duration::from_secs(2))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref EXEC_COMMAND: Command = CommandBuilder::new("exec")
+        .alias("ex")
+        .arg(Argument::StringRemaining)
+        .availability(CommandAvailability::Private)
+        .description("execute shell command")
+        .example("echo hello")
+        .usage("[command]")
+        .cooldown(Duration::from_secs(2))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref FAKE_EVAL_COMMAND: Command = Command {
         aliases: Vec::new(),
         args: vec![Argument::StringRemaining],
@@ -378,9 +334,12 @@ pub async fn run_prefix_command(context: Arc<Context>, args: Vec<ParsedArgument>
 }
 
 pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
-    let app =
-        crate::rest::maryjane::get_application(context.assyst.clone(), context.assyst.config.bot_id).await
-        .map_err(|e| format_err(e))?;
+    let app = crate::rest::maryjane::get_application(
+        context.assyst.clone(),
+        context.assyst.config.bot_id,
+    )
+    .await
+    .map_err(|e| format_err(e))?;
 
     let memory = get_memory_usage().unwrap_or("Unknown".to_owned());
     let commands = context.assyst.registry.get_command_count().to_string();
@@ -631,4 +590,28 @@ pub async fn run_fake_eval_command(
     context.reply_with_text(&codeblock(&response.message, "js"))
         .await
         .map(|_| ())
+}
+pub async fn run_exec_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let command = force_as::text(&args[0]);
+
+    let result = exec_sync(command)
+        .map_err(|e| e.to_string())?;
+
+    let mut output = "".to_owned();
+    if !result.stdout.is_empty() {
+        output = format!("`stdout`: ```{}```\n", result.stdout);
+    }
+    if !result.stderr.is_empty() {
+        output = format!("{}`stderr`: ```{}```", output, result.stderr);
+    }
+
+    context
+        .reply_with_text(&output)
+        .await
+        .unwrap();
+
+    Ok(())
 }

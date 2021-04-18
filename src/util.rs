@@ -2,7 +2,6 @@ use crate::filetype;
 use bytes::Bytes;
 use futures_util::StreamExt;
 use regex::Captures;
-use twilight_model::channel::Message;
 use std::{
     borrow::Cow,
     convert::TryInto,
@@ -10,6 +9,7 @@ use std::{
     process::Command,
     time::{SystemTime, UNIX_EPOCH},
 };
+use twilight_model::channel::Message;
 
 #[macro_export]
 macro_rules! box_str {
@@ -273,5 +273,23 @@ pub fn get_sticker_url_from_message(message: &Message) -> Option<String> {
             "https://distok.top/stickers/{}/{}-small.gif",
             s.pack_id, s.id
         ))
+    })
+}
+
+
+pub struct CommandOutput {
+    pub stdout: String,
+    pub stderr: String
+}
+
+pub fn exec_sync(command: &str) -> Result<CommandOutput, std::io::Error> {
+    let mut cmd = Command::new("bash");
+    cmd.args(&["-c", command]);
+
+    let output = cmd.output()?;
+
+    Ok(CommandOutput {
+        stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+        stderr: String::from_utf8_lossy(&output.stderr).to_string()
     })
 }

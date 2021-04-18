@@ -4,9 +4,9 @@ use reqwest::{Client, Error};
 
 pub mod annmarie;
 pub mod bt;
+pub mod maryjane;
 pub mod rust;
 pub mod wsi;
-pub mod maryjane;
 
 mod routes {
     pub const CDN: &str = "https://cdn.jacher.io";
@@ -79,7 +79,7 @@ pub async fn get_char_info(client: &Client, ch: char) -> Result<(String, String)
 }
 
 pub fn parse_path_parameter(path: String, param: (&str, &str)) -> String {
-        path.replace(&format!(":{}", param.0), param.1)
+    path.replace(&format!(":{}", param.0), param.1)
 }
 
 pub async fn fake_eval(

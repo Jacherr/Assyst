@@ -70,5 +70,10 @@ pub async fn get<'a, T: DeserializeOwned>(
 }
 
 pub async fn get_application(assyst: Arc<Assyst>, id: u64) -> Result<Application, RequestError> {
-    get::<Application>(assyst, &parse_path_parameter(routes::APPLICATION.to_owned(), ("id", &id.to_string())), &[]).await
+    get::<Application>(
+        assyst,
+        &parse_path_parameter(routes::APPLICATION.to_owned(), ("id", &id.to_string())),
+        &[],
+    )
+    .await
 }
