@@ -3,3 +3,4 @@ pub const ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES: usize = 25000000;
 pub const BOT_ID: usize = 571661221854707713;
 pub const MAX_CHAIN_LENGTH: usize = 100;
 pub const Y21: &'static str = "312715611413413889";
+pub const MESSAGE_CHARACTER_LIMIT: usize = 2000;

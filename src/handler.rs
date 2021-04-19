@@ -14,20 +14,45 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
             message_update::handle(assyst, message).await;
         }
         Event::Ready(r) => {
-            println!("Shards {:?}: READY", r.shard.unwrap_or_default())
+            assyst
+                .logger
+                .info(
+                    assyst.clone(),
+                    &format!(
+                        "Shard {}: READY in {} guilds",
+                        r.shard.unwrap_or_default()[0],
+                        r.guilds.len()
+                    ),
+                )
+                .await;
         }
         Event::ShardConnected(d) => {
-            println!("Shard {}: CONNECTED", d.shard_id);
-        },
+            assyst
+                .logger
+                .info(assyst.clone(), &format!("Shard {}: CONNECTED", d.shard_id))
+                .await;
+        }
         Event::ShardDisconnected(d) => {
-            println!(
-                "Shard {}: DISCONNECTED, {:?}",
-                d.shard_id,
-                d.reason.to_owned()
-            );
+            assyst
+                .logger
+                .info(
+                    assyst.clone(),
+                    &format!(
+                        "Shard {}: DISCONNECTED, {:?}",
+                        d.shard_id,
+                        d.reason.to_owned()
+                    ),
+                )
+                .await;
         }
         Event::ShardReconnecting(r) => {
-            println!("Shard {}: RECONNECTING", r.shard_id);
+            assyst
+                .logger
+                .info(
+                    assyst.clone(),
+                    &format!("Shard {}: RECONNECTING", r.shard_id),
+                )
+                .await;
         }
         _ => {}
     }
