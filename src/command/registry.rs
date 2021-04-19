@@ -157,5 +157,6 @@ impl CommandRegistry {
         register_command!(self, FLIP_COMMAND, run_flip_command);
         register_command!(self, FLOP_COMMAND, run_flop_command);
         register_command!(self, TEHI_COMMAND, run_tehi_command);
+        register_command!(self, TOP_BT_COMMAND, run_top_bt_command);
     }
 }

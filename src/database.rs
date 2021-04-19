@@ -239,4 +239,15 @@ impl Database {
 
         Ok((total_messages as u64, guild_messages as u64))
     }
+
+    pub async fn get_badtranslator_messages_raw(
+        &self
+    ) -> Result<Vec<BadTranslatorMessages>, sqlx::Error> {
+        let query = "select * from bt_messages order by message_count desc";
+        let result = sqlx::query_as::<_, BadTranslatorMessages>(query)
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok(result)
+    }
 }
