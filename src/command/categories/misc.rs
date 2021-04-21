@@ -103,6 +103,13 @@ lazy_static! {
         .cooldown(Duration::from_secs(2))
         .category(CATEGORY_NAME)
         .build();
+    pub static ref TOP_BT_COMMAND: Command = CommandBuilder::new("topbtchannel")
+        .alias("topbt")
+        .availability(CommandAvailability::Private)
+        .description("get top btchannel information")
+        .cooldown(Duration::from_secs(2))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref BT_CHANNEL_COMMAND: Command = CommandBuilder::new("btchannel")
         .availability(CommandAvailability::GuildOwner)
         .description("configures the bad translator feature in this channel")
@@ -341,6 +348,8 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
     .await
     .map_err(|e| format_err(e))?;
 
+    let guild_id = context.message.guild_id.unwrap().0;
+
     let memory = get_memory_usage().unwrap_or("Unknown".to_owned());
     let commands = context.assyst.registry.get_command_count().to_string();
     let proc_time = (context.assyst.get_average_processing_time().await / 1e3).to_string();
@@ -352,15 +361,10 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
         ("Avg Processing Time", &format!("{:.4}s", proc_time)),
         ("Uptime", &context.assyst.uptime().format()),
         ("BadTranslator Messages", &{
-            let read_lock = context.assyst.metrics.read().await;
-            let total = read_lock.bt_messages.sum();
-            let guild_count = context
-                .message
-                .guild_id
-                .and_then(|id| read_lock.bt_messages.0.get(&id.0))
-                .unwrap_or(&0);
+            let (total, guild) = context.assyst.database.get_badtranslator_message_stats(guild_id).await
+                .map_err(|e| e.to_string())?;
 
-            format!("Total: {}, Server: {}", total, guild_count)
+            format!("Total: {}, Server: {}", total, guild)
         }),
     ]);
 
@@ -505,6 +509,37 @@ pub async fn run_top_commands_command(
     Ok(())
 }
 
+pub async fn run_top_bt_command(
+    context: Arc<Context>,
+    _: Vec<ParsedArgument>,
+) -> CommandResult {
+    let top_bt = context
+        .assyst
+        .database
+        .get_badtranslator_messages_raw()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let top_bt_formatted_raw: Vec<(String, String)> = top_bt
+        .iter()
+        .take(30)
+        .map(|t| (t.guild_id.to_string(), t.message_count.to_string()))
+        .collect::<Vec<_>>();
+
+    let top_commands_formatted = top_bt_formatted_raw
+        .iter()
+        .map(|(a, b)| (&a[..], &b[..]))
+        .collect::<Vec<_>>();
+
+    let table = generate_list("Guild ID", "Messages", &top_commands_formatted);
+
+    context
+        .reply_with_text(&codeblock(&table, "hs"))
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 pub async fn run_btchannel_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
     let channel_id = context.message.channel_id;
 
@@ -579,9 +614,11 @@ pub async fn run_fake_eval_command(
 ) -> CommandResult {
     let code = force_as::text(&args[0]);
 
-    let response = fake_eval(&context.assyst.reqwest_client, code)
+    let mut response = fake_eval(&context.assyst.reqwest_client, code)
         .await
         .map_err(|e| e.to_string())?;
+
+    if response.message.trim() == "42" { response.message = "The answer to life, the universe, and everything".to_owned() };
     
     context.reply_with_text(&codeblock(&response.message, "js"))
         .await

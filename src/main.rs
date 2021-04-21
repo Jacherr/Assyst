@@ -13,6 +13,7 @@ mod metrics;
 mod rest;
 mod tasks;
 mod util;
+mod logging;
 
 use assyst::Assyst;
 use dotenv::dotenv;

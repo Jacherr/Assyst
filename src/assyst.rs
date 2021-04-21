@@ -1,9 +1,4 @@
-use crate::{
-    badtranslator::BadTranslator,
-    caching::Ratelimits,
-    command::command::CommandAvailability,
-    util::{get_current_millis, Uptime},
-};
+use crate::{badtranslator::BadTranslator, caching::Ratelimits, command::command::CommandAvailability, logging::Logger, util::{get_current_millis, Uptime}};
 use crate::{
     caching::{Replies, Reply},
     command::context::Metrics,
@@ -50,6 +45,11 @@ impl DatabaseInfo {
     }
 }
 #[derive(Clone, Deserialize)]
+pub struct LogConfig {
+    pub fatal: String,
+    pub info: String
+}
+#[derive(Clone, Deserialize)]
 pub struct Config {
     pub admins: HashSet<u64>,
     pub annmarie_url: Box<str>,
@@ -58,6 +58,8 @@ pub struct Config {
     database: DatabaseInfo,
     pub default_prefix: Box<str>,
     pub disable_bad_translator: bool,
+    pub disable_reminder_check: bool,
+    pub logs: LogConfig,
     pub maryjane_url: Box<str>,
     pub prefix_override: Box<str>,
     pub user_blacklist: HashSet<u64>,
@@ -101,6 +103,7 @@ pub struct Assyst {
     pub command_ratelimits: RwLock<Ratelimits>,
     pub config: Config,
     pub database: Database,
+    pub logger: Logger,
     pub started_at: u64,
     pub http: HttpClient,
     pub registry: CommandRegistry,
@@ -119,6 +122,7 @@ impl Assyst {
             command_ratelimits: RwLock::new(Ratelimits::new()),
             config,
             database,
+            logger: Logger {},
             started_at: get_current_millis(),
             http,
             badtranslator: BadTranslator::new(),
