@@ -49,24 +49,26 @@ async fn process_reminders(
 }
 
 pub fn init_reminder_loop(assyst: Arc<Assyst>) {
-    tokio::spawn(async move {
-        let assyst = assyst.clone();
-
-        loop {
-            let reminders = assyst.database.fetch_reminders(FETCH_INTERVAL).await;
-
-            match reminders {
-                Ok(reminders) => {
-                    if let Err(e) = process_reminders(&assyst, reminders).await {
-                        println!("Processing reminder queue failed: {:?}", e);
+    if !assyst.config.disable_reminder_check {
+        tokio::spawn(async move {
+            let assyst = assyst.clone();
+    
+            loop {
+                let reminders = assyst.database.fetch_reminders(FETCH_INTERVAL).await;
+    
+                match reminders {
+                    Ok(reminders) => {
+                        if let Err(e) = process_reminders(&assyst, reminders).await {
+                            assyst.logger.fatal(assyst.clone(), &format!("Processing reminder queue failed: {:?}", e)).await;
+                        }
+                    }
+                    Err(e) => {
+                        assyst.logger.fatal(assyst.clone(), &format!("Fetching reminders failed: {:?}", e)).await;
                     }
                 }
-                Err(e) => {
-                    eprintln!("Fetching reminders failed: {:?}", e);
-                }
+    
+                sleep(Duration::from_millis(FETCH_INTERVAL as u64)).await;
             }
-
-            sleep(Duration::from_millis(FETCH_INTERVAL as u64)).await;
-        }
-    });
+        });
+    }
 }

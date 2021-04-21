@@ -21,6 +21,12 @@ pub struct CommandUsage {
     pub uses: i32,
 }
 
+#[derive(sqlx::FromRow, Debug)]
+pub struct BadTranslatorMessages {
+    pub guild_id: i64,
+    pub message_count: i64,
+}
+
 struct Cache {
     pub prefixes: HashMap<u64, Box<str>>,
 }
@@ -205,5 +211,43 @@ impl Database {
         let query = "insert into command_uses (command_name, uses) values ($1, 1) on conflict (command_name) do update set uses = command_uses.uses + 1 where command_uses.command_name = $1;";
         sqlx::query(query).bind(command).execute(&self.pool).await?;
         Ok(())
+    }
+
+    pub async fn increment_badtranslator_messages(&self, guild_id: u64) -> Result<(), sqlx::Error> {
+        let query = "insert into bt_messages (guild_id, message_count) values ($1, 1) on conflict (guild_id) do update set message_count = bt_messages.message_count + 1 where bt_messages.guild_id = $1;";
+        sqlx::query(query)
+            .bind(guild_id as i64)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn get_badtranslator_message_stats(
+        &self,
+        guild_id: u64,
+    ) -> Result<(u64, u64), sqlx::Error> {
+        let query = "select * from bt_messages";
+        let result = sqlx::query_as::<_, BadTranslatorMessages>(query)
+            .fetch_all(&self.pool)
+            .await?;
+        let total_messages: i64 = result.iter().map(|i| i.message_count).sum();
+        let guild_messages: i64 = result
+            .iter()
+            .find(|i| i.guild_id == guild_id as i64)
+            .map(|i| i.message_count)
+            .unwrap_or_default();
+
+        Ok((total_messages as u64, guild_messages as u64))
+    }
+
+    pub async fn get_badtranslator_messages_raw(
+        &self
+    ) -> Result<Vec<BadTranslatorMessages>, sqlx::Error> {
+        let query = "select * from bt_messages order by message_count desc";
+        let result = sqlx::query_as::<_, BadTranslatorMessages>(query)
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok(result)
     }
 }
