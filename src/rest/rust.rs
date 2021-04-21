@@ -41,8 +41,9 @@ impl ApiResult {
     }
 }
 
-pub async fn run(
+pub async fn request(
     client: &Client,
+    path: &str,
     code: &str,
     channel: Option<&str>,
     mode: Option<&str>,
@@ -51,7 +52,7 @@ pub async fn run(
     tests: Option<bool>,
 ) -> Result<ApiResult, Error> {
     client
-        .post(&format!("{}/execute", API_BASE))
+        .post(&format!("{}/{}", API_BASE, path))
         .json(&json!({
             "code": code,
             "channel": channel.unwrap_or("stable"),
@@ -66,15 +67,63 @@ pub async fn run(
         .await
 }
 
-pub async fn run_binary(client: &Client, code: &str, channel: &str) -> Result<ApiResult, Error> {
-    let code = if !code.contains("fn main") {
+pub async fn run(
+    client: &Client,
+    code: &str,
+    channel: Option<&str>,
+    mode: Option<&str>,
+    edition: Option<&str>,
+    crate_type: Option<&str>,
+    tests: Option<bool>,
+) -> Result<ApiResult, Error> {
+    request(
+        client,
+        "execute",
+        code,
+        channel,
+        mode,
+        edition,
+        crate_type,
+        tests
+    ).await
+}
+
+pub async fn miri(
+    client: &Client,
+    code: &str,
+    channel: Option<&str>
+) -> Result<ApiResult, Error> {
+    request(
+        client,
+        "miri",
+        code,
+        channel,
+        None,
+        None,
+        None,
+        None
+    ).await
+}
+
+pub fn prepend_code(code: &str) -> Cow<str> {
+    if !code.contains("fn main") {
         Cow::Owned(format!(
             "fn main() {{ println!(\"{{:?}}\", {{ {} }});}}",
             code
         ))
     } else {
         Cow::Borrowed(code)
-    };
+    }
+}
+
+pub async fn run_miri(client: &Client, code: &str, channel: &str) -> Result<ApiResult, Error> {
+    let code = prepend_code(code);
+
+    miri(client, &*code, Some(channel)).await
+}
+
+pub async fn run_binary(client: &Client, code: &str, channel: &str) -> Result<ApiResult, Error> {
+    let code = prepend_code(code);
 
     run(client, code.borrow(), Some(channel), None, None, None, None).await
 }
