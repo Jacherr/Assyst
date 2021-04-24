@@ -15,9 +15,13 @@ mod routes {
     pub const AHSHIT: &str = "/ahshit";
     pub const APRILFOOLS: &str = "/april-fools";
     pub const CARD: &str = "/card";
+    pub const FISHEYE: &str = "/fisheye";
+    pub const FRINGE: &str = "/fringe";
+    pub const F_SHIFT: &str = "/fshift";
     pub const GLOBE: &str = "/globe";
     pub const NEON: &str = "/neon";
     pub const PAINT: &str = "/paint";
+    pub const SKETCH: &str = "/sketch";
     pub const ZOOM_BLUR: &str = "/zoom-blur";
 }
 
@@ -84,6 +88,18 @@ pub async fn card(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestErr
     request_bytes(assyst, routes::CARD, image, &[]).await
 }
 
+pub async fn fisheye(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::FISHEYE, image, &[]).await
+}
+
+pub async fn fringe(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::FRINGE, image, &[]).await
+}
+
+pub async fn f_shift(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::F_SHIFT, image, &[]).await
+}
+
 pub async fn globe(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::GLOBE, image, &[]).await
 }
@@ -94,6 +110,10 @@ pub async fn neon(assyst: Arc<Assyst>, image: Bytes, radius: &str) -> Result<Byt
 
 pub async fn paint(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::PAINT, image, &[]).await
+}
+
+pub async fn sketch(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::SKETCH, image, &[]).await
 }
 
 pub async fn zoom_blur(
