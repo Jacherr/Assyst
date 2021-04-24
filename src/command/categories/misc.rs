@@ -72,7 +72,7 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .build();
     pub static ref RUST_COMMAND: Command = CommandBuilder::new("rust")
-        .arg(Argument::Choice(&["run", "bench"]))
+        .arg(Argument::Choice(&["run", "bench", "miri"]))
         .arg(Argument::Choice(&["stable", "beta", "nightly"]))
         .arg(Argument::StringRemaining)
         .public()
@@ -383,17 +383,13 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
 pub async fn run_rust_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
     let ty = force_as::choice(&args[0]);
     let channel = force_as::choice(&args[1]);
-    let code = force_as::text(&args[2]);
+    let code = parse_codeblock(force_as::text(&args[2]), "2rs");
 
-    let result = if ty == "run" {
-        rust::run_binary(
-            &context.assyst.reqwest_client,
-            parse_codeblock(code, "rs"),
-            channel,
-        )
-        .await
-    } else {
-        rust::run_benchmark(&context.assyst.reqwest_client, parse_codeblock(code, "rs")).await
+    let result = match ty {
+        "run" => rust::run_binary(&context.assyst.reqwest_client, code, channel).await,
+        "bench" => rust::run_benchmark(&context.assyst.reqwest_client, code).await,
+        "miri" => rust::run_miri(&context.assyst.reqwest_client, code, channel).await,
+        _ => unreachable!()
     };
 
     let result = result.map_err(|e| e.to_string())?;
