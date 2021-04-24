@@ -158,5 +158,9 @@ impl CommandRegistry {
         register_command!(self, FLOP_COMMAND, run_flop_command);
         register_command!(self, TEHI_COMMAND, run_tehi_command);
         register_command!(self, TOP_BT_COMMAND, run_top_bt_command);
+        register_command!(self, F_SHIFT_COMMAND, run_f_shift_command);
+        register_command!(self, SKETCH_COMMAND, run_sketch_command);
+        register_command!(self, FRINGE_COMMAND, run_fringe_command);
+        register_command!(self, FISHEYE_COMMAND, run_fisheye_command);
     }
 }

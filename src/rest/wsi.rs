@@ -150,9 +150,14 @@ pub async fn grayscale(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, Reque
 pub async fn gif_speed(
     assyst: Arc<Assyst>,
     image: Bytes,
-    delay: &str,
+    delay: Option<&str>,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::GIF_SPEED, image, &[("delay", delay)]).await
+    let query = match delay {
+        Some(d) => vec![("delay", d)],
+        None => vec![]
+    };
+    
+    request_bytes(assyst, routes::GIF_SPEED, image, &query).await
 }
 
 pub async fn imagemagick_eval(

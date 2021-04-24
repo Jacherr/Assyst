@@ -22,6 +22,19 @@ use lazy_static::lazy_static;
 use std::sync::Arc;
 use std::time::Duration;
 
+macro_rules! run_annmarie_noarg_command {
+    ($fn:expr, $args:expr, $context:expr) => {{
+        let raw_image = force_as::image_buffer($args.drain(0..1).next().unwrap());
+        let annmarie_fn = $fn;
+        run_annmarie_noarg_command(
+            $context,
+            raw_image,
+            Box::new(move |assyst, bytes| Box::pin(annmarie_fn(assyst, bytes))),
+        )
+        .await
+    }}
+}
+
 const CATEGORY_NAME: &str = "image";
 
 lazy_static! {
@@ -81,6 +94,16 @@ lazy_static! {
         cooldown_seconds: 4,
         category: "image"
     };
+    pub static ref FISHEYE_COMMAND: Command = CommandBuilder::new("fisheye")
+        .arg(Argument::ImageBuffer)
+        .alias("fish")
+        .public()
+        .description("fisheye an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref FIX_TRANSPARENCY_COMMAND: Command = Command {
         aliases: vec!["ft"],
         args: vec![Argument::ImageBuffer],
@@ -108,6 +131,26 @@ lazy_static! {
         .arg(Argument::ImageBuffer)
         .public()
         .description("flop an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref F_SHIFT_COMMAND: Command = CommandBuilder::new("frameshift")
+        .arg(Argument::ImageBuffer)
+        .alias("butt")
+        .alias("fshift")
+        .public()
+        .description("frameshift an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref FRINGE_COMMAND: Command = CommandBuilder::new("fringe")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("apply fringe effect to image")
         .example(Y21)
         .usage("[image]")
         .cooldown(Duration::from_secs(4))
@@ -156,7 +199,7 @@ lazy_static! {
         aliases: vec!["gspeed"],
         args: vec![
             Argument::ImageBuffer,
-            Argument::OptionalWithDefault(Box::new(Argument::Integer), "2")
+            Argument::Optional(Box::new(Argument::Integer))
         ],
         availability: CommandAvailability::Public,
         metadata: CommandMetadata {
@@ -354,6 +397,15 @@ lazy_static! {
         cooldown_seconds: 4,
         category: "image"
     };
+    pub static ref SKETCH_COMMAND: Command = CommandBuilder::new("sketch")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("sketch an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref SPIN_COMMAND: Command = Command {
         aliases: vec![],
         args: vec![Argument::ImageBuffer],
@@ -503,14 +555,7 @@ pub async fn run_ahshit_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
-    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let annmarie_fn = annmarie::ahshit;
-    run_annmarie_noarg_command(
-        context,
-        raw_image,
-        Box::new(move |assyst, bytes| Box::pin(annmarie_fn(assyst, bytes))),
-    )
-    .await
+    run_annmarie_noarg_command!(annmarie::ahshit, args, context)
 }
 
 pub async fn run_annmarie_command(
@@ -537,14 +582,7 @@ pub async fn run_aprilfools_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
-    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let annmarie_fn = annmarie::aprilfools;
-    run_annmarie_noarg_command(
-        context,
-        raw_image,
-        Box::new(move |assyst, bytes| Box::pin(annmarie_fn(assyst, bytes))),
-    )
-    .await
+    run_annmarie_noarg_command!(annmarie::aprilfools, args, context)
 }
 
 pub async fn run_caption_command(
@@ -566,14 +604,14 @@ pub async fn run_card_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
-    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let annmarie_fn = annmarie::card;
-    run_annmarie_noarg_command(
-        context,
-        raw_image,
-        Box::new(move |assyst, bytes| Box::pin(annmarie_fn(assyst, bytes))),
-    )
-    .await
+    run_annmarie_noarg_command!(annmarie::card, args, context)
+}
+
+pub async fn run_fisheye_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    run_annmarie_noarg_command!(annmarie::fisheye, args, context)
 }
 
 pub async fn run_fix_transparency_command(
@@ -616,6 +654,20 @@ pub async fn run_flop_command(
         Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
     )
     .await
+}
+
+pub async fn run_f_shift_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    run_annmarie_noarg_command!(annmarie::f_shift, args, context)
+}
+
+pub async fn run_fringe_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    run_annmarie_noarg_command!(annmarie::fringe, args, context)
 }
 
 pub async fn run_gif_loop_command(
@@ -665,7 +717,7 @@ pub async fn run_gif_speed_command(
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let delay = force_as::text(&args[0]);
+    let delay = if args[0].is_nothing() { None } else { Some(force_as::text(&args[0])) };
     context.reply_with_text("processing...").await?;
     let result = wsi::gif_speed(context.assyst.clone(), image, delay)
         .await
@@ -679,14 +731,7 @@ pub async fn run_globe_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
-    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let annmarie_fn = annmarie::globe;
-    run_annmarie_noarg_command(
-        context,
-        raw_image,
-        Box::new(move |assyst, bytes| Box::pin(annmarie_fn(assyst, bytes))),
-    )
-    .await
+    run_annmarie_noarg_command!(annmarie::globe, args, context)
 }
 
 pub async fn run_grayscale_command(
@@ -809,14 +854,7 @@ pub async fn run_paint_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
-    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let annmarie_fn = annmarie::paint;
-    run_annmarie_noarg_command(
-        context,
-        raw_image,
-        Box::new(move |assyst, bytes| Box::pin(annmarie_fn(assyst, bytes))),
-    )
-    .await
+    run_annmarie_noarg_command!(annmarie::paint, args, context)
 }
 
 pub async fn run_printer_command(
@@ -893,6 +931,13 @@ pub async fn run_set_loop_command(
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
+}
+
+pub async fn run_sketch_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    run_annmarie_noarg_command!(annmarie::sketch, args, context)
 }
 
 pub async fn run_spin_command(
