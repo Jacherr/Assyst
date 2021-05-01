@@ -32,7 +32,7 @@ macro_rules! run_annmarie_noarg_command {
             Box::new(move |assyst, bytes| Box::pin(annmarie_fn(assyst, bytes))),
         )
         .await
-    }}
+    }};
 }
 
 const CATEGORY_NAME: &str = "image";
@@ -358,6 +358,18 @@ lazy_static! {
         cooldown_seconds: 4,
         category: "image"
     };
+    pub static ref RESIZE_COMMAND: Command = CommandBuilder::new("resize")
+        .arg(Argument::ImageBuffer)
+        .arg(Argument::OptionalWithDefault(Box::new(Argument::String), "2"))
+        .public()
+        .description("resize an image")
+        .example(Y21)
+        .example("312715611413413889 0.5")
+        .example("312715611413413889 100x200")
+        .usage("[image] <scale>|<widthxheight>")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref REVERSE_COMMAND: Command = Command {
         aliases: vec![],
         args: vec![Argument::ImageBuffer],
@@ -717,7 +729,11 @@ pub async fn run_gif_speed_command(
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
-    let delay = if args[0].is_nothing() { None } else { Some(force_as::text(&args[0])) };
+    let delay = if args[0].is_nothing() {
+        None
+    } else {
+        Some(force_as::text(&args[0]))
+    };
     context.reply_with_text("processing...").await?;
     let result = wsi::gif_speed(context.assyst.clone(), image, delay)
         .await
@@ -883,6 +899,54 @@ pub async fn run_rainbow_command(
         Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
     )
     .await
+}
+
+pub async fn run_resize_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+
+    let result: Bytes;
+    context.reply_with_text("processing...").await?;
+
+    if args.get(0).is_none() {
+        result = wsi::resize(context.assyst.clone(), image)
+            .await
+            .map_err(wsi::format_err)?;
+    } else {
+        let text = force_as::text(args.get(0).unwrap());
+        if text.contains("x") {
+            let split = text.split("x").collect::<Vec<&str>>();
+            let width = split
+                .get(0)
+                .unwrap()
+                .parse::<usize>()
+                .map_err(|_| "Invalid resolution.".to_owned())?;
+
+            let height = split
+                .get(1)
+                .ok_or_else(|| "Invalid resolution.".to_owned())?
+                .parse::<usize>()
+                .map_err(|_| "Invalid resolution.".to_owned())?;
+
+            result = wsi::resize_width_height(context.assyst.clone(), image, width, height)
+                .await
+                .map_err(wsi::format_err)?;
+        } else {
+            let scale = text
+                .parse::<f32>()
+                .map_err(|_| "Invalid resolution.".to_owned())?;
+            
+            result = wsi::resize_scale(context.assyst.clone(), image, scale)
+                .await
+                .map_err(wsi::format_err)?;
+        }
+    }
+
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
 }
 
 pub async fn run_reverse_command(
