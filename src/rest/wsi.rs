@@ -29,6 +29,7 @@ mod routes {
     pub const PREPROCESS: &str = "/preprocess";
     pub const PRINTER: &str = "/printer";
     pub const RAINBOW: &str = "/rainbow";
+    pub const RESIZE: &str = "/resize";
     pub const REVERSE: &str = "/reverse";
     pub const ROTATE: &str = "/rotate";
     pub const SET_LOOP: &str = "/set_loop";
@@ -156,7 +157,7 @@ pub async fn gif_speed(
         Some(d) => vec![("delay", d)],
         None => vec![]
     };
-    
+
     request_bytes(assyst, routes::GIF_SPEED, image, &query).await
 }
 
@@ -192,6 +193,18 @@ pub async fn printer(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, Request
 
 pub async fn rainbow(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::RAINBOW, image, &[]).await
+}
+
+pub async fn resize(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::RESIZE, image, &[]).await
+}
+
+pub async fn resize_scale(assyst: Arc<Assyst>, image: Bytes, scale: f32) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::RESIZE, image, &[("scale", &scale.to_string())]).await
+}
+
+pub async fn resize_width_height(assyst: Arc<Assyst>, image: Bytes, width: usize, height: usize) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::RESIZE, image, &[("width", &width.to_string()), ("height", &height.to_string())]).await
 }
 
 pub async fn reverse(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
