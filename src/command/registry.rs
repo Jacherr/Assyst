@@ -162,6 +162,7 @@ impl CommandRegistry {
         register_command!(self, SKETCH_COMMAND, run_sketch_command);
         register_command!(self, FRINGE_COMMAND, run_fringe_command);
         register_command!(self, FISHEYE_COMMAND, run_fisheye_command);
+        register_command!(self, MEME_COMMAND, run_meme_command);
         //register_command!(self, RESIZE_COMMAND, run_resize_command);
     }
 }
