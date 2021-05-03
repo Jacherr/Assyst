@@ -276,6 +276,16 @@ lazy_static! {
         cooldown_seconds: 4,
         category: "image"
     };
+    pub static ref MEME_COMMAND: Command = CommandBuilder::new("meme")
+        .arg(Argument::ImageBuffer)
+        .arg(Argument::StringRemaining)
+        .public()
+        .description("create funny meme")
+        .example("312715611413413889 this is|this is an otter")
+        .usage("[image] [text separated by a |]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref PRINTER_COMMAND: Command = Command {
         aliases: vec!["print"],
         args: vec![Argument::ImageBuffer],
@@ -805,6 +815,34 @@ pub async fn run_magik_command(
         Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
     )
     .await
+}
+
+pub async fn run_meme_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let text = force_as::text(&args[0]);
+
+    let divider: String;
+
+    if text.contains("|") {
+        divider = "|".to_string();
+    } else {
+        divider = " ".to_string();
+    }
+
+    let mut parts = text.split(&divider).collect::<Vec<&str>>();
+    let top_text = parts[0].to_string();
+    let bottom_text = parts.drain(1..).collect::<Vec<&str>>().join(" ");
+
+    context.reply_with_text("processing...").await?;
+    let result = wsi::meme(context.assyst.clone(), image, &top_text, &bottom_text)
+        .await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
 }
 
 pub async fn run_motivate_command(
