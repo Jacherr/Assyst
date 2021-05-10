@@ -67,6 +67,7 @@ pub async fn request_bytes(
             reqwest::header::AUTHORIZATION,
             assyst.config.wsi_auth.as_ref(),
         )
+        .header("premium_level", 0)
         .query(query)
         .body(image)
         .send()
