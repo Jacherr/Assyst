@@ -36,6 +36,7 @@ mod routes {
     pub const SET_LOOP: &str = "/set_loop";
     pub const SPIN: &str = "/spin";
     pub const SPREAD: &str = "/spread";
+    pub const STATS: &str = "/stats";
     pub const SWIRL: &str = "/swirl";
     pub const TEHI: &str = "/tehi";
     pub const WALL: &str = "/wall";
@@ -43,6 +44,13 @@ mod routes {
     pub const WORMHOLE: &str = "/wormhole";
     pub const ZOOM: &str = "/zoom";
 }
+
+#[derive(Deserialize)]
+pub struct Stats {
+    pub current_requests: usize,
+    pub total_workers: usize,
+}
+
 #[derive(Deserialize)]
 pub struct WsiError {
     pub code: u16,
@@ -157,7 +165,7 @@ pub async fn gif_speed(
 ) -> Result<Bytes, RequestError> {
     let query = match delay {
         Some(d) => vec![("delay", d)],
-        None => vec![]
+        None => vec![],
     };
 
     request_bytes(assyst, routes::GIF_SPEED, image, &query).await
@@ -185,8 +193,19 @@ pub async fn magik(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestEr
     request_bytes(assyst, routes::MAGIK, image, &[]).await
 }
 
-pub async fn meme(assyst: Arc<Assyst>, image: Bytes, top: &str, bottom: &str) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::MEME, image, &[("top", top), ("bottom", bottom)]).await
+pub async fn meme(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    top: &str,
+    bottom: &str,
+) -> Result<Bytes, RequestError> {
+    request_bytes(
+        assyst,
+        routes::MEME,
+        image,
+        &[("top", top), ("bottom", bottom)],
+    )
+    .await
 }
 
 pub async fn preprocess(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
@@ -205,12 +224,36 @@ pub async fn resize(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestE
     request_bytes(assyst, routes::RESIZE, image, &[]).await
 }
 
-pub async fn resize_scale(assyst: Arc<Assyst>, image: Bytes, scale: f32) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::RESIZE, image, &[("scale", &scale.to_string())]).await
+pub async fn resize_scale(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    scale: f32,
+) -> Result<Bytes, RequestError> {
+    request_bytes(
+        assyst,
+        routes::RESIZE,
+        image,
+        &[("scale", &scale.to_string())],
+    )
+    .await
 }
 
-pub async fn resize_width_height(assyst: Arc<Assyst>, image: Bytes, width: usize, height: usize) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::RESIZE, image, &[("width", &width.to_string()), ("height", &height.to_string())]).await
+pub async fn resize_width_height(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    width: usize,
+    height: usize,
+) -> Result<Bytes, RequestError> {
+    request_bytes(
+        assyst,
+        routes::RESIZE,
+        image,
+        &[
+            ("width", &width.to_string()),
+            ("height", &height.to_string()),
+        ],
+    )
+    .await
 }
 
 pub async fn reverse(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
@@ -245,6 +288,29 @@ pub async fn spin(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestErr
 
 pub async fn spread(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::SPREAD, image, &[]).await
+}
+
+pub async fn stats(assyst: Arc<Assyst>) -> Result<Stats, RequestError> {
+    let result = assyst
+        .reqwest_client
+        .get(&format!("{}{}", assyst.config.wsi_url, routes::STATS))
+        .send()
+        .await
+        .map_err(|e| RequestError::Reqwest(e))?;
+
+    return if result.status() != reqwest::StatusCode::OK {
+        let json = result
+            .json::<WsiError>()
+            .await
+            .map_err(|err| RequestError::Reqwest(err))?;
+        Err(RequestError::Wsi(json))
+    } else {
+        let json = result
+            .json::<Stats>()
+            .await
+            .map_err(|err| RequestError::Reqwest(err))?;
+        Ok(json)
+    };
 }
 
 pub async fn swirl(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {

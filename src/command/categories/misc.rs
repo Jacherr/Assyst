@@ -1,12 +1,12 @@
 use crate::{command::{
         command::{
-            force_as, Argument, Command, CommandAvailability, CommandBuilder, CommandMetadata,
+            force_as, Argument, Command, CommandAvailability, CommandBuilder,
             ParsedArgument,
         },
         context::Context,
         messagebuilder::MessageBuilder,
         registry::CommandResult,
-    }, rest::fake_eval, util::{codeblock, exec_sync, extract_page_title, format_time, generate_list, generate_table, get_memory_usage, parse_codeblock}};
+    }, rest::{fake_eval, wsi}, util::{codeblock, exec_sync, extract_page_title, format_time, generate_list, generate_table, get_memory_usage, parse_codeblock}};
 use crate::{
     consts::Y21,
     database::Reminder,
@@ -47,6 +47,13 @@ lazy_static! {
         .description("get help")
         .usage("<command>")
         .example("caption")
+        .cooldown(Duration::from_secs(2))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref WSI_STATS_COMMAND: Command = CommandBuilder::new("wsistats")
+        .alias("wstat")
+        .public()
+        .description("get wsi statistics")
         .cooldown(Duration::from_secs(2))
         .category(CATEGORY_NAME)
         .build();
@@ -147,19 +154,15 @@ lazy_static! {
         .cooldown(Duration::from_secs(2))
         .category(CATEGORY_NAME)
         .build();
-    pub static ref FAKE_EVAL_COMMAND: Command = Command {
-        aliases: Vec::new(),
-        args: vec![Argument::StringRemaining],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "Evaluate javascript code",
-            examples: vec!["41 + 1 /* what is it */"],
-            usage: "[code]"
-        },
-        name: "eval",
-        cooldown_seconds: 1,
-        category: "misc"
-    };
+    pub static ref FAKE_EVAL_COMMAND: Command = CommandBuilder::new("eval")
+        .arg(Argument::StringRemaining)
+        .public()
+        .description("Evaluate javascript code")
+        .example("41 + 1 /* what is it */")
+        .usage("[code]")
+        .cooldown(Duration::from_secs(1))
+        .category(CATEGORY_NAME)
+        .build();
 }
 
 pub async fn run_ping_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
@@ -378,6 +381,18 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
         .map_err(|e| e.to_string())?;
 
     Ok(())
+}
+
+pub async fn run_wsi_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
+    let response = wsi::stats(context.assyst.clone()).await.map_err(wsi::format_err)?;
+
+    let output = format!("**Current Requests:** {}\n**Total Workers:** {}", response.current_requests, response.total_workers);
+
+    context
+        .reply_with_text(&output)
+        .await
+        .map_err(|e| e.to_string())
+        .map(|_| ())
 }
 
 pub async fn run_rust_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
