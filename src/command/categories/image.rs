@@ -342,6 +342,17 @@ lazy_static! {
         cooldown_seconds: 4,
         category: "image"
     };
+    pub static ref OVERLAY_COMMAND: Command = CommandBuilder::new("overlay")
+        .arg(Argument::ImageBuffer)
+        .arg(Argument::String)
+        .public()
+        .description("overlay an image onto another image")
+        .example(Y21)
+        .example("312715611413413889 finland")
+        .usage("[image] [overlay]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref PAINT_COMMAND: Command = Command {
         aliases: vec![],
         args: vec![Argument::ImageBuffer],
@@ -370,7 +381,10 @@ lazy_static! {
     };
     pub static ref RESIZE_COMMAND: Command = CommandBuilder::new("resize")
         .arg(Argument::ImageBuffer)
-        .arg(Argument::OptionalWithDefault(Box::new(Argument::String), "2"))
+        .arg(Argument::OptionalWithDefault(
+            Box::new(Argument::String),
+            "2"
+        ))
         .public()
         .description("resize an image")
         .example(Y21)
@@ -471,6 +485,15 @@ lazy_static! {
         .arg(Argument::ImageBuffer)
         .public()
         .description("tehi")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref TERRARIA_COMMAND: Command = CommandBuilder::new("terraria")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("terraria music over image")
         .example(Y21)
         .usage("[image]")
         .cooldown(Duration::from_secs(4))
@@ -904,6 +927,21 @@ pub async fn run_ocr_command(
     Ok(())
 }
 
+pub async fn run_overlay_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let overlay = force_as::text(&args[0]);
+    context.reply_with_text("processing...").await?;
+    let result = wsi::overlay(context.assyst.clone(), image, &overlay.to_ascii_lowercase())
+        .await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
+}
+
 pub async fn run_paint_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
@@ -975,7 +1013,7 @@ pub async fn run_resize_command(
             let scale = text
                 .parse::<f32>()
                 .map_err(|_| "Invalid resolution.".to_owned())?;
-            
+
             result = wsi::resize_scale(context.assyst.clone(), image, scale)
                 .await
                 .map_err(wsi::format_err)?;
@@ -1096,6 +1134,13 @@ pub async fn run_tehi_command(
         Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
     )
     .await
+}
+
+pub async fn run_terraria_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    run_annmarie_noarg_command!(annmarie::terraria, args, context)
 }
 
 pub async fn run_wall_command(

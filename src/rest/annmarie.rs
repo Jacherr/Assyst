@@ -22,6 +22,7 @@ mod routes {
     pub const NEON: &str = "/neon";
     pub const PAINT: &str = "/paint";
     pub const SKETCH: &str = "/sketch";
+    pub const TERRARIA: &str = "/terraria";
     pub const ZOOM_BLUR: &str = "/zoom-blur";
 }
 
@@ -114,6 +115,10 @@ pub async fn paint(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestEr
 
 pub async fn sketch(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::SKETCH, image, &[]).await
+}
+
+pub async fn terraria(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::TERRARIA, image, &[]).await
 }
 
 pub async fn zoom_blur(
