@@ -263,6 +263,15 @@ lazy_static! {
         cooldown_seconds: 4,
         category: "image"
     };
+    pub static ref JPEG_COMMAND: Command = CommandBuilder::new("jpeg")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("jpegify an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref MAGIK_COMMAND: Command = Command {
         aliases: vec!["magik", "magick", "magic", "cas"],
         args: vec![Argument::ImageBuffer],
@@ -818,6 +827,20 @@ pub async fn run_invert_command(
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let wsi_fn = wsi::invert;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
+    )
+    .await
+}
+
+pub async fn run_jpeg_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let wsi_fn = wsi::jpeg;
     run_wsi_noarg_command(
         context,
         raw_image,
