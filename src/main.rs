@@ -57,7 +57,7 @@ async fn main() {
     let scheme = ShardScheme::Auto;
     let cluster = Cluster::builder(
         &token,
-        Intents::GUILD_MESSAGES | Intents::GUILD_MESSAGE_REACTIONS,
+        Intents::GUILD_MESSAGES,
     )
     .shard_scheme(scheme)
     .http_client(assyst.http.clone())

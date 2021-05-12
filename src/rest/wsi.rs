@@ -27,6 +27,7 @@ mod routes {
     pub const MAGIK: &str = "/magik";
     pub const MEME: &str = "/meme";
     pub const MOTIVATE: &str = "/motivate";
+    pub const OVERLAY: &str = "/overlay";
     pub const PREPROCESS: &str = "/preprocess";
     pub const PRINTER: &str = "/printer";
     pub const RAINBOW: &str = "/rainbow";
@@ -254,6 +255,10 @@ pub async fn resize_width_height(
         ],
     )
     .await
+}
+
+pub async fn overlay(assyst: Arc<Assyst>, image: Bytes, overlay: &str) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::OVERLAY, image, &[("overlay", overlay)]).await
 }
 
 pub async fn reverse(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {

@@ -165,5 +165,7 @@ impl CommandRegistry {
         register_command!(self, MEME_COMMAND, run_meme_command);
         register_command!(self, RESIZE_COMMAND, run_resize_command);
         register_command!(self, WSI_STATS_COMMAND, run_wsi_stats_command);
+        register_command!(self, TERRARIA_COMMAND, run_terraria_command);
+        register_command!(self, OVERLAY_COMMAND, run_overlay_command);
     }
 }
