@@ -24,6 +24,7 @@ mod routes {
     pub const GRAYSCALE: &str = "/grayscale";
     pub const IMAGEMAGICK_EVAL: &str = "/imagemagick_eval";
     pub const INVERT: &str = "/invert";
+    pub const JPEG: &str = "/jpeg";
     pub const MAGIK: &str = "/magik";
     pub const MEME: &str = "/meme";
     pub const MOTIVATE: &str = "/motivate";
@@ -188,6 +189,10 @@ pub async fn imagemagick_eval(
 
 pub async fn invert(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::INVERT, image, &[]).await
+}
+
+pub async fn jpeg(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::JPEG, image, &[]).await
 }
 
 pub async fn magik(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
