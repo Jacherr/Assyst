@@ -118,6 +118,15 @@ lazy_static! {
         cooldown_seconds: 4,
         category: "image"
     };
+    pub static ref FLASH_COMMAND: Command = CommandBuilder::new("flash")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("flash an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref FLIP_COMMAND: Command = CommandBuilder::new("flip")
         .arg(Argument::ImageBuffer)
         .public()
@@ -356,7 +365,6 @@ lazy_static! {
         .arg(Argument::String)
         .public()
         .description("overlay an image onto another image")
-        .example(Y21)
         .example("312715611413413889 finland")
         .usage("[image] [overlay]")
         .cooldown(Duration::from_secs(4))
@@ -674,6 +682,20 @@ pub async fn run_fix_transparency_command(
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let wsi_fn = wsi::fix_transparency;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
+    )
+    .await
+}
+
+pub async fn run_flash_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let wsi_fn = wsi::flash;
     run_wsi_noarg_command(
         context,
         raw_image,
