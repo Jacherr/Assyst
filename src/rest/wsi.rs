@@ -15,6 +15,7 @@ mod routes {
     pub const CAPTION: &str = "/caption";
     pub const COMPRESS: &str = "/compress";
     pub const FIX_TRANSPARENCY: &str = "/fix_transparency";
+    pub const FLASH: &str = "/flash";
     pub const FLIP: &str = "/flip";
     pub const FLOP: &str = "/flop";
     pub const GIF_LOOP: &str = "/gif_loop";
@@ -121,6 +122,9 @@ pub async fn fix_transparency(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes
     request_bytes(assyst, routes::FIX_TRANSPARENCY, image, &[]).await
 }
 
+pub async fn flash(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::FLASH, image, &[]).await
+}
 pub async fn flip(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::FLIP, image, &[]).await
 }

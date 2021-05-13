@@ -168,5 +168,6 @@ impl CommandRegistry {
         register_command!(self, TERRARIA_COMMAND, run_terraria_command);
         register_command!(self, OVERLAY_COMMAND, run_overlay_command);
         register_command!(self, JPEG_COMMAND, run_jpeg_command);
+        register_command!(self, FLASH_COMMAND, run_flash_command);
     }
 }
