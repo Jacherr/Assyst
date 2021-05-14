@@ -2,7 +2,7 @@ use crate::assyst::Assyst;
 use crate::{
     rest::bt, util::get_current_millis, util::normalize_emojis, util::sanitize_message_content,
 };
-use std::{borrow::Cow};
+use std::{borrow::Cow, time::Duration};
 use std::{cmp::min, collections::HashMap, sync::Arc};
 use reqwest::StatusCode;
 use tokio::sync::RwLock;
@@ -173,7 +173,14 @@ impl BadTranslator {
 
         let ratelimit = self.try_ratelimit(&message.author.id).await;
         if ratelimit {
-            assyst
+            // delete source, respond with error, wait, delete error
+
+            let _ = assyst
+                .http
+                .delete_message(message.channel_id, message.id)
+                .await;
+
+            let res_message = assyst
                 .http
                 .create_message(message.channel_id)
                 .content(&format!(
@@ -184,6 +191,13 @@ impl BadTranslator {
                 .unwrap()
                 .await
                 .unwrap();
+
+            tokio::time::sleep(Duration::from_secs(5)).await;
+
+            let _ = assyst
+                .http
+                .delete_message(res_message.channel_id, res_message.id)
+                .await;
             return;
         }
 
@@ -204,12 +218,12 @@ impl BadTranslator {
             _ => return,
         };
 
-        // If we don't have permissions to delete messages, we just silently ignore it
         let delete_state = assyst
             .http
             .delete_message(message.channel_id, message.id)
             .await;
 
+        // dont respond with translation if the source was prematurely deleted
         if let Err(err) = delete_state {
             if let Error::Response { status, body: _, error: _ } = err {
                 if status == StatusCode::NOT_FOUND {
@@ -290,7 +304,7 @@ fn is_webhook(user: &User) -> bool {
     user.system.unwrap_or(false) || user.discriminator == "0000"
 }
 
-fn is_ratelimit_message(_: &Assyst, message: &MessageCreate) -> bool {
+fn is_ratelimit_message(assyst: &Assyst, message: &MessageCreate) -> bool {
     // TODO: check if message was sent by the bot itself
-    message.content.contains(constants::RATELIMITED_MESSAGE)
+    message.content.contains(constants::RATELIMITED_MESSAGE) && message.author.id.0 == assyst.config.bot_id
 }
