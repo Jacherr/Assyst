@@ -2,8 +2,9 @@ use crate::assyst::Assyst;
 use crate::{
     rest::bt, util::get_current_millis, util::normalize_emojis, util::sanitize_message_content,
 };
-use std::borrow::Cow;
+use std::{borrow::Cow};
 use std::{cmp::min, collections::HashMap, sync::Arc};
+use reqwest::StatusCode;
 use tokio::sync::RwLock;
 use twilight_model::gateway::payload::MessageCreate;
 use twilight_model::{
@@ -11,6 +12,7 @@ use twilight_model::{
     id::{ChannelId, UserId},
     user::User,
 };
+use twilight_http::Error;
 
 macro_rules! unwrap_or_eprintln {
     ($what:expr, $msg:expr) => {
@@ -203,10 +205,18 @@ impl BadTranslator {
         };
 
         // If we don't have permissions to delete messages, we just silently ignore it
-        let _ = assyst
+        let delete_state = assyst
             .http
             .delete_message(message.channel_id, message.id)
             .await;
+
+        if let Err(err) = delete_state {
+            if let Error::Response { status, body: _, error: _ } = err {
+                if status == StatusCode::NOT_FOUND {
+                    return;
+                }
+            }
+        }
 
         let webhook = match self.get_or_fetch_webhook(assyst, &message.channel_id).await {
             Some(webhook) => webhook,
