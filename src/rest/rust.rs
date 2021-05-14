@@ -77,32 +77,13 @@ pub async fn run(
     tests: Option<bool>,
 ) -> Result<ApiResult, Error> {
     request(
-        client,
-        "execute",
-        code,
-        channel,
-        mode,
-        edition,
-        crate_type,
-        tests
-    ).await
+        client, "execute", code, channel, mode, edition, crate_type, tests,
+    )
+    .await
 }
 
-pub async fn miri(
-    client: &Client,
-    code: &str,
-    channel: Option<&str>
-) -> Result<ApiResult, Error> {
-    request(
-        client,
-        "miri",
-        code,
-        channel,
-        None,
-        None,
-        None,
-        None
-    ).await
+pub async fn miri(client: &Client, code: &str, channel: Option<&str>) -> Result<ApiResult, Error> {
+    request(client, "miri", code, channel, None, None, None, None).await
 }
 
 pub fn prepend_code(code: &str) -> Cow<str> {

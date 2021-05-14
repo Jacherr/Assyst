@@ -35,6 +35,14 @@ impl<T: Hash + Eq + Clone, U> Cache<T, U> {
 
         self.cache.insert(key, value);
     }
+
+    pub fn get(&self, key: &T) -> Option<&U> {
+        self.cache.get(key)
+    }
+
+    pub fn get_mut(&mut self, key: &T) -> Option<&mut U> {
+        self.cache.get_mut(key)
+    }
 }
 
 #[derive(Debug)]

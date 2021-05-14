@@ -1,12 +1,18 @@
-use crate::{command::{
+use crate::{
+    command::{
         command::{
-            force_as, Argument, Command, CommandAvailability, CommandBuilder,
-            ParsedArgument,
+            force_as, Argument, Command, CommandAvailability, CommandBuilder, ParsedArgument,
         },
         context::Context,
         messagebuilder::MessageBuilder,
         registry::CommandResult,
-    }, rest::{fake_eval, wsi}, util::{codeblock, exec_sync, extract_page_title, format_time, generate_list, generate_table, get_memory_usage, parse_codeblock}};
+    },
+    rest::{fake_eval, wsi},
+    util::{
+        codeblock, exec_sync, extract_page_title, format_time, generate_list, generate_table,
+        get_memory_usage, parse_codeblock,
+    },
+};
 use crate::{
     consts::Y21,
     database::Reminder,
@@ -121,6 +127,14 @@ lazy_static! {
         .availability(CommandAvailability::GuildOwner)
         .description("configures the bad translator feature in this channel")
         .cooldown(Duration::from_secs(2))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref COMMAND_COMMAND: Command = CommandBuilder::new("command")
+        .alias("cmd")
+        .arg(Argument::String)
+        .availability(CommandAvailability::GuildOwner)
+        .description("toggle enable/disable a command")
+        .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
     pub static ref CHARS_COMMAND: Command = CommandBuilder::new("chars")
@@ -364,7 +378,11 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
         ("Avg Processing Time", &format!("{:.4}s", proc_time)),
         ("Uptime", &context.assyst.uptime().format()),
         ("BadTranslator Messages", &{
-            let (total, guild) = context.assyst.database.get_badtranslator_message_stats(guild_id).await
+            let (total, guild) = context
+                .assyst
+                .database
+                .get_badtranslator_message_stats(guild_id)
+                .await
                 .map_err(|e| e.to_string())?;
 
             format!("Total: {}, Server: {}", total, guild)
@@ -384,9 +402,14 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
 }
 
 pub async fn run_wsi_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
-    let response = wsi::stats(context.assyst.clone()).await.map_err(wsi::format_err)?;
+    let response = wsi::stats(context.assyst.clone())
+        .await
+        .map_err(wsi::format_err)?;
 
-    let output = format!("**Current Requests:** {}\n**Total Workers:** {}", response.current_requests, response.total_workers);
+    let output = format!(
+        "**Current Requests:** {}\n**Total Workers:** {}",
+        response.current_requests, response.total_workers
+    );
 
     context
         .reply_with_text(&output)
@@ -404,7 +427,7 @@ pub async fn run_rust_command(context: Arc<Context>, args: Vec<ParsedArgument>) 
         "run" => rust::run_binary(&context.assyst.reqwest_client, code, channel).await,
         "bench" => rust::run_benchmark(&context.assyst.reqwest_client, code).await,
         "miri" => rust::run_miri(&context.assyst.reqwest_client, code, channel).await,
-        _ => unreachable!()
+        _ => unreachable!(),
     };
 
     let result = result.map_err(|e| e.to_string())?;
@@ -524,10 +547,7 @@ pub async fn run_top_commands_command(
     Ok(())
 }
 
-pub async fn run_top_bt_command(
-    context: Arc<Context>,
-    _: Vec<ParsedArgument>,
-) -> CommandResult {
+pub async fn run_top_bt_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
     let top_bt = context
         .assyst
         .database
@@ -625,7 +645,7 @@ pub async fn run_translate_command(
 
 pub async fn run_fake_eval_command(
     context: Arc<Context>,
-    args: Vec<ParsedArgument>
+    args: Vec<ParsedArgument>,
 ) -> CommandResult {
     let code = force_as::text(&args[0]);
 
@@ -633,20 +653,19 @@ pub async fn run_fake_eval_command(
         .await
         .map_err(|e| e.to_string())?;
 
-    if response.message.trim() == "42" { response.message = "The answer to life, the universe, and everything".to_owned() };
-    
-    context.reply_with_text(&codeblock(&response.message, "js"))
+    if response.message.trim() == "42" {
+        response.message = "The answer to life, the universe, and everything".to_owned()
+    };
+
+    context
+        .reply_with_text(&codeblock(&response.message, "js"))
         .await
         .map(|_| ())
 }
-pub async fn run_exec_command(
-    context: Arc<Context>,
-    args: Vec<ParsedArgument>,
-) -> CommandResult {
+pub async fn run_exec_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
     let command = force_as::text(&args[0]);
 
-    let result = exec_sync(command)
-        .map_err(|e| e.to_string())?;
+    let result = exec_sync(command).map_err(|e| e.to_string())?;
 
     let mut output = "".to_owned();
     if !result.stdout.is_empty() {
@@ -656,10 +675,67 @@ pub async fn run_exec_command(
         output = format!("{}`stderr`: ```{}```", output, result.stderr);
     }
 
-    context
-        .reply_with_text(&output)
-        .await
-        .unwrap();
+    context.reply_with_text(&output).await.unwrap();
+
+    Ok(())
+}
+
+pub async fn run_command_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let command = force_as::text(&args[0]);
+
+    let found_command = context
+        .assyst
+        .registry
+        .get_command_from_name_or_alias(command);
+    match found_command {
+        Some(cmd) => {
+            // Because guild disabled commands get cached while doing the initial
+            // handle, it is safe to assume that the disabled commands for this guild
+            // are cached, and more importantly up-to-date.
+            // We can use the cache instead of a DB call to determine whether
+            // to enable or disable this command.
+
+            let guild_id = context.message.guild_id.unwrap();
+            let lock = context.assyst.database.cache.read().await;
+            let disabled_commands = (*lock).disabled_commands.get(&guild_id).unwrap();
+            let should_disable = if disabled_commands.contains(cmd.name) {
+                false
+            } else {
+                true
+            };
+            drop(lock);
+
+            if should_disable {
+                context
+                    .assyst
+                    .database
+                    .add_disabled_command(guild_id, cmd.name)
+                    .await
+                    .map_err(|e| e.to_string())?;
+                context
+                    .reply_with_text(&format!("Disabled command: `{}`", cmd.name))
+                    .await
+                    .map_err(|e| e.to_string())?;
+            } else {
+                context
+                    .assyst
+                    .database
+                    .remove_disabled_command(guild_id, cmd.name)
+                    .await
+                    .map_err(|e| e.to_string())?;
+                context
+                    .reply_with_text(&format!("Enabled command: `{}`", cmd.name))
+                    .await
+                    .map_err(|e| e.to_string())?;
+            };
+        }
+        None => {
+            return Err("No command with this name or alias exists!".to_owned());
+        }
+    };
 
     Ok(())
 }

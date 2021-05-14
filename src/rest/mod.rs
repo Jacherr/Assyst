@@ -1,6 +1,6 @@
 use bytes::Bytes;
-use serde::{Serialize, Deserialize};
 use reqwest::{Client, Error};
+use serde::{Deserialize, Serialize};
 
 pub mod annmarie;
 pub mod bt;
@@ -31,12 +31,12 @@ impl ToString for OcrError {
 
 #[derive(Serialize)]
 struct FakeEvalBody {
-    pub code: String
+    pub code: String,
 }
 
 #[derive(Deserialize)]
 pub struct FakeEvalResponse {
-    pub message: String
+    pub message: String,
 }
 
 pub async fn ocr_image(client: &Client, url: &str) -> Result<String, OcrError> {
@@ -82,13 +82,11 @@ pub fn parse_path_parameter(path: String, param: (&str, &str)) -> String {
     path.replace(&format!(":{}", param.0), param.1)
 }
 
-pub async fn fake_eval(
-    client: &Client,
-    code: &str
-) -> Result<FakeEvalResponse, Error> {
-    client.post(routes::FAKE_EVAL)
+pub async fn fake_eval(client: &Client, code: &str) -> Result<FakeEvalResponse, Error> {
+    client
+        .post(routes::FAKE_EVAL)
         .json(&FakeEvalBody {
-            code: code.to_string()
+            code: code.to_string(),
         })
         .send()
         .await?

@@ -165,6 +165,19 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
+    pub static ref GHOST_COMMAND: Command = CommandBuilder::new("ghost")
+        .arg(Argument::ImageBuffer)
+        .arg(Argument::OptionalWithDefault(
+            Box::new(Argument::String),
+            "10"
+        ))
+        .public()
+        .description("perform frame ghosting on a gif")
+        .example(Y21)
+        .usage("[image] <power: 1-20>")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref GIF_LOOP_COMMAND: Command = Command {
         aliases: vec!["gloop"],
         args: vec![Argument::ImageBuffer],
@@ -744,6 +757,21 @@ pub async fn run_fringe_command(
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
     run_annmarie_noarg_command!(annmarie::fringe, args, context)
+}
+
+pub async fn run_ghost_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let depth = force_as::text(&args[0]);
+    context.reply_with_text("processing...").await?;
+    let result = wsi::ghost(context.assyst.clone(), image, depth)
+        .await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
 }
 
 pub async fn run_gif_loop_command(

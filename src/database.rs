@@ -1,10 +1,14 @@
-use std::{borrow::Cow, collections::HashMap};
+use std::{
+    borrow::Cow,
+    collections::{HashMap, HashSet},
+};
 
 use futures::StreamExt;
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use tokio::sync::RwLock;
+use twilight_model::id::GuildId;
 
-use crate::{badtranslator::ChannelCache, util::get_current_millis};
+use crate::{badtranslator::ChannelCache, caching::Cache, util::get_current_millis};
 
 #[derive(sqlx::FromRow, Debug)]
 pub struct Reminder {
@@ -27,18 +31,28 @@ pub struct BadTranslatorMessages {
     pub message_count: i64,
 }
 
-struct Cache {
-    pub prefixes: HashMap<u64, Box<str>>,
+#[derive(sqlx::FromRow, Debug, Clone)]
+pub struct DisabledCommandEntry {
+    pub command_name: String,
+    pub guild_id: i64,
 }
-impl Cache {
+
+type GuildDisabledCommands = Cache<GuildId, HashSet<String>>;
+
+pub struct DatabaseCache {
+    pub prefixes: HashMap<u64, Box<str>>,
+    pub disabled_commands: GuildDisabledCommands,
+}
+impl DatabaseCache {
     pub fn new() -> Self {
-        Cache {
+        DatabaseCache {
             prefixes: HashMap::new(),
+            disabled_commands: Cache::new(100),
         }
     }
 }
 pub struct Database {
-    cache: RwLock<Cache>,
+    pub cache: RwLock<DatabaseCache>,
     pool: PgPool,
 }
 impl Database {
@@ -49,7 +63,7 @@ impl Database {
             .await?;
 
         Ok(Database {
-            cache: RwLock::new(Cache::new()),
+            cache: RwLock::new(DatabaseCache::new()),
             pool,
         })
     }
@@ -241,7 +255,7 @@ impl Database {
     }
 
     pub async fn get_badtranslator_messages_raw(
-        &self
+        &self,
     ) -> Result<Vec<BadTranslatorMessages>, sqlx::Error> {
         let query = "select * from bt_messages order by message_count desc";
         let result = sqlx::query_as::<_, BadTranslatorMessages>(query)
@@ -249,5 +263,93 @@ impl Database {
             .await?;
 
         Ok(result)
+    }
+
+    pub async fn is_command_disabled(&self, command: &str, guild_id: GuildId) -> bool {
+        let lock = self.cache.read().await;
+
+        let guild_disabled_commands = (*lock).disabled_commands.get(&guild_id);
+
+        if let Some(commands) = guild_disabled_commands {
+            return if commands.contains(command) {
+                true
+            } else {
+                false
+            };
+        }
+
+        drop(lock);
+
+        let query = "select * from disabled_commands where guild_id = $1";
+
+        let result: Vec<DisabledCommandEntry> = sqlx::query_as::<_, DisabledCommandEntry>(query)
+            .bind(guild_id.0 as i64)
+            .fetch_all(&self.pool)
+            .await
+            .unwrap();
+
+        let mut write_lock = self.cache.write().await;
+        let guild = (*write_lock).disabled_commands.get(&guild_id);
+
+        let mut commands = HashSet::<String>::new();
+        for command in result.clone() {
+            commands.insert(command.command_name);
+        }
+
+        if guild.is_none() {
+            (*write_lock).disabled_commands.insert(guild_id, commands);
+        };
+
+        if result.len() > 0 {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub async fn add_disabled_command(
+        &self,
+        guild_id: GuildId,
+        command: &str,
+    ) -> Result<(), sqlx::Error> {
+        let query = "insert into disabled_commands(guild_id, command_name) values($1, $2)";
+
+        sqlx::query(query)
+            .bind(guild_id.0 as i64)
+            .bind(command)
+            .execute(&self.pool)
+            .await?;
+
+        let mut write_lock = self.cache.write().await;
+        let guild = (*write_lock).disabled_commands.get_mut(&guild_id);
+
+        if let Some(cmds) = guild {
+            cmds.insert(command.to_string());
+        }
+
+        Ok(())
+    }
+
+    pub async fn remove_disabled_command(
+        &self,
+        guild_id: GuildId,
+        command: &str,
+    ) -> Result<(), sqlx::Error> {
+        let query = "delete from disabled_commands where guild_id = $1 and command_name = $2";
+
+        sqlx::query(query)
+            .bind(guild_id.0 as i64)
+            .bind(command)
+            .execute(&self.pool)
+            .await?;
+
+        let mut write_lock = self.cache.write().await;
+        let guild = (*write_lock).disabled_commands.get_mut(&guild_id);
+
+        if let Some(cmds) = guild {
+            cmds.remove(command);
+        }
+
+        Ok(())
     }
 }

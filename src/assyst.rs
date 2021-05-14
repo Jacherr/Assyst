@@ -1,4 +1,10 @@
-use crate::{badtranslator::BadTranslator, caching::Ratelimits, command::command::CommandAvailability, logging::Logger, util::{get_current_millis, Uptime}};
+use crate::{
+    badtranslator::BadTranslator,
+    caching::Ratelimits,
+    command::command::CommandAvailability,
+    logging::Logger,
+    util::{get_current_millis, get_guild_owner, Uptime},
+};
 use crate::{
     caching::{Replies, Reply},
     command::context::Metrics,
@@ -47,7 +53,7 @@ impl DatabaseInfo {
 #[derive(Clone, Deserialize)]
 pub struct LogConfig {
     pub fatal: String,
-    pub info: String
+    pub info: String,
 }
 #[derive(Clone, Deserialize)]
 pub struct Config {
@@ -143,13 +149,21 @@ impl Assyst {
     }
 
     pub async fn handle_command(self: &Arc<Self>, _message: Message) -> Result<(), String> {
+        // timing for use in ping command
         let start = Instant::now();
+
         let message = Arc::new(_message);
+
+        // checking if user is blackisted from bot
         if self.config.user_blacklist.contains(&message.author.id.0) {
             return Ok(());
         }
+
+        // parsing prefix from start of content
         let prefix;
         let mut prefix_is_mention = false;
+
+        // check if bot has a prefix override
         if self.config.prefix_override.len() == 0 {
             let mention_prefix = message_mention_prefix(&message.content);
 
@@ -241,10 +255,28 @@ impl Assyst {
             }
         };
 
+        let command_instance = &self.registry.commands.get(command.calling_name).unwrap();
+
+        let is_disabled = self
+            .database
+            .is_command_disabled(command_instance.name, message.guild_id.unwrap())
+            .await;
+
+        if is_disabled {
+            let owner = get_guild_owner(&self.http, message.guild_id.unwrap())
+                .await
+                .map_err(|e| e.to_string())?;
+
+            if owner != message.author.id
+                && !self.config.admins.contains(&context.message.author.id.0)
+            {
+                return Ok(());
+            };
+        };
+
         let context_clone = context.clone();
 
         let mut ratelimit_lock = self.command_ratelimits.write().await;
-        let command_instance = &self.registry.commands.get(command.calling_name).unwrap();
         let command_ratelimit = ratelimit_lock
             .time_until_guild_command_usable(message.guild_id.unwrap(), &command_instance.name);
         match command_ratelimit {
@@ -311,26 +343,16 @@ impl Assyst {
                 }
             }
             CommandAvailability::GuildOwner => {
-                let guild = self
-                    .http
-                    .guild(context.message.guild_id.unwrap())
+                let owner = get_guild_owner(&self.http, context.message.guild_id.unwrap())
                     .await
-                    .map_err(|e| {
-                        CommandParseError::with_reply(
-                            e.to_string(),
-                            None,
-                            CommandParseErrorType::MediaDownloadFail,
-                        )
-                    })?
-                    .ok_or_else(|| {
+                    .map_err(|_| {
                         CommandParseError::with_reply(
                             "Permission validator failed".to_owned(),
                             None,
                             CommandParseErrorType::MissingPermissions,
                         )
                     })?;
-
-                if guild.owner_id == context.message.author.id
+                if owner == context.message.author.id
                     || self.config.admins.contains(&context.message.author.id.0)
                 {
                     Ok(())
@@ -802,16 +824,19 @@ impl Assyst {
                     .and_then(|thumbnail| Some(Cow::Borrowed(thumbnail.url.as_ref()?)))
             })
             .or_else(|| {
-                embed.video.as_ref().and_then(|video| {
-                    Some(Cow::Owned(format!("{}", video.url.as_ref()?)))
-                })
+                embed
+                    .video
+                    .as_ref()
+                    .and_then(|video| Some(Cow::Owned(format!("{}", video.url.as_ref()?))))
             })
     }
 
     fn validate_message_reply_attachment(&self, message: &Message) -> Option<String> {
         let reply = message.referenced_message.as_ref()?;
         let attachment = self.validate_message_attachment(reply);
-        if attachment.is_some() { return attachment };
+        if attachment.is_some() {
+            return attachment;
+        };
         let embed = self.validate_message_embed(reply)?;
         Some(embed.to_string())
     }

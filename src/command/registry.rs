@@ -169,5 +169,7 @@ impl CommandRegistry {
         register_command!(self, OVERLAY_COMMAND, run_overlay_command);
         register_command!(self, JPEG_COMMAND, run_jpeg_command);
         register_command!(self, FLASH_COMMAND, run_flash_command);
+        register_command!(self, GHOST_COMMAND, run_ghost_command);
+        register_command!(self, COMMAND_COMMAND, run_command_command);
     }
 }

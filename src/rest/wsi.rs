@@ -18,6 +18,7 @@ mod routes {
     pub const FLASH: &str = "/flash";
     pub const FLIP: &str = "/flip";
     pub const FLOP: &str = "/flop";
+    pub const GHOST: &str = "/ghost";
     pub const GIF_LOOP: &str = "/gif_loop";
     pub const GIF_MAGIK: &str = "/gif_magik";
     pub const GIF_SCRAMBLE: &str = "/gif_scramble";
@@ -148,6 +149,10 @@ pub async fn motivate(
     .await
 }
 
+pub async fn ghost(assyst: Arc<Assyst>, image: Bytes, depth: &str) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::GHOST, image, &[("depth", depth)]).await
+}
+
 pub async fn gif_loop(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::GIF_LOOP, image, &[]).await
 }
@@ -266,7 +271,11 @@ pub async fn resize_width_height(
     .await
 }
 
-pub async fn overlay(assyst: Arc<Assyst>, image: Bytes, overlay: &str) -> Result<Bytes, RequestError> {
+pub async fn overlay(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    overlay: &str,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::OVERLAY, image, &[("overlay", overlay)]).await
 }
 
