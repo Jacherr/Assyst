@@ -7,20 +7,28 @@ pub struct Logger {}
 impl Logger {
     pub async fn fatal(&self, assyst: Arc<Assyst>, message: &str) {
         let url: &str = assyst.config.logs.fatal.as_ref();
-        if url.is_empty() { return };
+        if url.is_empty() {
+            return;
+        };
 
         let er = format!("**really bad error**: {}", message);
 
-        let _ = self.exec_webhook_with(assyst.clone(), url, &er, 0xFF0000).await;
+        let _ = self
+            .exec_webhook_with(assyst.clone(), url, &er, 0xFF0000)
+            .await;
     }
 
-    pub async fn info(&self, assyst: Arc<Assyst>, message: &str){
+    pub async fn info(&self, assyst: Arc<Assyst>, message: &str) {
         let url: &str = assyst.config.logs.info.as_ref();
-        if url.is_empty() { return };
+        if url.is_empty() {
+            return;
+        };
 
         let message = format!("**info**: {}", message);
 
-        let _ = self.exec_webhook_with(assyst.clone(), url, &message, 0x00D0FF).await;
+        let _ = self
+            .exec_webhook_with(assyst.clone(), url, &message, 0x00D0FF)
+            .await;
     }
 
     async fn exec_webhook_with(

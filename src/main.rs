@@ -9,11 +9,11 @@ mod database;
 mod filetype;
 mod handler;
 mod handlers;
+mod logging;
 mod metrics;
 mod rest;
 mod tasks;
 mod util;
-mod logging;
 
 use assyst::Assyst;
 use dotenv::dotenv;
@@ -55,16 +55,13 @@ async fn main() {
 
     // spawn as many shards as discord recommends
     let scheme = ShardScheme::Auto;
-    let cluster = Cluster::builder(
-        &token,
-        Intents::GUILD_MESSAGES,
-    )
-    .shard_scheme(scheme)
-    .http_client(assyst.http.clone())
-    .presence(presence)
-    .build()
-    .await
-    .unwrap();
+    let cluster = Cluster::builder(&token, Intents::GUILD_MESSAGES)
+        .shard_scheme(scheme)
+        .http_client(assyst.http.clone())
+        .presence(presence)
+        .build()
+        .await
+        .unwrap();
 
     let spawned_cluster = cluster.clone();
     tokio::spawn(async move { spawned_cluster.up().await });

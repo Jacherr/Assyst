@@ -4,7 +4,11 @@ use tokio::sync::Mutex;
 use twilight_http::Client as HttpClient;
 use twilight_model::{channel::Message, id::MessageId};
 
-use crate::{Assyst, caching::Reply, consts::{self, MESSAGE_CHARACTER_LIMIT}};
+use crate::{
+    caching::Reply,
+    consts::{self, MESSAGE_CHARACTER_LIMIT},
+    Assyst,
+};
 use std::sync::Arc;
 
 use super::messagebuilder::MessageBuilder;
@@ -113,8 +117,12 @@ impl Context {
             create_message = create_message.attachment(attachment.name, attachment.data.to_vec());
         };
         if let Some(content) = message_builder.content {
-            create_message =
-                create_message.content(&content.chars().take(MESSAGE_CHARACTER_LIMIT).collect::<String>())?
+            create_message = create_message.content(
+                &content
+                    .chars()
+                    .take(MESSAGE_CHARACTER_LIMIT)
+                    .collect::<String>(),
+            )?
         };
         if let Some(embed) = message_builder.embed {
             create_message = create_message.embed(embed)?;

@@ -9,10 +9,16 @@ pub async fn handle(assyst: Arc<Assyst>, message: Box<MessageCreate>) -> () {
         match assyst.database.get_bt_channels().await {
             Ok(channels) => assyst.badtranslator.set_channels(channels).await,
             Err(e) => {
-                assyst.logger.fatal(assyst.clone(), &format!(
-                    "Fetching BadTranslator channels failed, disabling feature... {:?}",
-                    e
-                )).await;
+                assyst
+                    .logger
+                    .fatal(
+                        assyst.clone(),
+                        &format!(
+                            "Fetching BadTranslator channels failed, disabling feature... {:?}",
+                            e
+                        ),
+                    )
+                    .await;
                 assyst.badtranslator.disable().await;
             }
         }
@@ -28,7 +34,13 @@ pub async fn handle(assyst: Arc<Assyst>, message: Box<MessageCreate>) -> () {
         return;
     };
     if let Err(e) = assyst.handle_command(message.0).await {
-        assyst.logger.fatal(assyst.clone(), &format!("Command execution failed: {:?}", e)).await;
+        assyst
+            .logger
+            .fatal(
+                assyst.clone(),
+                &format!("Command execution failed: {:?}", e),
+            )
+            .await;
     }
 }
 

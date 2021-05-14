@@ -9,7 +9,11 @@ use std::{
     process::Command,
     time::{SystemTime, UNIX_EPOCH},
 };
-use twilight_model::channel::Message;
+use twilight_http::{error::Error, Client};
+use twilight_model::{
+    channel::Message,
+    id::{GuildId, UserId},
+};
 
 #[macro_export]
 macro_rules! box_str {
@@ -276,10 +280,9 @@ pub fn get_sticker_url_from_message(message: &Message) -> Option<String> {
     })
 }
 
-
 pub struct CommandOutput {
     pub stdout: String,
-    pub stderr: String
+    pub stderr: String,
 }
 
 pub fn exec_sync(command: &str) -> Result<CommandOutput, std::io::Error> {
@@ -290,6 +293,10 @@ pub fn exec_sync(command: &str) -> Result<CommandOutput, std::io::Error> {
 
     Ok(CommandOutput {
         stdout: String::from_utf8_lossy(&output.stdout).to_string(),
-        stderr: String::from_utf8_lossy(&output.stderr).to_string()
+        stderr: String::from_utf8_lossy(&output.stderr).to_string(),
     })
+}
+
+pub async fn get_guild_owner(http: &Client, guild_id: GuildId) -> Result<UserId, Error> {
+    Ok(http.guild(guild_id).await?.unwrap().owner_id)
 }
