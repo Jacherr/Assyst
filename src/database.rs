@@ -19,7 +19,7 @@ pub struct Reminder {
     pub message_id: i64,
     pub message: String,
 }
-#[derive(sqlx::FromRow, Debug)]
+#[derive(sqlx::FromRow, Debug, Clone)]
 pub struct CommandUsage {
     pub command_name: String,
     pub uses: i32,
@@ -221,6 +221,14 @@ impl Database {
             .await
     }
 
+    pub async fn get_command_usage_stats_for(&self, command: &str) -> Result<CommandUsage, sqlx::Error> {
+        let query = "SELECT * FROM command_uses where command_name = $1 order by uses desc";
+        sqlx::query_as::<_, CommandUsage>(query)
+            .bind(command)
+            .fetch_one(&self.pool)
+            .await
+    }
+
     pub async fn increment_command_uses(&self, command: &str) -> Result<(), sqlx::Error> {
         let query = "insert into command_uses (command_name, uses) values ($1, 1) on conflict (command_name) do update set uses = command_uses.uses + 1 where command_uses.command_name = $1;";
         sqlx::query(query).bind(command).execute(&self.pool).await?;
@@ -349,6 +357,18 @@ impl Database {
         if let Some(cmds) = guild {
             cmds.remove(command);
         }
+
+        Ok(())
+    }
+
+    pub async fn add_free_tier_1_requests(&self, user_id: i64, add: i64) -> Result<(), sqlx::Error> {
+        let query = "insert into free_tier1_requests values($1, $2) on conflict (user_id) do update set count = free_tier1_requests.count + $2 where free_tier1_requests.user_id = $1";
+
+        sqlx::query(query)
+            .bind(user_id)
+            .bind(add)
+            .execute(&self.pool)
+            .await?;
 
         Ok(())
     }

@@ -12,25 +12,25 @@ pub const MESSAGE_EDIT_HANDLE_LIMIT: u32 = 60000;
 pub struct Cache<T, U> {
     pub cache: HashMap<T, U>,
     pub limit: usize,
-    key_queue: Vec<T>,
 }
 impl<T: Hash + Eq + Clone, U> Cache<T, U> {
     pub fn new(limit: usize) -> Self {
+        if limit == 0 {
+            panic!("limit must be >0")
+        };
         Cache {
             cache: HashMap::new(),
             limit,
-            key_queue: Vec::new(),
         }
     }
 
     pub fn insert(&mut self, key: T, value: U) {
-        if let Some(i) = self.key_queue.iter().position(|e| *e == key) {
-            self.key_queue.drain(i..(i + 1));
-            self.key_queue.push(key.clone());
-        };
+        let limit = self.limit.clone();
+        let len = self.cache.len().clone();
 
-        if self.cache.len() == self.limit {
-            self.cache.remove(self.key_queue.pop().as_ref().unwrap());
+        if len == limit {
+            let fst = self.cache.iter().next().unwrap().0.clone();
+            self.cache.remove(&fst);
         }
 
         self.cache.insert(key, value);

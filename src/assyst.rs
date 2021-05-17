@@ -61,12 +61,15 @@ pub struct Config {
     pub annmarie_url: Box<str>,
     pub annmarie_auth: Box<str>,
     pub bot_id: u64,
+    pub bot_list_auth: Box<str>,
+    pub bot_list_port: u16,
     database: DatabaseInfo,
     pub default_prefix: Box<str>,
     pub disable_bad_translator: bool,
     pub disable_reminder_check: bool,
     pub logs: LogConfig,
     pub maryjane_url: Box<str>,
+    pub maryjane_auth: Box<str>,
     pub prefix_override: Box<str>,
     pub user_blacklist: HashSet<u64>,
     pub wsi_url: Box<str>,
@@ -105,7 +108,7 @@ fn message_mention_prefix(content: &str) -> Option<String> {
 }
 
 pub struct Assyst {
-    cluster: Option<Cluster>,
+    pub cluster: Option<Cluster>,
     pub command_ratelimits: RwLock<Ratelimits>,
     pub config: Config,
     pub database: Database,
@@ -163,11 +166,13 @@ impl Assyst {
         let prefix;
         let mut prefix_is_mention = false;
 
-        // check if bot has a prefix override
+        // selecting correct prefix based on the configuration
+        // a.k.a prefix override, normal prefix, mention prefix?
         if self.config.prefix_override.len() == 0 {
             let mention_prefix = message_mention_prefix(&message.content);
 
             match mention_prefix {
+                // if message starts with mention, thats the prefix
                 Some(p) => {
                     prefix = Cow::Owned(p);
                     prefix_is_mention = true;
@@ -198,6 +203,8 @@ impl Assyst {
             return Ok(());
         };
 
+        // handling replies - set the source message for this command as the invocation
+        // for this reply
         let mut replies = self.replies.write().await;
         let reply = replies
             .get_or_set_reply(Reply::new(message.clone()))
@@ -215,6 +222,9 @@ impl Assyst {
             processing_time_start: start,
         };
 
+        // display prefix is used in usage information
+        // for help command and when a command has
+        // invalid arguments and usage needs to be displayed
         let display_prefix = if prefix_is_mention {
             "@Assyst "
         } else {
@@ -231,6 +241,7 @@ impl Assyst {
 
         let t_command = self.parse_command(&context, &prefix).await;
 
+        // parsing and validating arguments for this command
         let command = match t_command {
             Ok(res) => match res {
                 Some(c) => c,
@@ -257,6 +268,7 @@ impl Assyst {
 
         let command_instance = &self.registry.commands.get(command.calling_name).unwrap();
 
+        // checking if the command is disabled
         let is_disabled = self
             .database
             .is_command_disabled(command_instance.name, message.guild_id.unwrap())
@@ -276,6 +288,7 @@ impl Assyst {
 
         let context_clone = context.clone();
 
+        // checking if this command violates the ratelimits
         let mut ratelimit_lock = self.command_ratelimits.write().await;
         let command_ratelimit = ratelimit_lock
             .time_until_guild_command_usable(message.guild_id.unwrap(), &command_instance.name);

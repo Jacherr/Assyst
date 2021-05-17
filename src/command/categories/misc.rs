@@ -110,6 +110,7 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .build();
     pub static ref TOP_COMMANDS_COMMAND: Command = CommandBuilder::new("topcmds")
+        .arg(Argument::Optional(Box::new(Argument::String)))
         .alias("tcs")
         .public()
         .description("get top command information")
@@ -362,8 +363,12 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
         context.assyst.clone(),
         context.assyst.config.bot_id,
     )
-    .await
-    .map_err(|e| format_err(e))?;
+    .await;
+
+    let guild_count = match app {
+        Ok(a) => a.bot.guild_count.to_string(),
+        Err(e) => format!("failed to fetch: {}", crate::rest::annmarie::format_err(e))
+    };
 
     let guild_id = context.message.guild_id.unwrap().0;
 
@@ -372,7 +377,7 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
     let proc_time = (context.assyst.get_average_processing_time().await / 1e3).to_string();
 
     let table = generate_table(&[
-        ("Guilds", &app.bot.guild_count.to_string()),
+        ("Guilds", &guild_count),
         ("Memory", &memory),
         ("Commands", &commands),
         ("Avg Processing Time", &format!("{:.4}s", proc_time)),
@@ -518,32 +523,58 @@ pub async fn run_remind_command(context: Arc<Context>, args: Vec<ParsedArgument>
 
 pub async fn run_top_commands_command(
     context: Arc<Context>,
-    _: Vec<ParsedArgument>,
+    args: Vec<ParsedArgument>,
 ) -> CommandResult {
-    let top_commands = context
-        .assyst
-        .database
-        .get_command_usage_stats()
-        .await
-        .map_err(|e| e.to_string())?;
+    if args[0].is_nothing() {
+        let top_commands = context
+            .assyst
+            .database
+            .get_command_usage_stats()
+            .await
+            .map_err(|e| e.to_string())?;
 
-    let top_commands_formatted_raw: Vec<(&str, String)> = top_commands
-        .iter()
-        .take(20)
-        .map(|t| (&t.command_name[..], t.uses.to_string()))
-        .collect::<Vec<_>>();
+        let top_commands_formatted_raw: Vec<(&str, String)> = top_commands
+            .iter()
+            .take(20)
+            .map(|t| (&t.command_name[..], t.uses.to_string()))
+            .collect::<Vec<_>>();
 
-    let top_commands_formatted = top_commands_formatted_raw
-        .iter()
-        .map(|(a, b)| (*a, &b[..]))
-        .collect::<Vec<_>>();
+        let top_commands_formatted = top_commands_formatted_raw
+            .iter()
+            .map(|(a, b)| (*a, &b[..]))
+            .collect::<Vec<_>>();
 
-    let table = generate_list("Command", "Uses", &top_commands_formatted);
+        let table = generate_list("Command", "Uses", &top_commands_formatted);
 
-    context
-        .reply_with_text(&codeblock(&table, "hs"))
-        .await
-        .map_err(|e| e.to_string())?;
+        context
+            .reply_with_text(&codeblock(&table, "hs"))
+            .await
+            .map_err(|e| e.to_string())?;
+    } else {
+        let command_name = force_as::text(&args[0]);
+
+        let command = context
+            .assyst
+            .registry
+            .get_command_from_name_or_alias(command_name);
+
+        if let Some(cmd) = command {
+            let cmd_name = cmd.name;
+            let data = context
+                .assyst
+                .database
+                .get_command_usage_stats_for(cmd_name)
+                .await
+                .map_err(|e| e.to_string())?;
+
+            context
+                .reply_with_text(&format!("Command **{}** has **{}** uses.", cmd_name, data.uses))
+                .await
+                .map_err(|e| e.to_string())?;
+        } else {
+            return Err("No command with this name or alias exists.".to_owned());
+        }
+    }
     Ok(())
 }
 
@@ -697,7 +728,6 @@ pub async fn run_command_command(
             // are cached, and more importantly up-to-date.
             // We can use the cache instead of a DB call to determine whether
             // to enable or disable this command.
-
             let guild_id = context.message.guild_id.unwrap();
             let lock = context.assyst.database.cache.read().await;
             let disabled_commands = (*lock).disabled_commands.get(&guild_id).unwrap();

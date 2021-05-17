@@ -14,6 +14,7 @@ mod metrics;
 mod rest;
 mod tasks;
 mod util;
+mod botlist;
 
 use assyst::Assyst;
 use dotenv::dotenv;
