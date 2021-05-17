@@ -51,7 +51,7 @@ pub async fn get<'a, T: DeserializeOwned>(
         .get(&url)
         .header(
             reqwest::header::AUTHORIZATION,
-            assyst.config.annmarie_auth.as_ref(),
+            assyst.config.maryjane_auth.as_ref(),
         )
         .query(query)
         .send()
