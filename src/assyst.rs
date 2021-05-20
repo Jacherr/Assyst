@@ -819,7 +819,7 @@ impl Assyst {
     async fn validate_emoji_argument(&self, argument: &str) -> Option<String> {
         let unicode_emoji = emoji::lookup_by_glyph::lookup(argument);
         if let Some(e) = unicode_emoji {
-            let codepoint = e.codepoint.to_lowercase().replace(" ", "-");
+            let codepoint = e.codepoint.to_lowercase().replace(" ", "-").replace("-fe0f", "");
             let emoji_url = format!("https://derpystuff.gitlab.io/webstorage3/container/twemoji-JedKxRr7RNYrgV9Sauy8EGAu/{}.png", codepoint);
             return Some(emoji_url);
         }
