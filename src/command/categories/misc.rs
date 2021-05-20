@@ -16,7 +16,7 @@ use crate::{
 use crate::{
     consts::Y21,
     database::Reminder,
-    rest::{annmarie::format_err, bt::translate_single, get_char_info, rust},
+    rest::{bt::translate_single, get_char_info, rust},
     util::{get_current_millis, parse_to_millis},
 };
 use futures::TryFutureExt;
