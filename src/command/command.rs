@@ -83,6 +83,14 @@ impl<'a> CommandParseError<'a> {
             error_type: r#type,
         }
     }
+
+    pub fn permission_validator_failed() -> Self {
+        CommandParseError::with_reply(
+            "Permission validator failed".to_owned(),
+            None,
+            CommandParseErrorType::MissingPermissions,
+        )
+    }
 }
 #[derive(Debug)]
 pub struct CommandMetadata {

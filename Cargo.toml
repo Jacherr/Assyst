@@ -26,3 +26,4 @@ futures-util = "0.3.12"
 tl = { git = "https://github.com/y21/tl", branch = "next" }
 twilight-embed-builder = "0.3.0"
 warp = "0.3.0"
+emoji = "0.2.1"

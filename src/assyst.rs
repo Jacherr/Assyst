@@ -33,6 +33,7 @@ use tokio::sync::RwLock;
 use twilight_gateway::Cluster;
 use twilight_http::Client as HttpClient;
 use twilight_model::channel::Message;
+use twilight_model::guild::Permissions;
 use twilight_model::id::UserId;
 #[derive(Clone, Deserialize)]
 struct DatabaseInfo {
@@ -82,13 +83,17 @@ impl Config {
     }
 }
 
-fn get_command_and_args<'a>(content: &'a str, prefix: &str) -> Option<(&'a str, Vec<&'a str>)> {
+fn get_command_and_args(content: &str, prefix: &str) -> Option<(String, Vec<String>)> {
     return if !content.starts_with(&prefix) || content.len() == prefix.len() {
         None
     } else {
         let raw = &content[prefix.len()..].trim_start();
-        let mut args = raw.split_whitespace().collect::<Vec<_>>();
-        let cmd = args[0];
+        let raw_replaced = raw.replace("\n", " \n");
+        let mut args = raw_replaced
+            .split(' ')
+            .map(|x| String::from(x))
+            .collect::<Vec<String>>();
+        let cmd = args[0].clone();
         args.remove(0);
         Some((cmd, args))
     };
@@ -334,7 +339,9 @@ impl Assyst {
         prefix: &str,
     ) -> Result<Option<ParsedCommand>, CommandParseError<'_>> {
         let content = &context.message.content;
-        let command_details = get_command_and_args(&content, &prefix).unwrap_or(("", vec![]));
+        let command_details =
+            get_command_and_args(&content, &prefix).unwrap_or(("".to_owned(), vec![]));
+        let args_refs = command_details.1.iter().map(|x| &x[..]).collect::<Vec<_>>();
         let try_command = self
             .registry
             .get_command_from_name_or_alias(&command_details.0.to_ascii_lowercase());
@@ -358,20 +365,39 @@ impl Assyst {
             CommandAvailability::GuildOwner => {
                 let owner = get_guild_owner(&self.http, context.message.guild_id.unwrap())
                     .await
-                    .map_err(|_| {
-                        CommandParseError::with_reply(
-                            "Permission validator failed".to_owned(),
-                            None,
-                            CommandParseErrorType::MissingPermissions,
-                        )
-                    })?;
+                    .map_err(|_| CommandParseError::permission_validator_failed())?;
+
+                let member = self
+                    .http
+                    .guild_member(context.message.guild_id.unwrap(), context.message.author.id)
+                    .await
+                    .map_err(|_| CommandParseError::permission_validator_failed())?
+                    .unwrap();
+
+                let roles = self
+                    .http
+                    .roles(context.message.guild_id.unwrap())
+                    .await
+                    .map_err(|_| CommandParseError::permission_validator_failed())?;
+
+                let member_roles = roles
+                    .iter()
+                    .filter(|r| member.roles.contains(&r.id))
+                    .collect::<Vec<_>>();
+                let member_permissions = member_roles.iter().fold(0, |a, r| a | r.permissions.bits());
+                let member_is_manager = member_permissions & Permissions::ADMINISTRATOR.bits()
+                    == Permissions::ADMINISTRATOR.bits()
+                    || member_permissions & Permissions::MANAGE_GUILD.bits()
+                        == Permissions::MANAGE_GUILD.bits();
+
                 if owner == context.message.author.id
                     || self.config.admins.contains(&context.message.author.id.0)
+                    || member_is_manager
                 {
                     Ok(())
                 } else {
                     Err(CommandParseError::with_reply(
-                        "Only the owner of the server can use this command.".to_owned(),
+                        "You need the manage server permission to use this command.".to_owned(),
                         None,
                         CommandParseErrorType::MissingPermissions,
                     ))
@@ -379,9 +405,7 @@ impl Assyst {
             }
         }?;
 
-        let parsed_args = self
-            .parse_arguments(context, &command, command_details.1)
-            .await?;
+        let parsed_args = self.parse_arguments(context, &command, args_refs).await?;
         Ok(Some(ParsedCommand {
             calling_name: &command.name,
             args: parsed_args,
@@ -793,6 +817,13 @@ impl Assyst {
     }
 
     async fn validate_emoji_argument(&self, argument: &str) -> Option<String> {
+        let unicode_emoji = emoji::lookup_by_glyph::lookup(argument);
+        if let Some(e) = unicode_emoji {
+            let codepoint = e.codepoint.to_lowercase().replace(" ", "-");
+            let emoji_url = format!("https://derpystuff.gitlab.io/webstorage3/container/twemoji-JedKxRr7RNYrgV9Sauy8EGAu/{}.png", codepoint);
+            return Some(emoji_url);
+        }
+
         let emoji_id = regexes::CUSTOM_EMOJI
             .captures(argument)
             .and_then(|emoji_id_capture| emoji_id_capture.get(2))
@@ -835,12 +866,6 @@ impl Assyst {
                     .thumbnail
                     .as_ref()
                     .and_then(|thumbnail| Some(Cow::Borrowed(thumbnail.url.as_ref()?)))
-            })
-            .or_else(|| {
-                embed
-                    .video
-                    .as_ref()
-                    .and_then(|video| Some(Cow::Owned(format!("{}", video.url.as_ref()?))))
             })
     }
 
