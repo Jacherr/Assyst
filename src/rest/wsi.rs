@@ -24,6 +24,7 @@ mod routes {
     pub const GIF_SCRAMBLE: &str = "/gif_scramble";
     pub const GIF_SPEED: &str = "/gif_speed";
     pub const GRAYSCALE: &str = "/grayscale";
+    pub const IMAGE_INFO: &str = "/image_info";
     pub const IMAGEMAGICK_EVAL: &str = "/imagemagick_eval";
     pub const INVERT: &str = "/invert";
     pub const JPEG: &str = "/jpeg";
@@ -59,6 +60,17 @@ pub struct Stats {
 pub struct WsiError {
     pub code: u16,
     pub message: Box<str>,
+}
+#[derive(Deserialize)]
+pub struct ImageInfo {
+    pub file_size_bytes: usize,
+    pub mime_type: String,
+    pub dimensions: (u32, u32),
+    pub colour_space: String,
+    pub frames: Option<usize>,
+    pub frame_delays: Option<Vec<usize>>,
+    pub repeat: Option<isize>,
+    pub comments: Vec<String>
 }
 
 pub enum RequestError {
@@ -180,6 +192,35 @@ pub async fn gif_speed(
     };
 
     request_bytes(assyst, routes::GIF_SPEED, image, &query).await
+}
+
+pub async fn image_info(assyst: Arc<Assyst>, image: Bytes) -> Result<ImageInfo, RequestError> {
+    let result = assyst
+        .reqwest_client
+        .post(&format!("{}{}", assyst.config.wsi_url, routes::IMAGE_INFO))
+        .header(
+            reqwest::header::AUTHORIZATION,
+            assyst.config.wsi_auth.as_ref(),
+        )
+        .header("premium_level", 0)
+        .body(image)
+        .send()
+        .await
+        .map_err(|e| RequestError::Reqwest(e))?;
+
+    return if result.status() != reqwest::StatusCode::OK {
+        let json = result
+            .json::<WsiError>()
+            .await
+            .map_err(|err| RequestError::Reqwest(err))?;
+        Err(RequestError::Wsi(json))
+    } else {
+        let json = result
+            .json::<ImageInfo>()
+            .await
+            .map_err(|err| RequestError::Reqwest(err))?;
+        Ok(json)
+    };
 }
 
 pub async fn imagemagick_eval(

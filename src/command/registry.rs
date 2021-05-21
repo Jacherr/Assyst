@@ -171,5 +171,6 @@ impl CommandRegistry {
         register_command!(self, FLASH_COMMAND, run_flash_command);
         register_command!(self, GHOST_COMMAND, run_ghost_command);
         register_command!(self, COMMAND_COMMAND, run_command_command);
+        register_command!(self, IMAGE_INFO_COMMAND, run_image_info_command);
     }
 }

@@ -74,11 +74,11 @@ pub fn generate_table(input: &[(&str, &str)]) -> String {
         .fold(String::new(), |a, b| a + &b)
 }
 
-pub fn generate_list(key_name: &str, value_name: &str, values: &[(&str, &str)]) -> String {
+pub fn generate_list<K: AsRef<str>, V: AsRef<str>>(key_name: &str, value_name: &str, values: &[(K, V)]) -> String {
     let longest = get_longer_str(
         key_name,
-        values.iter().fold(values[0].0, |previous, (current, _)| {
-            get_longer_str(previous, current)
+        values.iter().fold(values[0].0.as_ref(), |previous, (current, _)| {
+            get_longer_str(previous, current.as_ref())
         }),
     );
 
@@ -93,7 +93,7 @@ pub fn generate_list(key_name: &str, value_name: &str, values: &[(&str, &str)]) 
 
     let formatted_values = values
         .iter()
-        .map(|(k, v)| format!(" {}{}\t{}", " ".repeat(longest.len() - k.len()), k, v))
+        .map(|(k, v)| format!(" {}{}\t{}", " ".repeat(longest.len() - k.as_ref().len()), k.as_ref(), v.as_ref()))
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -299,4 +299,14 @@ pub fn exec_sync(command: &str) -> Result<CommandOutput, std::io::Error> {
 
 pub async fn get_guild_owner(http: &Client, guild_id: GuildId) -> Result<UserId, Error> {
     Ok(http.guild(guild_id).await?.unwrap().owner_id)
+}
+
+pub fn bytes_to_readable(bytes: usize) -> String {
+    if bytes > 1000usize.pow(2) {
+        format!("{:.2}MB", (bytes as f32 / 1000f32.powi(2)))
+    } else if bytes > 1000 {
+        format!("{:.2}KB", (bytes as f32 / 1000f32))
+    } else {
+        format!("{}B", bytes)
+    }
 }
