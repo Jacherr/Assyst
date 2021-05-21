@@ -1,25 +1,21 @@
-use crate::{
-    command::{
+use crate::{command::{
         command::{
             force_as, Argument, Command, CommandAvailability, CommandBuilder, CommandMetadata,
             ParsedArgument,
         },
         context::Context,
         registry::CommandResult,
-    },
-    consts::Y21,
-    rest::{
+    }, consts::Y21, rest::{
         annmarie,
         wsi::{self},
-    },
-};
+    }, util::{bytes_to_readable, generate_list}};
 use crate::{
     rest,
     util::{codeblock, get_buffer_filetype},
 };
 use bytes::Bytes;
 use lazy_static::lazy_static;
-use std::sync::Arc;
+use std::{borrow::Cow, sync::Arc};
 use std::time::Duration;
 
 macro_rules! run_annmarie_noarg_command {
@@ -259,6 +255,17 @@ lazy_static! {
         cooldown_seconds: 4,
         category: "image"
     };
+    pub static ref IMAGE_INFO_COMMAND: Command = CommandBuilder::new("imageinfo")
+        .arg(Argument::ImageBuffer)
+        .alias("ii")
+        .alias("exif")
+        .public()
+        .description("get information about an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref IMAGEMAGICK_EVAL_COMMAND: Command = Command {
         aliases: vec![],
         args: vec![Argument::ImageBuffer, Argument::StringRemaining],
@@ -854,6 +861,52 @@ pub async fn run_grayscale_command(
         Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
     )
     .await
+}
+
+pub async fn run_image_info_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    context.reply_with_text("processing...").await?;
+    let result = wsi::image_info(context.assyst.clone(), image)
+        .await
+        .map_err(wsi::format_err)?;
+
+    let mime_type = result.mime_type;
+    let file_size = bytes_to_readable(result.file_size_bytes);
+    let dimensions = format!("{}x{}", result.dimensions.0, result.dimensions.1);
+
+    let mut table_entries: Vec<(&str, Cow<str>)> = vec![
+        ("Mimetype", Cow::Borrowed(&mime_type)),
+        ("File Size", Cow::Borrowed(&file_size)),
+        ("Dimensions", Cow::Borrowed(&dimensions)),
+        ("Colour Type", Cow::Borrowed(&result.colour_space))
+    ];
+
+    if let Some(f) = result.frames {
+        table_entries.push(("Frames", Cow::Owned(f.to_string())));
+    };
+
+    if let Some(r) = result.repeat {
+        let repeat = {
+            if r == -1 {
+                "forever".to_owned()
+            } else {
+                format!("{} times", r)
+            }
+        };
+        table_entries.push(("Repeat", Cow::Owned(repeat)));
+    };
+
+    if result.comments.len() > 0 {
+        table_entries.push(("Comment", Cow::Borrowed(&result.comments[0])));
+    };
+
+    let table = generate_list("Key", "Value", &table_entries);
+
+    context.reply_with_text(&codeblock(&table, "hs")).await?;
+    Ok(())
 }
 
 pub async fn run_imagemagick_eval_command(
