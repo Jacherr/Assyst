@@ -1,7 +1,8 @@
 use crate::{
     command::{
         command::{
-            force_as, Argument, Command, CommandAvailability, CommandMetadata, ParsedArgument,
+            force_as, Argument, Command, CommandBuilder,
+            ParsedArgument,
         },
         context::Context,
         registry::CommandResult,
@@ -11,61 +12,48 @@ use crate::{
     util::codeblock,
 };
 use lazy_static::lazy_static;
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
+
+const CATEGORY_NAME: &str = "fun";
 
 lazy_static! {
-    pub static ref BT_COMMAND: Command = Command {
-        aliases: vec!["bt"],
-        args: vec![Argument::StringRemaining],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "Badly translate a message",
-            examples: vec!["hello this is a test"],
-            usage: "[text]"
-        },
-        name: "badtranslate",
-        cooldown_seconds: 2,
-        category: "fun"
-    };
-    pub static ref BTDEBUG_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![Argument::StringRemaining],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "Badly translate a message and returns debug information",
-            examples: vec!["hello this is a test"],
-            usage: "[text]"
-        },
-        name: "btdebug",
-        cooldown_seconds: 2,
-        category: "fun"
-    };
-    pub static ref OCRBT_COMMAND: Command = Command {
-        aliases: vec!["ocrbt"],
-        args: vec![Argument::ImageUrl],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "OCR and then badly translate a message",
-            examples: vec!["https://i.jacher.io/cat.gif"],
-            usage: "[text]"
-        },
-        name: "ocrbadtranslate",
-        cooldown_seconds: 2,
-        category: "fun"
-    };
-    pub static ref OCRTR_COMMAND: Command = Command {
-        aliases: vec!["ocrtr"],
-        args: vec![Argument::String, Argument::ImageUrl],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "OCR and then translate a message",
-            examples: vec!["https://i.jacher.io/cat.gif"],
-            usage: "[lang] [text]"
-        },
-        name: "ocrtranslate",
-        cooldown_seconds: 2,
-        category: "fun"
-    };
+    pub static ref BT_COMMAND: Command = CommandBuilder::new("badtranslate")
+        .alias("bt")
+        .arg(Argument::StringRemaining)
+        .public()
+        .description("badly translate text")
+        .example("hello is this working")
+        .usage("[text]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref BTDEBUG_COMMAND: Command = CommandBuilder::new("btdebug")
+        .arg(Argument::StringRemaining)
+        .public()
+        .description("badly translate text with debug info")
+        .example("hello is this working")
+        .usage("[text]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref OCRBT_COMMAND: Command = CommandBuilder::new("ocrbadtranslate")
+        .arg(Argument::ImageUrl)
+        .public()
+        .description("OCR and then badly translate an image")
+        .example("https://link.to.my/image.png")
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref OCRTR_COMMAND: Command = CommandBuilder::new("ocrtranslate")
+        .arg(Argument::ImageUrl)
+        .public()
+        .description("OCR and then translate an image")
+        .example("https://link.to.my/image.png")
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
 }
 
 pub async fn run_bt_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {

@@ -1,22 +1,27 @@
-use crate::{command::{
+use crate::{
+    command::{
         command::{
-            force_as, Argument, Command, CommandAvailability, CommandBuilder, CommandMetadata,
+            force_as, Argument, Command, CommandAvailability, CommandBuilder,
             ParsedArgument,
         },
         context::Context,
         registry::CommandResult,
-    }, consts::Y21, rest::{
+    },
+    consts::Y21,
+    rest::{
         annmarie,
         wsi::{self},
-    }, util::{bytes_to_readable, generate_list}};
+    },
+    util::{bytes_to_readable, generate_list},
+};
 use crate::{
     rest,
     util::{codeblock, get_buffer_filetype},
 };
 use bytes::Bytes;
 use lazy_static::lazy_static;
-use std::{borrow::Cow, sync::Arc};
 use std::time::Duration;
+use std::{borrow::Cow, sync::Arc};
 
 macro_rules! run_annmarie_noarg_command {
     ($fn:expr, $args:expr, $context:expr) => {{
@@ -59,37 +64,44 @@ lazy_static! {
         .arg(Argument::StringRemaining)
         .availability(CommandAvailability::Private)
         .description("run annmarie command on endpoint")
-        .example("312715611413413889 paint")
+        .example("https://link.to.my/image.gif paint")
         .usage("[image] [endoint]?[query params]")
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
-    pub static ref CAPTION_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![Argument::ImageBuffer, Argument::StringRemaining],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "add a caption to an image",
-            examples: vec!["312715611413413889 yea"],
-            usage: "[image] [caption]"
-        },
-        name: "caption",
-        cooldown_seconds: 4,
-        category: "image"
-    };
-    pub static ref CARD_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![Argument::ImageBuffer],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "throw away an image on a card",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "card",
-        cooldown_seconds: 4,
-        category: "image"
-    };
+    pub static ref BLUR_COMMAND: Command = CommandBuilder::new("blur")
+        .arg(Argument::ImageBuffer)
+        .arg(Argument::OptionalWithDefault(
+            Box::new(Argument::String),
+            "3"
+        ))
+        .public()
+        .description("blur an image")
+        .example(Y21)
+        .usage("[image] <power>")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref CAPTION_COMMAND: Command = CommandBuilder::new("caption")
+        .arg(Argument::ImageBuffer)
+        .arg(Argument::StringRemaining)
+        .public()
+        .description("add a caption to an image")
+        .example("https://link.to.my/image.gif get real")
+        .usage("[image] [caption]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref CARD_COMMAND: Command = CommandBuilder::new("card")
+        .alias("discard")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("throw away an image on a card")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref FISHEYE_COMMAND: Command = CommandBuilder::new("fisheye")
         .arg(Argument::ImageBuffer)
         .alias("fish")
@@ -100,20 +112,16 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
-    pub static ref FIX_TRANSPARENCY_COMMAND: Command = Command {
-        aliases: vec!["ft"],
-        args: vec![Argument::ImageBuffer],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description:
-                "if a command breaks the transparency of a gif, use this command to fix it",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "fixtransparency",
-        cooldown_seconds: 4,
-        category: "image"
-    };
+    pub static ref FIX_TRANSPARENCY_COMMAND: Command = CommandBuilder::new("fixtransparency")
+        .alias("ft")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("if a command breaks image transparency, this command may fix it")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref FLASH_COMMAND: Command = CommandBuilder::new("flash")
         .arg(Argument::ImageBuffer)
         .public()
@@ -169,92 +177,74 @@ lazy_static! {
         ))
         .public()
         .description("perform frame ghosting on a gif")
-        .example(Y21)
+        .example("https://link.to.my/image.gif")
         .usage("[image] <power: 1-20>")
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
-    pub static ref GIF_LOOP_COMMAND: Command = Command {
-        aliases: vec!["gloop"],
-        args: vec![Argument::ImageBuffer],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "play a gif forwards then backwards",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "gifloop",
-        cooldown_seconds: 4,
-        category: "image"
-    };
-    pub static ref GIF_MAGIK_COMMAND: Command = Command {
-        aliases: vec!["gmagik", "gmagick", "gmagic", "gcas"],
-        args: vec![Argument::ImageBuffer],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "perform content aware scaling recursively on an image",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "gifmagik",
-        cooldown_seconds: 4,
-        category: "image"
-    };
-    pub static ref GIF_SCRAMBLE_COMMAND: Command = Command {
-        aliases: vec!["gscramble"],
-        args: vec![Argument::ImageBuffer],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "scramble the frames in a gif",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "gifscramble",
-        cooldown_seconds: 4,
-        category: "image"
-    };
-    pub static ref GIF_SPEED_COMMAND: Command = Command {
-        aliases: vec!["gspeed"],
-        args: vec![
-            Argument::ImageBuffer,
-            Argument::Optional(Box::new(Argument::Integer))
-        ],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "change the speed of a gif by setting the delay between frames",
-            examples: vec!["312715611413413889 2"],
-            usage: "[image] <delay between frames (2 to 100)>"
-        },
-        name: "gifspeed",
-        cooldown_seconds: 4,
-        category: "image"
-    };
-    pub static ref GLOBE_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![Argument::ImageBuffer],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "apply globe effect to image",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "globe",
-        cooldown_seconds: 4,
-        category: "image"
-    };
-    pub static ref GRAYSCALE_COMMAND: Command = Command {
-        aliases: vec!["gray"],
-        args: vec![Argument::ImageBuffer],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "grayscale an image",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "grayscale",
-        cooldown_seconds: 4,
-        category: "image"
-    };
+    pub static ref GIF_LOOP_COMMAND: Command = CommandBuilder::new("gifloop")
+        .arg(Argument::ImageBuffer)
+        .alias("gloop")
+        .public()
+        .description("play a gif forward and then backward")
+        .example("https://link.to.my/image.gif")
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref GIF_MAGIK_COMMAND: Command = CommandBuilder::new("gifmagik")
+        .arg(Argument::ImageBuffer)
+        .alias("gmagik")
+        .alias("gcas")
+        .alias("gifmagick")
+        .public()
+        .description("create a seam carved gif from the input")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref GIF_SCRAMBLE_COMMAND: Command = CommandBuilder::new("gifscramble")
+        .arg(Argument::ImageBuffer)
+        .alias("gscramble")
+        .public()
+        .description("scramble the frames in a gif")
+        .example("https://link.to.my/image.gif")
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref GIF_SPEED_COMMAND: Command = CommandBuilder::new("gifspeed")
+        .arg(Argument::ImageBuffer)
+        .arg(Argument::Optional(Box::new(Argument::String)))
+        .alias("gspeed")
+        .public()
+        .description("alter the speed of a gif (no delay argument speeds it up)")
+        .example("https://link.to.my/image.gif")
+        .usage("[image] <delay between frames: 2 to 100>")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref GLOBE_COMMAND: Command = CommandBuilder::new("globe")
+        .arg(Argument::ImageBuffer)
+        .alias("sphere")
+        .public()
+        .description("turn an image into a spinning globe")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref GRAYSCALE_COMMAND: Command = CommandBuilder::new("grayscale")
+        .alias("gray")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("grayscale an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref IMAGE_INFO_COMMAND: Command = CommandBuilder::new("imageinfo")
         .arg(Argument::ImageBuffer)
         .alias("ii")
@@ -266,32 +256,24 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
-    pub static ref IMAGEMAGICK_EVAL_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![Argument::ImageBuffer, Argument::StringRemaining],
-        availability: CommandAvailability::Private,
-        metadata: CommandMetadata {
-            description: "evaluate an imagemagick script on an image",
-            examples: vec!["312715611413413889 -reverse"],
-            usage: "[image] [script]"
-        },
-        name: "ime",
-        cooldown_seconds: 4,
-        category: "image"
-    };
-    pub static ref INVERT_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![Argument::ImageBuffer],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "invert an image",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "invert",
-        cooldown_seconds: 4,
-        category: "image"
-    };
+    pub static ref IMAGEMAGICK_EVAL_COMMAND: Command = CommandBuilder::new("ime")
+        .arg(Argument::ImageBuffer)
+        .availability(CommandAvailability::Private)
+        .description("evaluate an imagemagick script on an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref INVERT_COMMAND: Command = CommandBuilder::new("invert")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("invert an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref JPEG_COMMAND: Command = CommandBuilder::new("jpeg")
         .arg(Argument::ImageBuffer)
         .public()
@@ -301,19 +283,18 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
-    pub static ref MAGIK_COMMAND: Command = Command {
-        aliases: vec!["magik", "magick", "magic", "cas"],
-        args: vec![Argument::ImageBuffer],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "perform content aware scaling on an image",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "magik",
-        cooldown_seconds: 4,
-        category: "image"
-    };
+    pub static ref MAGIK_COMMAND: Command = CommandBuilder::new("magick")
+        .arg(Argument::ImageBuffer)
+        .alias("magik")
+        .alias("cas")
+        .alias("magic")
+        .public()
+        .description("perform seam carving on an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref MEME_COMMAND: Command = CommandBuilder::new("meme")
         .arg(Argument::ImageBuffer)
         .arg(Argument::StringRemaining)
@@ -324,62 +305,48 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
-    pub static ref PRINTER_COMMAND: Command = Command {
-        aliases: vec!["print"],
-        args: vec![Argument::ImageBuffer],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "apply printer effect to image",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "printer",
-        cooldown_seconds: 4,
-        category: "image"
-    };
-    pub static ref MOTIVATE_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![Argument::ImageBuffer, Argument::StringRemaining],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description:
-                "add motivation caption to an image, separate top and bottom text with | divider",
-            examples: vec!["MOTIVATION this is funny", "HOLY SHIT | get a job"],
-            usage: "[image] [text separated by a |]"
-        },
-        name: "motivate",
-        cooldown_seconds: 4,
-        category: "image"
-    };
-    pub static ref NEON_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![
-            Argument::ImageBuffer,
-            Argument::OptionalWithDefault(Box::new(Argument::String), "1")
-        ],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "apply neon effect to image",
-            examples: vec!["312715611413413889"],
-            usage: "[image] <radius>"
-        },
-        name: "neon",
-        cooldown_seconds: 4,
-        category: "image"
-    };
-    pub static ref OCR_COMMAND: Command = Command {
-        aliases: vec!["read"],
-        args: vec![Argument::ImageUrl],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "read the text on an image",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "ocr",
-        cooldown_seconds: 4,
-        category: "image"
-    };
+    pub static ref PRINTER_COMMAND: Command = CommandBuilder::new("printer")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("apply printer effect to an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref MOTIVATE_COMMAND: Command = CommandBuilder::new("motivate")
+        .arg(Argument::ImageBuffer)
+        .arg(Argument::StringRemaining)
+        .public()
+        .description("apply motivational text to an image")
+        .example("https://lkink.to.my/image.png ? | will this work")
+        .usage("[image] [text separated by a | marker]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref NEON_COMMAND: Command = CommandBuilder::new("neon")
+        .arg(Argument::ImageBuffer)
+        .arg(Argument::OptionalWithDefault(
+            Box::new(Argument::String),
+            "1"
+        ))
+        .public()
+        .description("neon an image")
+        .example(Y21)
+        .usage("[image] <power: 1-20>")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref OCR_COMMAND: Command = CommandBuilder::new("ocr")
+        .alias("read")
+        .arg(Argument::ImageUrl)
+        .public()
+        .description("read the text on an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref OVERLAY_COMMAND: Command = CommandBuilder::new("overlay")
         .arg(Argument::ImageBuffer)
         .arg(Argument::String)
@@ -390,32 +357,35 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
-    pub static ref PAINT_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![Argument::ImageBuffer],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "paint an image",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "paint",
-        cooldown_seconds: 4,
-        category: "image"
-    };
-    pub static ref RAINBOW_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![Argument::ImageBuffer],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "make an image rainbow",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "rainbow",
-        cooldown_seconds: 4,
-        category: "image"
-    };
+    pub static ref PAINT_COMMAND: Command = CommandBuilder::new("paint")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("paint an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref PIXELATE_COMMAND: Command = CommandBuilder::new("pixelate")
+        .alias("pixel")
+        .arg(Argument::ImageBuffer)
+        .arg(Argument::Optional(Box::new(Argument::String)))
+        .public()
+        .description("pixelate an image")
+        .example(Y21)
+        .usage("[image] <pixels (smaller = more pixelated)>")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref RAINBOW_COMMAND: Command = CommandBuilder::new("rainbow")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("rainbowify an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref RESIZE_COMMAND: Command = CommandBuilder::new("resize")
         .arg(Argument::ImageBuffer)
         .arg(Argument::OptionalWithDefault(
@@ -431,45 +401,39 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
-    pub static ref REVERSE_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![Argument::ImageBuffer],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "reverse a gif",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "reverse",
-        cooldown_seconds: 4,
-        category: "image"
-    };
-    pub static ref ROTATE_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![Argument::ImageBuffer, Argument::String],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "rotate an image",
-            examples: vec!["312715611413413889 45"],
-            usage: "[image] [degrees]"
-        },
-        name: "rotate",
-        cooldown_seconds: 4,
-        category: "image"
-    };
-    pub static ref SET_LOOP_COMMAND: Command = Command {
-        aliases: vec!["setloop"],
-        args: vec![Argument::ImageBuffer, Argument::Choice(&["on", "off"])],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "choose if you want a gif to loop or not",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "setlooping",
-        cooldown_seconds: 4,
-        category: "image"
-    };
+    pub static ref REVERSE_COMMAND: Command = CommandBuilder::new("reverse")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("reverse a gif")
+        .example("https://link.to.my/image.gif")
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref ROTATE_COMMAND: Command = CommandBuilder::new("rotate")
+        .arg(Argument::ImageBuffer)
+        .arg(Argument::OptionalWithDefault(
+            Box::new(Argument::String),
+            "90"
+        ))
+        .public()
+        .description("rotate an image")
+        .example(Y21)
+        .example("https://link.to.my/image.png 45")
+        .usage("[image] <degrees>")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref SET_LOOP_COMMAND: Command = CommandBuilder::new("setloop")
+        .arg(Argument::ImageBuffer)
+        .arg(Argument::Choice(&["on", "off"]))
+        .public()
+        .description("configure whether a gif will loop")
+        .example("https://link.to.my/image.gif off")
+        .usage("[image] [on|off]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref SKETCH_COMMAND: Command = CommandBuilder::new("sketch")
         .arg(Argument::ImageBuffer)
         .public()
@@ -479,45 +443,33 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
-    pub static ref SPIN_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![Argument::ImageBuffer],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "spin an image",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "spin",
-        cooldown_seconds: 4,
-        category: "image"
-    };
-    pub static ref SPREAD_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![Argument::ImageBuffer],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "pixel-spread an image",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "spread",
-        cooldown_seconds: 4,
-        category: "image"
-    };
-    pub static ref SWIRL_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![Argument::ImageBuffer],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "swirl an image",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "swirl",
-        cooldown_seconds: 4,
-        category: "image"
-    };
+    pub static ref SPIN_COMMAND: Command = CommandBuilder::new("spin")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("spin an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref SPREAD_COMMAND: Command = CommandBuilder::new("spread")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("pixel-spread an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref SWIRL_COMMAND: Command = CommandBuilder::new("swirl")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("swirl an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref TEHI_COMMAND: Command = CommandBuilder::new("tehi")
         .arg(Argument::ImageBuffer)
         .public()
@@ -536,87 +488,65 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
-    pub static ref WALL_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![Argument::ImageBuffer],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "create a wall out of an image",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "wall",
-        cooldown_seconds: 4,
-        category: "image"
-    };
-    pub static ref WAVE_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![Argument::ImageBuffer],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "create a wave out of an image",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "wave",
-        cooldown_seconds: 4,
-        category: "image"
-    };
-    pub static ref WORMHOLE_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![Argument::ImageBuffer],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "suck an image into a wormhole",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "wormhole",
-        cooldown_seconds: 4,
-        category: "image"
-    };
-    pub static ref ZOOM_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![Argument::ImageBuffer],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "zoom into an image",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "zoom",
-        cooldown_seconds: 4,
-        category: "image"
-    };
-    pub static ref ZOOM_BLUR_COMMAND: Command = Command {
-        aliases: vec!["zb"],
-        args: vec![
-            Argument::ImageBuffer,
-            Argument::OptionalWithDefault(Box::new(Argument::String), "1")
-        ],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "apply zoom blur effect to image",
-            examples: vec!["312715611413413889"],
-            usage: "[image] <power>"
-        },
-        name: "zoomblur",
-        cooldown_seconds: 4,
-        category: "image"
-    };
-    pub static ref APRIL_FOOLS_COMMAND: Command = Command {
-        aliases: vec![],
-        args: vec![Argument::ImageBuffer],
-        availability: CommandAvailability::Public,
-        metadata: CommandMetadata {
-            description: "april fools",
-            examples: vec!["312715611413413889"],
-            usage: "[image]"
-        },
-        name: "aprilfools",
-        cooldown_seconds: 4,
-        category: "image"
-    };
+    pub static ref WALL_COMMAND: Command = CommandBuilder::new("wall")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("create a wall out of an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref WAVE_COMMAND: Command = CommandBuilder::new("wave")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("create a wave out of an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref WORMHOLE_COMMAND: Command = CommandBuilder::new("wormhole")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("suck an image into a wormhole")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref ZOOM_COMMAND: Command = CommandBuilder::new("zoom")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("zoom into an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref ZOOM_BLUR_COMMAND: Command = CommandBuilder::new("zoomblur")
+        .alias("zb")
+        .arg(Argument::ImageBuffer)
+        .arg(Argument::OptionalWithDefault(
+            Box::new(Argument::String),
+            "2"
+        ))
+        .public()
+        .description("apply zoomblur effect to image")
+        .example(Y21)
+        .usage("[image] <power: 1-20>")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref APRIL_FOOLS_COMMAND: Command = CommandBuilder::new("aprilfools")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("april fools")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
 }
 
 pub async fn run_3d_rotate_command(
@@ -665,6 +595,21 @@ pub async fn run_aprilfools_command(
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
     run_annmarie_noarg_command!(annmarie::aprilfools, args, context)
+}
+
+pub async fn run_blur_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let power = force_as::text(&args[0]);
+    context.reply_with_text("processing...").await?;
+    let result = wsi::blur(context.assyst.clone(), image, power)
+        .await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
 }
 
 pub async fn run_caption_command(
@@ -881,7 +826,7 @@ pub async fn run_image_info_command(
         ("Mimetype", Cow::Borrowed(&mime_type)),
         ("File Size", Cow::Borrowed(&file_size)),
         ("Dimensions", Cow::Borrowed(&dimensions)),
-        ("Colour Type", Cow::Borrowed(&result.colour_space))
+        ("Colour Type", Cow::Borrowed(&result.colour_space)),
     ];
 
     if let Some(f) = result.frames {
@@ -986,7 +931,7 @@ pub async fn run_meme_command(
     let bottom_text = parts.drain(1..).collect::<Vec<&str>>().join(" ");
 
     context.reply_with_text("processing...").await?;
-    let result = wsi::meme(context.assyst.clone(), image, &top_text, &bottom_text)
+    let result = wsi::meme(context.assyst.clone(), image, top_text.trim(), bottom_text.trim())
         .await
         .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
@@ -1014,7 +959,7 @@ pub async fn run_motivate_command(
     let bottom_text = parts.drain(1..).collect::<Vec<&str>>().join(" ");
 
     context.reply_with_text("processing...").await?;
-    let result = wsi::motivate(context.assyst.clone(), image, &top_text, &bottom_text)
+    let result = wsi::motivate(context.assyst.clone(), image, top_text.trim(), bottom_text.trim())
         .await
         .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
@@ -1073,6 +1018,25 @@ pub async fn run_paint_command(
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
     run_annmarie_noarg_command!(annmarie::paint, args, context)
+}
+
+pub async fn run_pixelate_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
+    let downscaled_height = if args[0].is_nothing() {
+        None
+    } else {
+        Some(force_as::text(&args[0]))
+    };
+    context.reply_with_text("processing...").await?;
+    let result = wsi::pixelate(context.assyst.clone(), image, downscaled_height)
+        .await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
 }
 
 pub async fn run_printer_command(

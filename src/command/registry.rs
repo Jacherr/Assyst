@@ -172,5 +172,7 @@ impl CommandRegistry {
         register_command!(self, GHOST_COMMAND, run_ghost_command);
         register_command!(self, COMMAND_COMMAND, run_command_command);
         register_command!(self, IMAGE_INFO_COMMAND, run_image_info_command);
+        register_command!(self, BLUR_COMMAND, run_blur_command);
+        register_command!(self, PIXELATE_COMMAND, run_pixelate_command);
     }
 }

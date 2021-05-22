@@ -137,6 +137,7 @@ pub struct Command {
     pub aliases: Vec<&'static str>,
     pub args: Vec<Argument>,
     pub availability: CommandAvailability,
+    pub flags: CommandFlags,
     pub metadata: CommandMetadata,
     pub name: &'static str,
     pub cooldown_seconds: usize,
@@ -147,6 +148,7 @@ pub struct CommandBuilder {
     aliases: Vec<&'static str>,
     args: Vec<Argument>,
     availability: Option<CommandAvailability>,
+    flags: CommandFlags,
     metadata: CommandMetadata,
     name: &'static str,
     cooldown_seconds: Option<usize>,
@@ -158,6 +160,7 @@ impl CommandBuilder {
             aliases: vec![],
             args: vec![],
             availability: None,
+            flags: HashMap::new(),
             metadata: CommandMetadata {
                 description: "",
                 examples: vec![],
@@ -204,6 +207,11 @@ impl CommandBuilder {
         self
     }
 
+    pub fn flag(mut self, key: &'static str, r#type: FlagInnerType) -> Self {
+        self.flags.insert(key, r#type);
+        self
+    }
+
     pub fn public(mut self) -> Self {
         self.availability = Some(CommandAvailability::Public);
         self
@@ -229,6 +237,7 @@ impl CommandBuilder {
         Command {
             aliases: self.aliases,
             args: self.args,
+            flags: self.flags,
             metadata: CommandMetadata {
                 description,
                 examples: self.metadata.examples,
@@ -269,6 +278,7 @@ pub mod force_as {
     }
 }
 
+#[derive(Debug)]
 pub enum FlagInnerType {
     Boolean,
     String,
@@ -277,4 +287,6 @@ pub enum FlagInnerType {
     Choice(&'static [&'static str]),
 }
 
-pub type Flags = HashMap<&'static str, Option<&'static str>>;
+pub type CommandFlags = HashMap<&'static str, FlagInnerType>;
+
+pub type ParsedFlags = HashMap<&'static str, Option<&'static str>>;
