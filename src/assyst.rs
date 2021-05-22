@@ -324,6 +324,11 @@ impl Assyst {
                 .map_err(|e| e.to_string())?;
         };
 
+        self.logger.info(self.clone(), &format!(
+            "Command successfully executed: {}",
+            command_instance.name
+        )).await;
+
         self.metrics
             .write()
             .await

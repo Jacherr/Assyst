@@ -12,6 +12,7 @@ pub type NoArgFunction = Box<
 
 mod routes {
     pub const _3D_ROTATE: &str = "/3d_rotate";
+    pub const BLUR: &str = "/blur";
     pub const CAPTION: &str = "/caption";
     pub const COMPRESS: &str = "/compress";
     pub const FIX_TRANSPARENCY: &str = "/fix_transparency";
@@ -32,6 +33,7 @@ mod routes {
     pub const MEME: &str = "/meme";
     pub const MOTIVATE: &str = "/motivate";
     pub const OVERLAY: &str = "/overlay";
+    pub const PIXELATE: &str = "/pixelate";
     pub const PREPROCESS: &str = "/preprocess";
     pub const PRINTER: &str = "/printer";
     pub const RAINBOW: &str = "/rainbow";
@@ -111,6 +113,10 @@ pub async fn request_bytes(
 
 pub async fn _3d_rotate(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::_3D_ROTATE, image, &[]).await
+}
+
+pub async fn blur(assyst: Arc<Assyst>, image: Bytes, power: &str) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::BLUR, image, &[("power", power)]).await
 }
 
 pub async fn caption(assyst: Arc<Assyst>, image: Bytes, text: &str) -> Result<Bytes, RequestError> {
@@ -262,6 +268,13 @@ pub async fn meme(
         &[("top", top), ("bottom", bottom)],
     )
     .await
+}
+
+pub async fn pixelate(assyst: Arc<Assyst>, image: Bytes, downscaled_height: Option<&str>) -> Result<Bytes, RequestError> {
+    match downscaled_height {
+        Some(d) => request_bytes(assyst, routes::PIXELATE, image, &[("downscaled_height", d)]).await,
+        None => request_bytes(assyst, routes::PIXELATE, image, &[]).await
+    }
 }
 
 pub async fn preprocess(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
