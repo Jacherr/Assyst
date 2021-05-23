@@ -37,6 +37,7 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .build();
     pub static ref OCRBT_COMMAND: Command = CommandBuilder::new("ocrbadtranslate")
+        .alias("ocrbt")
         .arg(Argument::ImageUrl)
         .public()
         .description("OCR and then badly translate an image")
@@ -46,6 +47,7 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .build();
     pub static ref OCRTR_COMMAND: Command = CommandBuilder::new("ocrtranslate")
+        .alias("ocrtr")
         .arg(Argument::ImageUrl)
         .public()
         .description("OCR and then translate an image")
