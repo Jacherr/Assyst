@@ -69,6 +69,15 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
+    pub static ref BILLBOARD_COMMAND: Command = CommandBuilder::new("billboard")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("display an image on a billboard")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref BLUR_COMMAND: Command = CommandBuilder::new("blur")
         .arg(Argument::ImageBuffer)
         .arg(Argument::OptionalWithDefault(
@@ -117,6 +126,15 @@ lazy_static! {
         .arg(Argument::ImageBuffer)
         .public()
         .description("if a command breaks image transparency, this command may fix it")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref FLAG_COMMAND: Command = CommandBuilder::new("flag")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("wave an image on a flag")
         .example(Y21)
         .usage("[image]")
         .cooldown(Duration::from_secs(4))
@@ -597,6 +615,13 @@ pub async fn run_aprilfools_command(
     run_annmarie_noarg_command!(annmarie::aprilfools, args, context)
 }
 
+pub async fn run_billboard_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    run_annmarie_noarg_command!(annmarie::billboard, args, context)
+}
+
 pub async fn run_blur_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
@@ -653,6 +678,13 @@ pub async fn run_fix_transparency_command(
         Box::new(move |assyst, bytes| Box::pin(wsi_fn(assyst, bytes))),
     )
     .await
+}
+
+pub async fn run_flag_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    run_annmarie_noarg_command!(annmarie::flag, args, context)
 }
 
 pub async fn run_flash_command(
