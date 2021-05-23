@@ -65,7 +65,7 @@ pub async fn request_bytes(
 
     return if status != reqwest::StatusCode::OK {
         let json = result.json::<AnnmarieError>().await.map_err(|_| {
-            RequestError::Reqwest("There was an error decoding the response.".to_owned())
+            RequestError::Reqwest("There was an error decoding the response".to_owned())
         })?;
         Err(RequestError::Annmarie(json, status))
     } else {
