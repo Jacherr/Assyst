@@ -283,9 +283,9 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
-    pub static ref MAGIK_COMMAND: Command = CommandBuilder::new("magick")
+    pub static ref MAGIK_COMMAND: Command = CommandBuilder::new("magik")
         .arg(Argument::ImageBuffer)
-        .alias("magik")
+        .alias("magick")
         .alias("cas")
         .alias("magic")
         .public()
