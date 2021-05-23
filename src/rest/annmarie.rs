@@ -19,6 +19,7 @@ mod routes {
     pub const FRINGE: &str = "/fringe";
     pub const F_SHIFT: &str = "/fshift";
     pub const GLOBE: &str = "/globe";
+    pub const MAKESWEET: &str = "/makesweet";
     pub const NEON: &str = "/neon";
     pub const PAINT: &str = "/paint";
     pub const SKETCH: &str = "/sketch";
@@ -85,12 +86,20 @@ pub async fn aprilfools(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, Requ
     request_bytes(assyst, routes::APRILFOOLS, image, &[]).await
 }
 
+pub async fn billboard(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::MAKESWEET, image, &[("type", "billboard")]).await
+}
+
 pub async fn card(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::CARD, image, &[]).await
 }
 
 pub async fn fisheye(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::FISHEYE, image, &[]).await
+}
+
+pub async fn flag(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::MAKESWEET, image, &[("template", "flag")]).await
 }
 
 pub async fn fringe(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
