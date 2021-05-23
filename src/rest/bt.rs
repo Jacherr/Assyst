@@ -1,7 +1,7 @@
 use reqwest::{Client, Error as ReqwestError};
 use serde::Deserialize;
 
-const API_BASE: &str = "http://translate.y21_.repl.co";
+const API_BASE: &str = "https://bt.y21.workers.dev";
 const MAX_ATTEMPTS: u8 = 5;
 
 #[derive(Debug)]
