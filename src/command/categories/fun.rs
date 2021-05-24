@@ -59,7 +59,6 @@ lazy_static! {
         .build();
     pub static ref RULE34_COMMAND: Command = CommandBuilder::new("rule34")
         .alias("r34")
-        .arg(Argument::ImageUrl)
         .public()
         .description("search rule34.xxx")
         .example("anime")
