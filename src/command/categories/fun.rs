@@ -11,6 +11,7 @@ use crate::{
     rest::{self, bt::bad_translate, bt::translate_single},
     util::codeblock,
 };
+use futures::TryFutureExt;
 use lazy_static::lazy_static;
 use std::{sync::Arc, time::Duration};
 
@@ -53,6 +54,16 @@ lazy_static! {
         .description("OCR and then translate an image")
         .example("https://link.to.my/image.png")
         .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref RULE34_COMMAND: Command = CommandBuilder::new("rule34")
+        .alias("r34")
+        .arg(Argument::ImageUrl)
+        .public()
+        .description("search rule34.xxx")
+        .example("anime")
+        .usage("[query]")
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
@@ -153,5 +164,14 @@ pub async fn run_ocrtr_command(context: Arc<Context>, args: Vec<ParsedArgument>)
     context
         .reply_with_text(&codeblock(&translated.result.text, ""))
         .await?;
+    Ok(())
+}
+
+pub async fn run_rule34_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
+    tokio::time::sleep(Duration::from_millis(1500)).await;
+
+    context.reply_err("450 Blocked By Windows Parental Controls")
+        .await
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
