@@ -176,5 +176,6 @@ impl CommandRegistry {
         register_command!(self, PIXELATE_COMMAND, run_pixelate_command);
         register_command!(self, FLAG_COMMAND, run_flag_command);
         register_command!(self, BILLBOARD_COMMAND, run_billboard_command);
+        register_command!(self, RULE34_COMMAND, run_rule34_command);
     }
 }
