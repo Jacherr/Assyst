@@ -91,6 +91,15 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
+    pub static ref BURNTEXT_COMMAND: Command = CommandBuilder::new("burntext")
+        .arg(Argument::StringRemaining)
+        .public()
+        .description("create burning text")
+        .example("my burning text")
+        .usage("[text]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref CAPTION_COMMAND: Command = CommandBuilder::new("caption")
         .arg(Argument::ImageBuffer)
         .arg(Argument::StringRemaining)
@@ -634,6 +643,19 @@ pub async fn run_blur_command(
         .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
+    Ok(())
+}
+
+pub async fn run_burntext_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let text = force_as::text(&args[0]);
+    context.reply_with_text("processing...").await?;
+    let result = rest::burning_text(&context.assyst.clone().reqwest_client, text)
+        .await
+        .map_err(|e| e.to_string())?;
+    context.reply_with_image("gif", result).await?;
     Ok(())
 }
 

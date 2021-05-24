@@ -9,6 +9,7 @@ pub mod rust;
 pub mod wsi;
 
 mod routes {
+    pub const COOL_TEXT: &str = "https://cooltext.com/PostChange";
     pub const CDN: &str = "https://cdn.jacher.io";
     pub const OCR: &str = "http://ocr.y21_.repl.co/?url=";
     pub const CHARINFO: &str = "https://www.fileformat.info/info/unicode/char/";
@@ -37,6 +38,15 @@ struct FakeEvalBody {
 #[derive(Deserialize)]
 pub struct FakeEvalResponse {
     pub message: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CoolTextResponse {
+    pub logo_id: usize,
+    pub new_id: usize,
+    pub render_location: String,
+    pub is_animated: bool
 }
 
 pub async fn ocr_image(client: &Client, url: &str) -> Result<String, OcrError> {
@@ -92,4 +102,31 @@ pub async fn fake_eval(client: &Client, code: &str) -> Result<FakeEvalResponse, 
         .await?
         .json()
         .await
+}
+
+pub async fn burning_text(client: &Client, text: &str) -> Result<Bytes, Error> {
+    let cool_text_response = client
+        .post(routes::COOL_TEXT)
+        .query(&[
+            ("LogoID", "4"),
+            ("Text", text),
+            ("FontSize", "70"),
+            ("Color1_color", "#FF0000"),
+            ("Integer1", "15"),
+            ("Boolean1", "on"),
+            ("Integer9", "0"),
+            ("Integer13", "on"),
+            ("Integer12", "on"),
+            ("BackgroundColor_color", "#FFFFFF")
+        ])
+        .header("content-length", "0")
+        .send()
+        .await?
+        .json::<CoolTextResponse>()
+        .await?;
+
+    let url = cool_text_response.render_location;
+    let content = client.get(&url).send().await?.bytes().await?;
+
+    Ok(content)
 }
