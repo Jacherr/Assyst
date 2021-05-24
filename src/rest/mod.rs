@@ -126,7 +126,7 @@ pub async fn burning_text(client: &Client, text: &str) -> Result<Bytes, Error> {
         .await?;
 
     let url = cool_text_response.render_location;
-    let content = client.get(&url).send().await?.bytes().await?;
+    let content = client.get(&url.replace("https", "http")).send().await?.bytes().await?;
 
     Ok(content)
 }
