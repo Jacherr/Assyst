@@ -89,11 +89,7 @@ pub async fn aprilfools(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, Requ
 }
 
 pub async fn billboard(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
-    let converted = wsi::convert_png(assyst.clone(), image)
-        .await
-        .map_err(|e| RequestError::Wsi(e))?;
-
-    request_bytes(assyst, routes::MAKESWEET, converted, &[("template", "billboard-cityscape")]).await
+    request_bytes(assyst, routes::MAKESWEET, image, &[("template", "billboard-cityscape")]).await
 }
 
 pub async fn card(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
@@ -105,11 +101,7 @@ pub async fn fisheye(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, Request
 }
 
 pub async fn flag(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
-    let converted = wsi::convert_png(assyst.clone(), image)
-        .await
-        .map_err(|e| RequestError::Wsi(e))?;
-    
-    request_bytes(assyst, routes::MAKESWEET, converted, &[("template", "flag")]).await
+    request_bytes(assyst, routes::MAKESWEET, image, &[("template", "flag")]).await
 }
 
 pub async fn fringe(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
