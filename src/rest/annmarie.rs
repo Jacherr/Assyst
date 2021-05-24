@@ -1,9 +1,11 @@
 use crate::{assyst::Assyst, rest::wsi::preprocess};
 use bytes::Bytes;
-use futures::Future;
+use futures::{Future, TryFutureExt};
 use reqwest::StatusCode;
 use serde::Deserialize;
 use std::{pin::Pin, sync::Arc};
+
+use super::wsi;
 
 pub type NoArgFunction = Box<
     dyn Fn(Arc<Assyst>, Bytes) -> Pin<Box<dyn Future<Output = Result<Bytes, RequestError>> + Send>>
@@ -87,7 +89,11 @@ pub async fn aprilfools(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, Requ
 }
 
 pub async fn billboard(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::MAKESWEET, image, &[("type", "billboard")]).await
+    let converted = wsi::convert_png(assyst.clone(), image)
+        .await
+        .map_err(|e| RequestError::Wsi(e))?;
+
+    request_bytes(assyst, routes::MAKESWEET, converted, &[("template", "billboard-cityscape")]).await
 }
 
 pub async fn card(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
@@ -99,7 +105,11 @@ pub async fn fisheye(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, Request
 }
 
 pub async fn flag(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::MAKESWEET, image, &[("template", "flag")]).await
+    let converted = wsi::convert_png(assyst.clone(), image)
+        .await
+        .map_err(|e| RequestError::Wsi(e))?;
+    
+    request_bytes(assyst, routes::MAKESWEET, converted, &[("template", "flag")]).await
 }
 
 pub async fn fringe(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
