@@ -11,7 +11,6 @@ use crate::{
     rest::{self, bt::bad_translate, bt::translate_single},
     util::codeblock,
 };
-use futures::TryFutureExt;
 use lazy_static::lazy_static;
 use std::{sync::Arc, time::Duration};
 
