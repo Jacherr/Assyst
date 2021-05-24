@@ -15,6 +15,7 @@ mod routes {
     pub const BLUR: &str = "/blur";
     pub const CAPTION: &str = "/caption";
     pub const COMPRESS: &str = "/compress";
+    pub const CONVERT_PNG: &str = "/convert_png";
     pub const FIX_TRANSPARENCY: &str = "/fix_transparency";
     pub const FLASH: &str = "/flash";
     pub const FLIP: &str = "/flip";
@@ -121,6 +122,10 @@ pub async fn blur(assyst: Arc<Assyst>, image: Bytes, power: &str) -> Result<Byte
 
 pub async fn caption(assyst: Arc<Assyst>, image: Bytes, text: &str) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::CAPTION, image, &[("text", text)]).await
+}
+
+pub async fn convert_png(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::CONVERT_PNG, image, &[]).await
 }
 
 pub async fn compress(
