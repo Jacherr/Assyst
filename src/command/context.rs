@@ -144,7 +144,7 @@ impl Context {
         match message_builder.content {
             Some(content) => {
                 update_message = update_message.content(Some(
-                    content[0..std::cmp::min(content.len(), 1999)].to_owned(),
+                    content.chars().take(1999).collect::<String>(),
                 ))?
             }
             None => update_message = update_message.content(None)?,
