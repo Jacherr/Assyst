@@ -1,11 +1,9 @@
 use crate::{assyst::Assyst, rest::wsi::preprocess};
 use bytes::Bytes;
-use futures::{Future, TryFutureExt};
+use futures::Future;
 use reqwest::StatusCode;
 use serde::Deserialize;
 use std::{pin::Pin, sync::Arc};
-
-use super::wsi;
 
 pub type NoArgFunction = Box<
     dyn Fn(Arc<Assyst>, Bytes) -> Pin<Box<dyn Future<Output = Result<Bytes, RequestError>> + Send>>
