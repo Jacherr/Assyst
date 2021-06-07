@@ -3,10 +3,11 @@ use bytes::Bytes;
 use futures::Future;
 use reqwest::StatusCode;
 use serde::Deserialize;
+use twilight_model::id::UserId;
 use std::{pin::Pin, sync::Arc};
 
 pub type NoArgFunction = Box<
-    dyn Fn(Arc<Assyst>, Bytes) -> Pin<Box<dyn Future<Output = Result<Bytes, RequestError>> + Send>>
+    dyn Fn(Arc<Assyst>, Bytes, UserId) -> Pin<Box<dyn Future<Output = Result<Bytes, RequestError>> + Send>>
         + Send
         + Sync,
 >;
@@ -44,8 +45,9 @@ pub async fn request_bytes(
     route: &str,
     image: Bytes,
     query: &[(&str, &str)],
+    user_id: UserId
 ) -> Result<Bytes, RequestError> {
-    let new_image = preprocess(assyst.clone(), image)
+    let new_image = preprocess(assyst.clone(), image, user_id)
         .await
         .map_err(|e| RequestError::Wsi(e))?;
 
@@ -78,64 +80,64 @@ pub async fn request_bytes(
     };
 }
 
-pub async fn ahshit(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::AHSHIT, image, &[]).await
+pub async fn ahshit(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::AHSHIT, image, &[], user_id).await
 }
 
-pub async fn aprilfools(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::APRILFOOLS, image, &[]).await
+pub async fn aprilfools(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::APRILFOOLS, image, &[], user_id).await
 }
 
-pub async fn billboard(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::MAKESWEET, image, &[("template", "billboard-cityscape")]).await
+pub async fn billboard(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::MAKESWEET, image, &[("template", "billboard-cityscape")], user_id).await
 }
 
-pub async fn card(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::CARD, image, &[]).await
+pub async fn card(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::CARD, image, &[], user_id).await
 }
 
-pub async fn fisheye(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::FISHEYE, image, &[]).await
+pub async fn fisheye(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::FISHEYE, image, &[], user_id).await
 }
 
-pub async fn flag(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::MAKESWEET, image, &[("template", "flag")]).await
+pub async fn flag(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::MAKESWEET, image, &[("template", "flag")], user_id).await
 }
 
-pub async fn fringe(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::FRINGE, image, &[]).await
+pub async fn fringe(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::FRINGE, image, &[], user_id).await
 }
 
-pub async fn f_shift(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::F_SHIFT, image, &[]).await
+pub async fn f_shift(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::F_SHIFT, image, &[], user_id).await
 }
 
-pub async fn globe(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::GLOBE, image, &[]).await
+pub async fn globe(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::GLOBE, image, &[], user_id).await
 }
 
-pub async fn neon(assyst: Arc<Assyst>, image: Bytes, radius: &str) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::NEON, image, &[("radius", radius)]).await
+pub async fn neon(assyst: Arc<Assyst>, image: Bytes, user_id: UserId, radius: &str) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::NEON, image, &[("radius", radius)], user_id).await
 }
 
-pub async fn paint(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::PAINT, image, &[]).await
+pub async fn paint(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::PAINT, image, &[], user_id).await
 }
 
-pub async fn sketch(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::SKETCH, image, &[]).await
+pub async fn sketch(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::SKETCH, image, &[], user_id).await
 }
 
-pub async fn terraria(assyst: Arc<Assyst>, image: Bytes) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::TERRARIA, image, &[]).await
+pub async fn terraria(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::TERRARIA, image, &[], user_id).await
 }
 
 pub async fn zoom_blur(
     assyst: Arc<Assyst>,
-    image: Bytes,
+    image: Bytes, user_id: UserId,
     power: &str,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::ZOOM_BLUR, image, &[("power", power)]).await
+    request_bytes(assyst, routes::ZOOM_BLUR, image, &[("power", power)], user_id).await
 }
 
 pub fn format_err(err: RequestError) -> String {

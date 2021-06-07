@@ -84,6 +84,10 @@ impl Ratelimits {
             Some(*command_ratelimit - millis)
         }
     }
+
+    pub fn size(&self) -> usize {
+        self.cache.len()
+    }
 }
 #[derive(Debug)]
 pub struct GuildRatelimits {
@@ -134,6 +138,10 @@ impl Replies {
 
     pub async fn get_reply_from_invocation_id(&self, id: MessageId) -> Option<Arc<Mutex<Reply>>> {
         self.cache.get(&id.0).and_then(|r| Some(r.clone()))
+    }
+
+    pub fn size(&self) -> usize {
+        self.cache.len()
     }
 }
 pub struct Reply {
