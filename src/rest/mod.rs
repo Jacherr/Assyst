@@ -7,6 +7,7 @@ pub mod bt;
 pub mod maryjane;
 pub mod rust;
 pub mod wsi;
+pub mod patreon;
 
 mod routes {
     pub const COOL_TEXT: &str = "https://cooltext.com/PostChange";
@@ -46,7 +47,7 @@ pub struct CoolTextResponse {
     pub logo_id: usize,
     pub new_id: usize,
     pub render_location: String,
-    pub is_animated: bool
+    pub is_animated: bool,
 }
 
 pub async fn ocr_image(client: &Client, url: &str) -> Result<String, OcrError> {
@@ -117,7 +118,7 @@ pub async fn burning_text(client: &Client, text: &str) -> Result<Bytes, Error> {
             ("Integer9", "0"),
             ("Integer13", "on"),
             ("Integer12", "on"),
-            ("BackgroundColor_color", "#FFFFFF")
+            ("BackgroundColor_color", "#FFFFFF"),
         ])
         .header("content-length", "0")
         .send()
@@ -126,7 +127,12 @@ pub async fn burning_text(client: &Client, text: &str) -> Result<Bytes, Error> {
         .await?;
 
     let url = cool_text_response.render_location;
-    let content = client.get(&url.replace("https", "http")).send().await?.bytes().await?;
+    let content = client
+        .get(&url.replace("https", "http"))
+        .send()
+        .await?
+        .bytes()
+        .await?;
 
     Ok(content)
 }
