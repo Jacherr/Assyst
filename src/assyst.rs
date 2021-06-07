@@ -1,10 +1,4 @@
-use crate::{
-    badtranslator::BadTranslator,
-    caching::Ratelimits,
-    command::command::CommandAvailability,
-    logging::Logger,
-    util::{get_current_millis, get_guild_owner, Uptime},
-};
+use crate::{badtranslator::BadTranslator, caching::Ratelimits, command::command::CommandAvailability, logging::Logger, rest::patreon::Patron, util::{get_current_millis, get_guild_owner, Uptime}};
 use crate::{
     caching::{Replies, Reply},
     command::context::Metrics,
@@ -35,6 +29,7 @@ use twilight_http::Client as HttpClient;
 use twilight_model::channel::Message;
 use twilight_model::guild::Permissions;
 use twilight_model::id::UserId;
+
 #[derive(Clone, Deserialize)]
 struct DatabaseInfo {
     username: Box<str>,
@@ -71,6 +66,7 @@ pub struct Config {
     pub logs: LogConfig,
     pub maryjane_url: Box<str>,
     pub maryjane_auth: Box<str>,
+    pub patreon_auth: Box<str>,
     pub prefix_override: Box<str>,
     pub user_blacklist: HashSet<u64>,
     pub wsi_url: Box<str>,
@@ -120,6 +116,7 @@ pub struct Assyst {
     pub logger: Logger,
     pub started_at: u64,
     pub http: HttpClient,
+    pub patrons: RwLock<Vec<Patron>>,
     pub registry: CommandRegistry,
     pub replies: RwLock<Replies>,
     pub reqwest_client: ReqwestClient,
@@ -129,6 +126,7 @@ pub struct Assyst {
 impl Assyst {
     pub async fn new(token: &str) -> Self {
         let http = HttpClient::new(token);
+        let reqwest_client = ReqwestClient::new();
         let config = Config::new();
         let database = Database::new(2, config.database.to_url()).await.unwrap();
         let mut assyst = Assyst {
@@ -139,10 +137,11 @@ impl Assyst {
             logger: Logger {},
             started_at: get_current_millis(),
             http,
+            patrons: RwLock::new(vec![]),
             badtranslator: BadTranslator::new(),
             registry: CommandRegistry::new(),
             replies: RwLock::new(Replies::new()),
-            reqwest_client: ReqwestClient::new(),
+            reqwest_client,
             metrics: RwLock::new(GlobalMetrics::new()),
         };
         if assyst.config.disable_bad_translator {

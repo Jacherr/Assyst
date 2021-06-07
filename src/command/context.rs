@@ -2,7 +2,7 @@ use bytes::Bytes;
 use std::{error::Error, time::Instant};
 use tokio::sync::Mutex;
 use twilight_http::Client as HttpClient;
-use twilight_model::{channel::Message, id::MessageId};
+use twilight_model::{channel::Message, id::{MessageId, UserId}};
 
 use crate::{
     caching::Reply,
@@ -166,5 +166,9 @@ impl Context {
                 .clone(),
         )
         .await
+    }
+
+    pub fn author_id(&self) -> UserId {
+        self.message.author.id
     }
 }

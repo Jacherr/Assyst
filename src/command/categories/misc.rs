@@ -178,6 +178,24 @@ lazy_static! {
         .cooldown(Duration::from_secs(1))
         .category(CATEGORY_NAME)
         .build();
+    pub static ref WSI_RESTART_COMMAND: Command = CommandBuilder::new("wsirestart")
+        .availability(CommandAvailability::Private)
+        .description("Schedule a wsi restart for when no jobs are active")
+        .cooldown(Duration::from_secs(1))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref PATRON_STATUS_COMMAND: Command = CommandBuilder::new("patronstatus")
+        .public()
+        .description("Get your patron status")
+        .cooldown(Duration::from_secs(1))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref CACHE_STATUS_COMMAND: Command = CommandBuilder::new("cachestatus")
+        .availability(CommandAvailability::Private)
+        .description("Get your patron status")
+        .cooldown(Duration::from_secs(1))
+        .category(CATEGORY_NAME)
+        .build();
 }
 
 pub async fn run_ping_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
@@ -367,7 +385,7 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
 
     let guild_count = match app {
         Ok(a) => a.bot.guild_count.to_string(),
-        Err(e) => format!("failed to fetch: {}", crate::rest::annmarie::format_err(e))
+        Err(e) => format!("failed to fetch: {}", crate::rest::annmarie::format_err(e)),
     };
 
     let guild_id = context.message.guild_id.unwrap().0;
@@ -375,6 +393,15 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
     let memory = get_memory_usage().unwrap_or("Unknown".to_owned());
     let commands = context.assyst.registry.get_command_count().to_string();
     let proc_time = (context.assyst.get_average_processing_time().await / 1e3).to_string();
+
+    let total_command_calls = context
+        .assyst
+        .database
+        .get_command_usage_stats()
+        .await
+        .map(|e| e.iter().fold(0, |x, y| x + y.uses))
+        .unwrap_or(0)
+        .to_string();
 
     let table = generate_table(&[
         ("Guilds", &guild_count),
@@ -392,6 +419,7 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
 
             format!("Total: {}, Server: {}", total, guild)
         }),
+        ("Commands Ran", &total_command_calls)
     ]);
 
     context
@@ -568,7 +596,10 @@ pub async fn run_top_commands_command(
                 .map_err(|e| e.to_string())?;
 
             context
-                .reply_with_text(&format!("Command **{}** has **{}** uses.", cmd_name, data.uses))
+                .reply_with_text(&format!(
+                    "Command `{}` been used **{}** times.",
+                    cmd_name, data.uses
+                ))
                 .await
                 .map_err(|e| e.to_string())?;
         } else {
@@ -763,9 +794,57 @@ pub async fn run_command_command(
             };
         }
         None => {
-            return Err("No command with this name or alias exists!".to_owned());
+            return Err("No command with this name or alias exists.".to_owned());
         }
     };
 
+    Ok(())
+}
+
+pub async fn run_wsi_restart_command(
+    context: Arc<Context>,
+    _: Vec<ParsedArgument>,
+) -> CommandResult {
+    wsi::restart(context.assyst.clone())
+        .await
+        .map_err(wsi::format_err)?;
+    context
+        .reply_with_text("Restart scheduled for when api is idle")
+        .await?;
+    Ok(())
+}
+
+pub async fn run_patron_status_command(
+    context: Arc<Context>,
+    _: Vec<ParsedArgument>,
+) -> CommandResult {
+    let lock = context.assyst.patrons.read().await;
+    let user = lock.iter().find(|i| i.user_id == context.message.author.id);
+
+    match user {
+        Some(u) => {
+            context
+                .reply_with_text(&format!("You're a tier {} patron.", u.tier))
+                .await?;
+        },
+        None => {
+            context
+                .reply_with_text("You're not a patron. You can become one at <https://patreon.com/jacher>")
+                .await?;
+        }
+    }
+
+    Ok(())
+}
+
+pub async fn run_cache_status_command(
+    context: Arc<Context>,
+    _: Vec<ParsedArgument>,
+) -> CommandResult {
+    let replies_size = context.assyst.replies.read().await.size();
+    let ratelimits_size = context.assyst.command_ratelimits.read().await.size();
+    context
+        .reply_with_text(&format!("Replies: {}\nRatelimits: {}", replies_size, ratelimits_size))
+        .await?;
     Ok(())
 }

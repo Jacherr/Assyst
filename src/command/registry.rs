@@ -178,5 +178,8 @@ impl CommandRegistry {
         register_command!(self, BILLBOARD_COMMAND, run_billboard_command);
         register_command!(self, RULE34_COMMAND, run_rule34_command);
         register_command!(self, BURNTEXT_COMMAND, run_burntext_command);
+        register_command!(self, WSI_RESTART_COMMAND, run_wsi_restart_command);
+        register_command!(self, PATRON_STATUS_COMMAND, run_patron_status_command);
+        register_command!(self, CACHE_STATUS_COMMAND, run_cache_status_command);
     }
 }
