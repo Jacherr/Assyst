@@ -42,6 +42,8 @@ fn convert_message_update_to_message(event: MessageUpdate) -> Option<Message> {
     let pinned = event.pinned.unwrap_or_default();
     let timestamp = event.timestamp.unwrap_or_default();
     Some(Message {
+        application_id: None,
+        interaction: None,
         activity: None,
         application: None,
         attachments,

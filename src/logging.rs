@@ -1,5 +1,6 @@
 use crate::consts::MESSAGE_CHARACTER_LIMIT;
 use crate::Assyst;
+use std::error::Error;
 use std::sync::Arc;
 use twilight_embed_builder::EmbedBuilder;
 use twilight_model::id::WebhookId;
@@ -37,7 +38,7 @@ impl Logger {
         url: &str,
         message: &str,
         color: u32,
-    ) -> Result<(), twilight_http::Error> {
+    ) -> Result<(), Box<dyn Error>> {
         let parts = url.split("/").collect::<Vec<&str>>();
 
         let (token, id) = (
@@ -52,11 +53,8 @@ impl Logger {
                     .take(MESSAGE_CHARACTER_LIMIT)
                     .collect::<String>(),
             )
-            .unwrap()
             .color(color)
-            .unwrap()
-            .build()
-            .unwrap();
+            .build()?;
 
         assyst
             .http
