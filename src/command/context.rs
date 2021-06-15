@@ -2,7 +2,10 @@ use bytes::Bytes;
 use std::{error::Error, time::Instant};
 use tokio::sync::Mutex;
 use twilight_http::Client as HttpClient;
-use twilight_model::{channel::Message, id::{MessageId, UserId}};
+use twilight_model::{
+    channel::{message::AllowedMentions, Message},
+    id::{MessageId, UserId},
+};
 
 use crate::{
     caching::Reply,
@@ -111,10 +114,10 @@ impl Context {
             .assyst
             .http
             .create_message(self.message.channel_id)
-            .allowed_mentions()
-            .build();
+            .allowed_mentions(AllowedMentions::default());
+
         if let Some(attachment) = message_builder.attachment {
-            create_message = create_message.attachment(attachment.name, attachment.data.to_vec());
+            create_message = create_message.file(attachment.name, attachment.data.to_vec());
         };
         if let Some(content) = message_builder.content {
             create_message = create_message.content(
@@ -143,9 +146,8 @@ impl Context {
 
         match message_builder.content {
             Some(content) => {
-                update_message = update_message.content(Some(
-                    content.chars().take(1999).collect::<String>(),
-                ))?
+                update_message =
+                    update_message.content(Some(content.chars().take(1999).collect::<String>()))?
             }
             None => update_message = update_message.content(None)?,
         };

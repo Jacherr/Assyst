@@ -1,7 +1,10 @@
 use crate::{assyst::Assyst, database::Reminder, util::message_link};
 use std::{sync::Arc, time::Duration};
 use tokio::time::sleep;
-use twilight_model::id::{ChannelId, UserId};
+use twilight_model::{
+    channel::message::AllowedMentions,
+    id::{ChannelId, UserId},
+};
 
 const FETCH_INTERVAL: i64 = 30000;
 
@@ -12,9 +15,11 @@ async fn process_single_reminder(
     assyst
         .http
         .create_message(ChannelId(reminder.channel_id as u64))
-        .allowed_mentions()
-        .parse_specific_users(vec![UserId::from(reminder.user_id as u64)])
-        .build()
+        .allowed_mentions(
+            AllowedMentions::builder()
+                .user_ids(vec![UserId::from(reminder.user_id as u64)])
+                .build(),
+        )
         .content(&format!(
             "<@{}> Reminder: {}\n{}",
             reminder.user_id,

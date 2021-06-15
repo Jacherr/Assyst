@@ -2,6 +2,7 @@
 
 mod assyst;
 mod badtranslator;
+mod botlist;
 mod caching;
 mod command;
 mod consts;
@@ -14,7 +15,6 @@ mod metrics;
 mod rest;
 mod tasks;
 mod util;
-mod botlist;
 
 use assyst::Assyst;
 use dotenv::dotenv;
@@ -23,8 +23,8 @@ use handler::handle_event;
 use std::env;
 use std::sync::Arc;
 use twilight_gateway::cluster::{Cluster, ShardScheme};
+use twilight_model::gateway::payload::update_presence::UpdatePresencePayload;
 use twilight_model::gateway::{
-    payload::update_status::UpdateStatusInfo,
     presence::{Activity, ActivityType, Status},
     Intents,
 };
@@ -51,12 +51,13 @@ async fn main() {
         state: None,
         timestamps: None,
         url: None,
+        buttons: Vec::new(),
     };
-    let presence = UpdateStatusInfo::new(vec![activity], false, None, Status::Online);
+    let presence = UpdatePresencePayload::new(vec![activity], false, None, Status::Online).unwrap();
 
     // spawn as many shards as discord recommends
     let scheme = ShardScheme::Auto;
-    let cluster = Cluster::builder(&token, Intents::GUILD_MESSAGES)
+    let (cluster, mut events) = Cluster::builder(&token, Intents::GUILD_MESSAGES)
         .shard_scheme(scheme)
         .http_client(assyst.http.clone())
         .presence(presence)
@@ -71,8 +72,6 @@ async fn main() {
     tasks::init_reminder_loop(assyst.clone());
     tasks::init_caching_gc_loop(assyst.clone());
     tasks::update_patrons(assyst.clone());
-
-    let mut events = cluster.events();
 
     while let Some((_, event)) = events.next().await {
         let assyst_clone = assyst.clone();
