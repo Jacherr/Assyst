@@ -181,5 +181,7 @@ impl CommandRegistry {
         register_command!(self, WSI_RESTART_COMMAND, run_wsi_restart_command);
         register_command!(self, PATRON_STATUS_COMMAND, run_patron_status_command);
         register_command!(self, CACHE_STATUS_COMMAND, run_cache_status_command);
+        // register_command!(self, UPTIME_COMMAND, run_uptime_command);
+        register_command!(self, CIRCUITBOARD_COMMAND, run_circuitboard_command);
     }
 }

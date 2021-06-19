@@ -1,18 +1,14 @@
-use crate::{
-    command::{
+use crate::{command::{
         command::{
             force_as, Argument, Command, CommandAvailability, CommandBuilder, ParsedArgument,
         },
         context::Context,
         messagebuilder::MessageBuilder,
         registry::CommandResult,
-    },
-    rest::{fake_eval, wsi},
-    util::{
+    }, rest::{annmarie::{self, info}, fake_eval, wsi}, util::{
         codeblock, exec_sync, extract_page_title, format_time, generate_list, generate_table,
         get_memory_usage, parse_codeblock,
-    },
-};
+    }};
 use crate::{
     consts::Y21,
     database::Reminder,
@@ -196,6 +192,12 @@ lazy_static! {
         .cooldown(Duration::from_secs(1))
         .category(CATEGORY_NAME)
         .build();
+    pub static ref UPTIME_COMMAND: Command = CommandBuilder::new("uptime")
+        .availability(CommandAvailability::Private)
+        .description("Get the uptime of Assyst services")
+        .cooldown(Duration::from_secs(1))
+        .category(CATEGORY_NAME)
+        .build();
 }
 
 pub async fn run_ping_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
@@ -266,7 +268,7 @@ pub async fn run_help_command(context: Arc<Context>, args: Vec<ParsedArgument>) 
         context
             .reply_with_text(
                 &format!(
-                    "{}\n*Do {}help [command] for more info on a command.*\nInvite the bot: <https://jacher.io/assyst>\nSupport server: <https://discord.gg/VRPGgMEhGk>\n**Note: The default bot prefix is `{}`**",
+                    "{}\n*Do {}help [command] for more info on a command.*\nInvite the bot: <https://jacher.io/assyst>\nSupport server: <https://discord.gg/walking>\n**Note: The default bot prefix is `{}`**",
                     &command_help_entries.join("\n"),
                     context.prefix,
                     context.assyst.config.default_prefix
@@ -344,7 +346,7 @@ pub async fn run_invite_command(context: Arc<Context>, _: Vec<ParsedArgument>) -
             MessageBuilder::new()
                 .content(
                     &format!(
-                        "Bot invite: <https://jacher.io/assyst>\nSupport server: <https://discord.gg/VRPGgMEhGk>\n**Note: The default bot prefix is `{}`**", 
+                        "Bot invite: <https://jacher.io/assyst>\nSupport server: <https://discord.gg/walking>\n**Note: The default bot prefix is `{}`**", 
                         context.assyst.config.default_prefix
                     ),
                 )
@@ -845,6 +847,26 @@ pub async fn run_cache_status_command(
     let ratelimits_size = context.assyst.command_ratelimits.read().await.size();
     context
         .reply_with_text(&format!("Replies: {}\nRatelimits: {}", replies_size, ratelimits_size))
+        .await?;
+    Ok(())
+}
+
+pub async fn run_uptime_command(
+    context: Arc<Context>,
+    _: Vec<ParsedArgument>,
+) -> CommandResult {
+    let assyst_uptime = context.assyst.uptime().format();
+
+    let annmarie_info = info(context.assyst.clone()).await.map_err(annmarie::format_err)?;
+    let annmarie_uptime = format_time(annmarie_info.uptime.floor() as u64 * 1000);
+
+    let wsi_info = wsi::stats(context.assyst.clone()).await.map_err(wsi::format_err)?;
+    let wsi_uptime = format_time(wsi_info.uptime_ms as u64);
+
+    let output = generate_table(&[("Assyst", &assyst_uptime), ("Annmarie", &annmarie_uptime), ("WSI", &wsi_uptime)]);
+
+    context
+        .reply_with_text(&codeblock(&output, "yaml"))
         .await?;
     Ok(())
 }
