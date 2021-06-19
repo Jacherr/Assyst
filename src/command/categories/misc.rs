@@ -268,7 +268,7 @@ pub async fn run_help_command(context: Arc<Context>, args: Vec<ParsedArgument>) 
         context
             .reply_with_text(
                 &format!(
-                    "{}\n*Do {}help [command] for more info on a command.*\nInvite the bot: <https://jacher.io/assyst>\nSupport server: <https://discord.gg/walking>\n**Note: The default bot prefix is `{}`**",
+                    "{}\n*Do {}help [command] for more info on a command.*\nInvite the bot: <https://jacher.io/assyst>\nSupport server: <https://discord.gg/VRPGgMEhGkg>\n**Note: The default bot prefix is `{}`**",
                     &command_help_entries.join("\n"),
                     context.prefix,
                     context.assyst.config.default_prefix
@@ -346,7 +346,7 @@ pub async fn run_invite_command(context: Arc<Context>, _: Vec<ParsedArgument>) -
             MessageBuilder::new()
                 .content(
                     &format!(
-                        "Bot invite: <https://jacher.io/assyst>\nSupport server: <https://discord.gg/walking>\n**Note: The default bot prefix is `{}`**", 
+                        "Bot invite: <https://jacher.io/assyst>\nSupport server: <https://discord.gg/VRPGgMEhGkg>\n**Note: The default bot prefix is `{}`**", 
                         context.assyst.config.default_prefix
                     ),
                 )
