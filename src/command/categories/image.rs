@@ -120,6 +120,17 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
+    pub static ref CIRCUITBOARD_COMMAND: Command = CommandBuilder::new("circuitboard")
+        .alias("circuit")
+        .alias("pcb")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("put an image on a circuitboard soc")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref FISHEYE_COMMAND: Command = CommandBuilder::new("fisheye")
         .arg(Argument::ImageBuffer)
         .alias("fish")
@@ -285,7 +296,7 @@ lazy_static! {
         .build();
     pub static ref IMAGEMAGICK_EVAL_COMMAND: Command = CommandBuilder::new("ime")
         .arg(Argument::ImageBuffer)
-        .arg(Argument::String)
+        .arg(Argument::StringRemaining)
         .availability(CommandAvailability::Private)
         .description("evaluate an imagemagick script on an image")
         .example(Y21)
@@ -681,6 +692,13 @@ pub async fn run_card_command(
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
     run_annmarie_noarg_command!(annmarie::card, args, context)
+}
+
+pub async fn run_circuitboard_command(
+    context: Arc<Context>,
+    mut args: Vec<ParsedArgument>,
+) -> CommandResult {
+    run_annmarie_noarg_command!(annmarie::circuitboard, args, context)
 }
 
 pub async fn run_fisheye_command(

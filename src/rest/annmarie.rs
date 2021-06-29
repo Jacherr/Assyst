@@ -20,6 +20,7 @@ mod routes {
     pub const FRINGE: &str = "/fringe";
     pub const F_SHIFT: &str = "/fshift";
     pub const GLOBE: &str = "/globe";
+    pub const INFO: &str = "/info";
     pub const MAKESWEET: &str = "/makesweet";
     pub const NEON: &str = "/neon";
     pub const PAINT: &str = "/paint";
@@ -31,6 +32,11 @@ mod routes {
 #[derive(Deserialize)]
 pub struct AnnmarieError {
     pub message: Box<str>,
+}
+
+#[derive(Deserialize)]
+pub struct AnnmarieInfo {
+    pub uptime: f64
 }
 
 pub enum RequestError {
@@ -96,6 +102,10 @@ pub async fn card(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<
     request_bytes(assyst, routes::CARD, image, &[], user_id).await
 }
 
+pub async fn circuitboard(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::MAKESWEET, image, &[("template", "circuitboard")], user_id).await
+}
+
 pub async fn fisheye(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::FISHEYE, image, &[], user_id).await
 }
@@ -114,6 +124,31 @@ pub async fn f_shift(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Resu
 
 pub async fn globe(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::GLOBE, image, &[], user_id).await
+}
+
+pub async fn info(assyst: Arc<Assyst>) -> Result<AnnmarieInfo, RequestError> {
+    let result = assyst
+        .reqwest_client
+        .get(&format!("{}{}", assyst.config.annmarie_url, routes::INFO))
+        .send()
+        .await
+        .map_err(|e| RequestError::Reqwest(e.to_string()))?;
+
+    let status = result.status();
+
+    return if status != reqwest::StatusCode::OK {
+        let json = result
+            .json::<AnnmarieError>()
+            .await
+            .map_err(|err| RequestError::Reqwest(err.to_string()))?;
+        Err(RequestError::Annmarie(json, status))
+    } else {
+        let json = result
+            .json::<AnnmarieInfo>()
+            .await
+            .map_err(|err| RequestError::Reqwest(err.to_string()))?;
+        Ok(json)
+    };
 }
 
 pub async fn neon(assyst: Arc<Assyst>, image: Bytes, user_id: UserId, radius: &str) -> Result<Bytes, RequestError> {
