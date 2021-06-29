@@ -189,6 +189,23 @@ impl Database {
             .await
     }
 
+    pub async fn delete_reminder(
+        &self,
+        user_id: u64,
+        channel_id: u64,
+        message_id: u64,
+    ) -> Result<bool, sqlx::Error> {
+        let query = r#"DELETE FROM reminders WHERE user_id = $1 AND channel_id = $2 AND message_id = $3 RETURNING *"#;
+
+        sqlx::query(query)
+            .bind(user_id as i64)
+            .bind(channel_id as i64)
+            .bind(message_id as i64)
+            .fetch_all(&self.pool)
+            .await
+            .map(|s| !s.is_empty())
+    }
+
     pub async fn fetch_reminders(&self, time_delta: i64) -> Result<Vec<Reminder>, sqlx::Error> {
         let query = "SELECT * FROM reminders WHERE timestamp < $1";
 
@@ -221,7 +238,10 @@ impl Database {
             .await
     }
 
-    pub async fn get_command_usage_stats_for(&self, command: &str) -> Result<CommandUsage, sqlx::Error> {
+    pub async fn get_command_usage_stats_for(
+        &self,
+        command: &str,
+    ) -> Result<CommandUsage, sqlx::Error> {
         let query = "SELECT * FROM command_uses where command_name = $1 order by uses desc";
         sqlx::query_as::<_, CommandUsage>(query)
             .bind(command)
@@ -276,7 +296,7 @@ impl Database {
     pub async fn is_command_disabled(&self, command: &str, guild_id: GuildId) -> bool {
         let lock = self.cache.read().await;
 
-        let guild_disabled_commands = (*lock).disabled_commands.get(&guild_id);
+        let guild_disabled_commands = lock.disabled_commands.get(&guild_id);
 
         if let Some(commands) = guild_disabled_commands {
             return if commands.contains(command) {
@@ -296,23 +316,21 @@ impl Database {
             .await
             .unwrap();
 
-        let mut write_lock = self.cache.write().await;
-        let guild = (*write_lock).disabled_commands.get(&guild_id);
+        let is_disabled = result.iter().any(|cmd| &cmd.command_name == command);
 
-        let mut commands = HashSet::<String>::new();
-        for command in result.clone() {
+        let mut write_lock = self.cache.write().await;
+        let guild = write_lock.disabled_commands.get(&guild_id);
+
+        let mut commands = HashSet::new();
+        for command in result {
             commands.insert(command.command_name);
         }
 
         if guild.is_none() {
-            (*write_lock).disabled_commands.insert(guild_id, commands);
+            write_lock.disabled_commands.insert(guild_id, commands);
         };
 
-        if result.len() > 0 {
-            true
-        } else {
-            false
-        }
+        is_disabled
     }
 
     pub async fn add_disabled_command(
@@ -361,7 +379,11 @@ impl Database {
         Ok(())
     }
 
-    pub async fn add_free_tier_1_requests(&self, user_id: i64, add: i64) -> Result<(), sqlx::Error> {
+    pub async fn add_free_tier_1_requests(
+        &self,
+        user_id: i64,
+        add: i64,
+    ) -> Result<(), sqlx::Error> {
         let query = "insert into free_tier1_requests values($1, $2) on conflict (user_id) do update set count = free_tier1_requests.count + $2 where free_tier1_requests.user_id = $1";
 
         sqlx::query(query)
