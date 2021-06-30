@@ -4,11 +4,13 @@ use tokio::time::sleep;
 
 use crate::assyst::Assyst;
 
-const FETCH_INTERVAL: i64 = 30000;
+const FETCH_INTERVAL: u64 = 30000;
 
 pub fn init_caching_gc_loop(assyst: Arc<Assyst>) {
     tokio::spawn(async move {
-        assyst.replies.write().await.garbage_collect().await;
-        sleep(Duration::from_millis(FETCH_INTERVAL as u64)).await;
+        loop {
+            assyst.replies.write().await.garbage_collect().await;
+            sleep(Duration::from_millis(FETCH_INTERVAL)).await;
+        }
     });
 }
