@@ -5,6 +5,7 @@ mod badtranslator;
 mod botlist;
 mod caching;
 mod command;
+mod config;
 mod consts;
 mod database;
 mod filetype;
@@ -45,7 +46,7 @@ async fn main() {
         id: None,
         instance: None,
         kind: ActivityType::Playing,
-        name: format!("{}help | jacher.io/assyst", assyst.config.default_prefix),
+        name: format!("{}help | jacher.io/assyst", assyst.config.prefix.default),
         party: None,
         secrets: None,
         state: None,

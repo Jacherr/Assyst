@@ -1,3 +1,5 @@
+// TODO
+
 use crate::assyst::Assyst;
 use lazy_static::lazy_static;
 use serde::Deserialize;
@@ -56,7 +58,7 @@ mod handlers {
         Ok(warp::reply::reply())
     }
 
-    pub async fn dbl(body: DiscordBotListWebhookBody, assyst: Arc<Assyst>) -> Result<impl Reply, Rejection> {
+    pub async fn dbl(_body: DiscordBotListWebhookBody, _assyst: Arc<Assyst>) -> Result<impl Reply, Rejection> {
         
         Ok(warp::reply::reply())
     }
