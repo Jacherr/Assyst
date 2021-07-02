@@ -44,14 +44,14 @@ pub async fn get<'a, T: DeserializeOwned>(
     route: &str,
     query: &[(&str, &str)],
 ) -> Result<T, RequestError> {
-    let url = format!("{}{}", assyst.config.maryjane_url, route);
+    let url = format!("{}{}", assyst.config.url.maryjane, route);
 
     let result = assyst
         .reqwest_client
         .get(&url)
         .header(
             reqwest::header::AUTHORIZATION,
-            assyst.config.maryjane_auth.as_ref(),
+            assyst.config.auth.maryjane.as_ref(),
         )
         .query(query)
         .send()

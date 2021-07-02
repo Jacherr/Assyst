@@ -4,10 +4,9 @@ use tokio::sync::Mutex;
 use twilight_model::channel::Message;
 use twilight_model::id::MessageId;
 use util::get_current_millis;
+use crate::consts::MESSAGE_EDIT_HANDLE_LIMIT;
 
 use crate::{box_str, command::command::Command, util};
-
-pub const MESSAGE_EDIT_HANDLE_LIMIT: u32 = 60000;
 
 pub struct Cache<T, U> {
     pub cache: HashMap<T, U>,

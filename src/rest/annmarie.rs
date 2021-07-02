@@ -59,10 +59,10 @@ pub async fn request_bytes(
 
     let result = assyst
         .reqwest_client
-        .post(&format!("{}{}", assyst.config.annmarie_url, route))
+        .post(&format!("{}{}", assyst.config.url.annmarie, route))
         .header(
             reqwest::header::AUTHORIZATION,
-            assyst.config.annmarie_auth.as_ref(),
+            assyst.config.auth.annmarie.as_ref(),
         )
         .query(query)
         .body(new_image)
@@ -129,7 +129,7 @@ pub async fn globe(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result
 pub async fn info(assyst: Arc<Assyst>) -> Result<AnnmarieInfo, RequestError> {
     let result = assyst
         .reqwest_client
-        .get(&format!("{}{}", assyst.config.annmarie_url, routes::INFO))
+        .get(&format!("{}{}", assyst.config.url.annmarie, routes::INFO))
         .send()
         .await
         .map_err(|e| RequestError::Reqwest(e.to_string()))?;

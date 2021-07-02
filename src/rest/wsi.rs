@@ -100,10 +100,10 @@ pub async fn request_bytes(
 
     let result = assyst
         .reqwest_client
-        .post(&format!("{}{}", assyst.config.wsi_url, route))
+        .post(&format!("{}{}", assyst.config.url.wsi, route))
         .header(
             reqwest::header::AUTHORIZATION,
-            assyst.config.wsi_auth.as_ref(),
+            assyst.config.auth.wsi.as_ref(),
         )
         .header("premium_level", premium_level)
         .query(query)
@@ -221,10 +221,10 @@ pub async fn gif_speed(
 pub async fn image_info(assyst: Arc<Assyst>, image: Bytes) -> Result<ImageInfo, RequestError> {
     let result = assyst
         .reqwest_client
-        .post(&format!("{}{}", assyst.config.wsi_url, routes::IMAGE_INFO))
+        .post(&format!("{}{}", assyst.config.url.wsi, routes::IMAGE_INFO))
         .header(
             reqwest::header::AUTHORIZATION,
-            assyst.config.wsi_auth.as_ref(),
+            assyst.config.auth.wsi.as_ref(),
         )
         .header("premium_level", 0)
         .body(image)
@@ -365,10 +365,10 @@ pub async fn overlay(
 pub async fn restart(assyst: Arc<Assyst>) -> Result<(), RequestError> {
     let result = assyst
         .reqwest_client
-        .get(&format!("{}{}", assyst.config.wsi_url, routes::RESTART))
+        .get(&format!("{}{}", assyst.config.url.wsi, routes::RESTART))
         .header(
             reqwest::header::AUTHORIZATION,
-            assyst.config.wsi_auth.as_ref(),
+            assyst.config.auth.wsi.as_ref(),
         )
         .send()
         .await
@@ -423,7 +423,7 @@ pub async fn spread(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Resul
 pub async fn stats(assyst: Arc<Assyst>) -> Result<Stats, RequestError> {
     let result = assyst
         .reqwest_client
-        .get(&format!("{}{}", assyst.config.wsi_url, routes::STATS))
+        .get(&format!("{}{}", assyst.config.url.wsi, routes::STATS))
         .send()
         .await
         .map_err(|e| RequestError::Reqwest(e))?;

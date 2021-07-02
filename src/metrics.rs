@@ -39,6 +39,7 @@ pub struct GlobalMetrics {
     /// Processing metrics
     pub processing: CountableMetrics,
     /// BadTranslator metrics
+    ///
     /// Maps Guild ID to messages count
     pub bt_messages: BtMessagesMetrics,
 }

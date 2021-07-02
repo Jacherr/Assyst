@@ -1,85 +1,37 @@
-use crate::{badtranslator::BadTranslator, caching::Ratelimits, command::command::CommandAvailability, logging::Logger, rest::patreon::Patron, util::{get_current_millis, get_guild_owner, Uptime}};
 use crate::{
-    caching::{Replies, Reply},
+    badtranslator::BadTranslator,
+    caching::{Ratelimits, Replies, Reply},
     command::context::Metrics,
-    database::Database,
-};
-use crate::{
-    command::command::{
-        Argument, Command, CommandParseError, CommandParseErrorType, ParsedArgument,
-        ParsedArgumentResult, ParsedCommand,
+    command::{
+        command::{
+            Argument, Command, CommandAvailability, CommandParseError, CommandParseErrorType,
+            ParsedArgument, ParsedArgumentResult, ParsedCommand,
+        },
+        context::Context,
+        registry::CommandRegistry,
     },
-    consts::BOT_ID,
+    config::Config,
+    consts::{ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES, BOT_ID},
+    database::Database,
+    logging::Logger,
     metrics::GlobalMetrics,
+    rest::patreon::Patron,
+    util::{
+        download_content, get_current_millis, get_guild_owner, get_sticker_url_from_message,
+        regexes, Uptime,
+    },
 };
-use crate::{
-    command::{context::Context, registry::CommandRegistry},
-    consts::ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES,
-    util::{download_content, get_sticker_url_from_message, regexes},
-};
+
 use bytes::Bytes;
 use reqwest::Client as ReqwestClient;
-use serde::Deserialize;
-use std::{borrow::Borrow, sync::Arc};
-use std::{borrow::Cow, time::Instant};
-use std::{collections::HashSet, fs::read_to_string};
+use std::{borrow::{Borrow, Cow}, sync::Arc, time::Instant};
 use tokio::sync::RwLock;
 use twilight_gateway::Cluster;
 use twilight_http::Client as HttpClient;
-use twilight_model::channel::Message;
-use twilight_model::guild::Permissions;
-use twilight_model::id::UserId;
-
-#[derive(Clone, Deserialize)]
-struct DatabaseInfo {
-    username: Box<str>,
-    password: Box<str>,
-    host: Box<str>,
-    port: u16,
-    database: Box<str>,
-}
-impl DatabaseInfo {
-    pub fn to_url(&self) -> String {
-        format!(
-            "postgres://{}:{}@{}:{}/{}",
-            self.username, self.password, self.host, self.port, self.database
-        )
-    }
-}
-#[derive(Clone, Deserialize)]
-pub struct LogConfig {
-    pub fatal: String,
-    pub info: String,
-}
-#[derive(Clone, Deserialize)]
-pub struct Config {
-    pub admins: HashSet<u64>,
-    pub annmarie_url: Box<str>,
-    pub annmarie_auth: Box<str>,
-    pub bot_id: u64,
-    pub bot_list_auth: Box<str>,
-    pub bot_list_port: u16,
-    database: DatabaseInfo,
-    pub default_prefix: Box<str>,
-    pub disable_bad_translator: bool,
-    pub disable_reminder_check: bool,
-    pub logs: LogConfig,
-    pub maryjane_url: Box<str>,
-    pub maryjane_auth: Box<str>,
-    pub patreon_auth: Box<str>,
-    pub prefix_override: Box<str>,
-    pub user_blacklist: HashSet<u64>,
-    pub wsi_url: Box<str>,
-    pub wsi_auth: Box<str>,
-}
-impl Config {
-    fn new() -> Self {
-        let buffer = read_to_string("./config.toml").unwrap();
-        toml::from_str(&buffer).unwrap()
-    }
-}
+use twilight_model::{channel::Message, guild::Permissions, id::UserId};
 
 fn get_command_and_args(content: &str, prefix: &str) -> Option<(String, Vec<String>)> {
+    // if message doesnt start with prefix, or message is only the prefix, then ignore
     return if !content.starts_with(&prefix) || content.len() == prefix.len() {
         None
     } else {
@@ -109,19 +61,19 @@ fn message_mention_prefix(content: &str) -> Option<String> {
 }
 
 pub struct Assyst {
+    pub badtranslator: BadTranslator,
     pub cluster: Option<Cluster>,
     pub command_ratelimits: RwLock<Ratelimits>,
     pub config: Config,
     pub database: Database,
-    pub logger: Logger,
-    pub started_at: u64,
     pub http: HttpClient,
+    pub logger: Logger,
+    pub metrics: RwLock<GlobalMetrics>,
     pub patrons: RwLock<Vec<Patron>>,
     pub registry: CommandRegistry,
     pub replies: RwLock<Replies>,
     pub reqwest_client: ReqwestClient,
-    pub badtranslator: BadTranslator,
-    pub metrics: RwLock<GlobalMetrics>,
+    pub started_at: u64,
 }
 impl Assyst {
     pub async fn new(token: &str) -> Self {
@@ -130,19 +82,19 @@ impl Assyst {
         let config = Config::new();
         let database = Database::new(2, config.database.to_url()).await.unwrap();
         let mut assyst = Assyst {
+            badtranslator: BadTranslator::new(),
             cluster: None,
             command_ratelimits: RwLock::new(Ratelimits::new()),
             config,
             database,
-            logger: Logger {},
-            started_at: get_current_millis(),
             http,
+            logger: Logger {},
+            metrics: RwLock::new(GlobalMetrics::new()),
             patrons: RwLock::new(vec![]),
-            badtranslator: BadTranslator::new(),
             registry: CommandRegistry::new(),
             replies: RwLock::new(Replies::new()),
             reqwest_client,
-            metrics: RwLock::new(GlobalMetrics::new()),
+            started_at: get_current_millis(),
         };
         if assyst.config.disable_bad_translator {
             assyst.badtranslator.disable().await
@@ -162,7 +114,7 @@ impl Assyst {
         let message = Arc::new(_message);
 
         // checking if user is blackisted from bot
-        if self.config.user_blacklist.contains(&message.author.id.0) {
+        if self.config.user.blacklist.contains(&message.author.id.0) {
             return Ok(());
         }
 
@@ -172,7 +124,7 @@ impl Assyst {
 
         // selecting correct prefix based on the configuration
         // a.k.a prefix override, normal prefix, mention prefix?
-        if self.config.prefix_override.len() == 0 {
+        if self.config.prefix.r#override.len() == 0 {
             let mention_prefix = message_mention_prefix(&message.content);
 
             match mention_prefix {
@@ -186,7 +138,7 @@ impl Assyst {
                         .database
                         .get_or_set_prefix_for(
                             message.guild_id.unwrap().0,
-                            &self.config.default_prefix,
+                            &self.config.prefix.default,
                         )
                         .await
                         .map_err(|err| err.to_string())?;
@@ -200,7 +152,7 @@ impl Assyst {
                 }
             }
         } else {
-            prefix = Cow::Borrowed(&self.config.prefix_override);
+            prefix = Cow::Borrowed(&self.config.prefix.r#override);
         };
 
         if !message.content.starts_with(prefix.borrow() as &str) {
@@ -218,6 +170,13 @@ impl Assyst {
         if reply_lock.has_expired() || reply_lock.in_use {
             return Ok(());
         };
+
+        // we lock this specific command invocation.
+        // new commands cannot be executed using this invocation while it is locked.
+
+        // the logic here is that it will stop someone from editing the command message
+        // to a new command while the original command is still being processed, which
+        // should migitate issues with duplicate responses and ratelimit bypassing.
         reply_lock.in_use = true;
         drop(reply_lock);
         drop(replies);
@@ -284,7 +243,11 @@ impl Assyst {
                 .map_err(|e| e.to_string())?;
 
             if owner != message.author.id
-                && !self.config.admins.contains(&context.message.author.id.0)
+                && !self
+                    .config
+                    .user
+                    .admins
+                    .contains(&context.message.author.id.0)
             {
                 return Ok(());
             };
@@ -313,6 +276,7 @@ impl Assyst {
         ratelimit_lock.set_command_expire_at(message.guild_id.unwrap(), &command_instance);
         drop(ratelimit_lock);
 
+        // run the command
         let command_result = self.registry.execute_command(command, context_clone).await;
 
         reply.lock().await.in_use = false;
@@ -323,10 +287,12 @@ impl Assyst {
                 .map_err(|e| e.to_string())?;
         };
 
-        self.logger.info(self.clone(), &format!(
-            "Command successfully executed: {}",
-            command_instance.name
-        )).await;
+        self.logger
+            .info(
+                self.clone(),
+                &format!("Command successfully executed: {}", command_instance.name),
+            )
+            .await;
 
         self.metrics
             .write()
@@ -343,9 +309,13 @@ impl Assyst {
         prefix: &str,
     ) -> Result<Option<ParsedCommand>, CommandParseError<'_>> {
         let content = &context.message.content;
+
+        // extract the command name and arguments from the input message
         let command_details =
             get_command_and_args(&content, &prefix).unwrap_or(("".to_owned(), vec![]));
         let args_refs = command_details.1.iter().map(|x| &x[..]).collect::<Vec<_>>();
+
+        // check if the command is actually valid
         let try_command = self
             .registry
             .get_command_from_name_or_alias(&command_details.0.to_ascii_lowercase());
@@ -354,10 +324,16 @@ impl Assyst {
             None => return Ok(None),
         };
 
+        // check relevant permissions for the command
         match command.availability {
-            CommandAvailability::Public => Ok(()),
-            CommandAvailability::Private => {
-                if !self.config.admins.contains(&context.message.author.id.0) {
+            CommandAvailability::Public => Ok(()), // everyone can run 
+            CommandAvailability::Private => { // bot admins can run (config-defined)
+                if !self
+                    .config
+                    .user
+                    .admins
+                    .contains(&context.message.author.id.0)
+                {
                     Err(CommandParseError::without_reply(
                         "Insufficient Permissions".to_owned(),
                         CommandParseErrorType::MissingPermissions,
@@ -366,11 +342,13 @@ impl Assyst {
                     Ok(())
                 }
             }
-            CommandAvailability::GuildOwner => {
+            CommandAvailability::GuildOwner => { // guild owner *or* manage server *or* admin
+                // get owner
                 let owner = get_guild_owner(&self.http, context.message.guild_id.unwrap())
                     .await
                     .map_err(|_| CommandParseError::permission_validator_failed())?;
 
+                // figure out permissions of the user through bitwise operations
                 let member = self
                     .http
                     .guild_member(context.message.guild_id.unwrap(), context.message.author.id)
@@ -388,14 +366,19 @@ impl Assyst {
                     .iter()
                     .filter(|r| member.roles.contains(&r.id))
                     .collect::<Vec<_>>();
-                let member_permissions = member_roles.iter().fold(0, |a, r| a | r.permissions.bits());
+                let member_permissions =
+                    member_roles.iter().fold(0, |a, r| a | r.permissions.bits());
                 let member_is_manager = member_permissions & Permissions::ADMINISTRATOR.bits()
                     == Permissions::ADMINISTRATOR.bits()
                     || member_permissions & Permissions::MANAGE_GUILD.bits()
                         == Permissions::MANAGE_GUILD.bits();
 
                 if owner == context.message.author.id
-                    || self.config.admins.contains(&context.message.author.id.0)
+                    || self
+                        .config
+                        .user
+                        .admins
+                        .contains(&context.message.author.id.0)
                     || member_is_manager
                 {
                     Ok(())
@@ -446,6 +429,7 @@ impl Assyst {
         arg: &Argument,
         index: &usize,
     ) -> Result<ParsedArgumentResult, CommandParseError<'a>> {
+        // check the next type of argument and parse as appropriate
         match arg {
             Argument::Integer | Argument::Decimal => {
                 if args.len() <= *index {
@@ -540,6 +524,8 @@ impl Assyst {
             }
 
             Argument::Optional(a) => {
+                // we need this 'nonoptional' function because
+                // standalone rust doesn't support async recursion. sad!
                 let result = self
                     .parse_argument_nonoptional(&context.message, command, args, &**a, index)
                     .await;
@@ -600,6 +586,8 @@ impl Assyst {
         }
     }
 
+    // this function only exists because rust doesn't support
+    // async recursion without the use of a dependency.
     async fn parse_argument_nonoptional<'a>(
         &self,
         message: &Message,
@@ -707,11 +695,11 @@ impl Assyst {
         argument: &str,
         return_as: &Argument,
     ) -> Result<ParsedArgumentResult, CommandParseError<'a>> {
+        // TODO: rework this to be less hacky? maybe have a proper
+        // defined priority somewhere and use that instead of trying everything
+        // until it works. changing priorities right now is fiddly at best
         let mut should_increment = true;
-        let mut try_url = self.validate_emoji_argument(argument).await;
-        if try_url.is_none() {
-            try_url = self.validate_user_argument(argument).await
-        };
+        let mut try_url = self.validate_user_argument(argument).await;
         if try_url.is_none() {
             try_url = self.validate_url_argument(argument)
         };
@@ -726,6 +714,9 @@ impl Assyst {
             if try_url.is_some() {
                 should_increment = false
             };
+        }
+        if try_url.is_none() {
+            try_url = self.validate_emoji_argument(argument).await;
         }
         if try_url.is_none() {
             try_url = self.validate_previous_message_attachment(message).await;
@@ -743,6 +734,8 @@ impl Assyst {
             )
         })?;
 
+        // tenor urls only typically return a png, so this code visits the url
+        // and extracts the appropriate GIF url from the page.
         if url.starts_with("https://tenor.com/view/") {
             let page = self
                 .reqwest_client
@@ -823,7 +816,11 @@ impl Assyst {
     async fn validate_emoji_argument(&self, argument: &str) -> Option<String> {
         let unicode_emoji = emoji::lookup_by_glyph::lookup(argument);
         if let Some(e) = unicode_emoji {
-            let codepoint = e.codepoint.to_lowercase().replace(" ", "-").replace("-fe0f", "");
+            let codepoint = e
+                .codepoint
+                .to_lowercase()
+                .replace(" ", "-")
+                .replace("-fe0f", "");
             let emoji_url = format!("https://derpystuff.gitlab.io/webstorage3/container/twemoji-JedKxRr7RNYrgV9Sauy8EGAu/{}.png", codepoint);
             return Some(emoji_url);
         }

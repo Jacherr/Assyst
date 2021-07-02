@@ -168,7 +168,7 @@ pub async fn get_patrons(assyst: Arc<Assyst>, api_key: &str) -> Result<Vec<Patro
         };
     };
 
-    for i in assyst.config.admins.iter() {
+    for i in assyst.config.user.admins.iter() {
         patrons.push(Patron {
             user_id: UserId::from(*i),
             tier: 3
