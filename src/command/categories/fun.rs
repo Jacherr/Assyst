@@ -53,7 +53,7 @@ lazy_static! {
         .public()
         .description("OCR and then translate an image")
         .example("https://link.to.my/image.png")
-        .usage("[image]")
+        .usage("[image] [language]")
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
