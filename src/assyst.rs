@@ -24,12 +24,19 @@ use crate::{
 
 use bytes::Bytes;
 use reqwest::Client as ReqwestClient;
-use std::{borrow::{Borrow, Cow}, sync::Arc, time::Instant};
+use std::{
+    borrow::{Borrow, Cow},
+    sync::Arc,
+    time::Instant,
+};
 use tokio::sync::RwLock;
 use twilight_gateway::Cluster;
 use twilight_http::Client as HttpClient;
 use twilight_model::{channel::Message, guild::Permissions, id::UserId};
 
+/// Takes an input string and prefix to parse and returns a tuple containing
+/// the command invocation (such as `help`) and any arguments to the command
+/// (such as `ping`).
 fn get_command_and_args(content: &str, prefix: &str) -> Option<(String, Vec<String>)> {
     // if message doesnt start with prefix, or message is only the prefix, then ignore
     return if !content.starts_with(&prefix) || content.len() == prefix.len() {
@@ -47,6 +54,7 @@ fn get_command_and_args(content: &str, prefix: &str) -> Option<(String, Vec<Stri
     };
 }
 
+/// Returns `Some(prefix)` if the prefix is the mention of the bot, otherwise `None`
 fn message_mention_prefix(content: &str) -> Option<String> {
     let mention_no_nickname = format!("<@{}>", BOT_ID);
     let mention_nickname = format!("<@!{}>", BOT_ID);
@@ -60,6 +68,37 @@ fn message_mention_prefix(content: &str) -> Option<String> {
     }
 }
 
+/// The Assyst primary structure.
+///
+/// This structure contains all of the individual properties required for the bot to operate.
+/// These properties are public because they are frequently used throughout the codebase.
+///
+/// Note that by default this instance has no connection to Discord. A connection
+/// must be configured through a separately instantiated [`Cluster`] instance that then
+/// may be attached to the [`Assyst`] instance using the [`Assyst::set_cluster`] method.
+///
+/// The `impl` for [`Assyst`] also contains all methods necessary for execution of a
+/// command. This means that it contains the command and argument parser code, and also
+/// has direct access to the [`Registry`] where commands are defined and called.
+///
+/// The key working goals of the Assyst codebase, and the bot itself, are the following:
+///     - Minimal caching for optimized memory usage
+///     - Responsive and distributed functionality
+///     - High availability
+///     - Unique feaures and design
+///
+/// The primary way Assyst achieves many of these fundamental goals are through the lack of
+/// any sort of cache of raw Discord objects. This helps offload a lot of memory usage - in
+/// fact, memory usage should never increase that much as the bot scales - and trades it off
+/// as additional CPU time and bandwidth usage as things like users and guilds must always be
+/// fetched from the Discord API instead of locally from a cache.
+///
+/// Because the bot itself is so lightweight, the entire thing should always be able to exist
+/// in a single process. This is why there is no distributed functionality here. Instead,
+/// distributed functionality exists in the first-party image processing API(s) that the
+/// bot relies on, primarily WSI and Annmarie.
+///
+/// apina
 pub struct Assyst {
     pub badtranslator: BadTranslator,
     pub cluster: Option<Cluster>,
@@ -76,6 +115,14 @@ pub struct Assyst {
     pub started_at: u64,
 }
 impl Assyst {
+    /// Create a new Assyst instance from a token. This method does NOT
+    /// cause the bot to connect to Discord. The bot must interface with Discord
+    /// using a separately instantiated [`Cluster`] instance and recieve events to
+    /// process from that using the [`Assyst::handle_command`] method.
+    ///
+    /// Assyst itself is not configurable using this method.
+    /// Assyst configuration exists in the config.toml file at the root
+    /// of this project. Use that to configure the behaviour of the bot.
     pub async fn new(token: &str) -> Self {
         let http = HttpClient::new(token);
         let reqwest_client = ReqwestClient::new();
@@ -103,10 +150,23 @@ impl Assyst {
         assyst
     }
 
+    /// Set the cluster instance that this instance of Assyst receives its events from.
+    ///
+    /// We can't do this in the constructor because it is impossible to have an initialized cluster
+    /// when the instance of Assyst is constructed.
     pub fn set_cluster(&mut self, cluster: Cluster) {
         self.cluster = Some(cluster);
     }
 
+    /// Handle an incoming message from Discord.
+    ///
+    /// This function takes a raw input [`Message`] object, parses it as a command (if valid)
+    /// and executes the corresponding command, often with side effects like sending a message
+    /// to the channel that the message was sent.
+    ///
+    /// The instance of [`Assyst`] in which this function is called must be [`Arc`]ed because
+    /// it requires itself to be cloned during the execution process, since some actions
+    /// happen on separate threads of execution.
     pub async fn handle_command(self: &Arc<Self>, _message: Message) -> Result<(), String> {
         // timing for use in ping command
         let start = Instant::now();
@@ -303,6 +363,15 @@ impl Assyst {
         Ok(())
     }
 
+    /// Parse a command from a predefined [`Context`] and prefix.
+    /// Returns Ok([`ParsedCommand`]) on a successful parse, and
+    /// otherwise returns an Err with details about what failed to
+    /// parse.
+    ///
+    /// Parse failures are expected because many input messages
+    /// will not match the syntax of Assyst commands since users
+    /// may not even be trying to run Assyst commands even if the
+    /// message starts with the correct prefix.
     pub async fn parse_command(
         &self,
         context: &Arc<Context>,
@@ -326,8 +395,9 @@ impl Assyst {
 
         // check relevant permissions for the command
         match command.availability {
-            CommandAvailability::Public => Ok(()), // everyone can run 
-            CommandAvailability::Private => { // bot admins can run (config-defined)
+            CommandAvailability::Public => Ok(()), // everyone can run
+            CommandAvailability::Private => {
+                // bot admins can run (config-defined)
                 if !self
                     .config
                     .user
@@ -342,7 +412,8 @@ impl Assyst {
                     Ok(())
                 }
             }
-            CommandAvailability::GuildOwner => { // guild owner *or* manage server *or* admin
+            CommandAvailability::GuildOwner => {
+                // guild owner *or* manage server *or* admin
                 // get owner
                 let owner = get_guild_owner(&self.http, context.message.guild_id.unwrap())
                     .await
@@ -399,6 +470,9 @@ impl Assyst {
         }))
     }
 
+    /// Parses arguments from a context and a set of predefined, expected 'argument types'.
+    /// Returns Ok with the parsed arguments on success and an Err with what failed to parse
+    /// in the event of a failure.
     async fn parse_arguments<'a>(
         &self,
         context: &Arc<Context>,
@@ -421,6 +495,11 @@ impl Assyst {
         Ok(parsed_args)
     }
 
+    /// Parses an individual argument.
+    ///
+    /// Looks at the type of the argument and what is being parsed into that type.
+    /// If possible, this method will do that conversion. If not, the command has
+    /// invalid syntax and this function will return an Err.
     async fn parse_argument<'a>(
         &self,
         context: &Arc<Context>,
@@ -689,6 +768,7 @@ impl Assyst {
         }
     }
 
+    /// Parses an image from the command for use with image manipulation commands.
     async fn parse_image_argument<'a>(
         &self,
         message: &Message,
@@ -813,6 +893,7 @@ impl Assyst {
         }
     }
 
+    /// Looks at an input string and checks if it is a valid Unicode or custom emoji.
     async fn validate_emoji_argument(&self, argument: &str) -> Option<String> {
         let unicode_emoji = emoji::lookup_by_glyph::lookup(argument);
         if let Some(e) = unicode_emoji {
@@ -841,6 +922,8 @@ impl Assyst {
         return Some(emoji_url);
     }
 
+    /// Looks at a source [`Message`] and see if it has any attachments, returning the
+    /// URL to first one if it does.
     fn validate_message_attachment(&self, message: &Message) -> Option<String> {
         message
             .attachments
@@ -849,6 +932,8 @@ impl Assyst {
             .or_else(|| get_sticker_url_from_message(message))
     }
 
+    /// Looks at a source [`Message`] and see if it has any embeds with an image, 
+    /// returning the first one if it does.
     fn validate_message_embed<'a>(&self, message: &'a Message) -> Option<Cow<'a, String>> {
         let embed = message.embeds.first()?;
 
@@ -870,6 +955,8 @@ impl Assyst {
             })
     }
 
+    /// If the command invocation is replying to the message, check if the message being replied
+    /// to has an attachment
     fn validate_message_reply_attachment(&self, message: &Message) -> Option<String> {
         let reply = message.referenced_message.as_ref()?;
         let attachment = self.validate_message_attachment(reply);
@@ -880,6 +967,8 @@ impl Assyst {
         Some(embed.to_string())
     }
 
+    /// Load the last N messages in the channel where the command was invocated,
+    /// and check if any of them have an attachment or embed
     async fn validate_previous_message_attachment(&self, message: &Message) -> Option<String> {
         let messages = self.http.channel_messages(message.channel_id).await.ok()?;
         let message_attachment_urls: Vec<Option<Cow<String>>> = messages
@@ -904,6 +993,7 @@ impl Assyst {
             .and_then(|x| Some(x.to_string()))
     }
 
+    /// Check if the command invocation contains a valid URL
     fn validate_url_argument(&self, argument: &str) -> Option<String> {
         if regexes::URL.is_match(argument) {
             Some(argument.to_owned())
@@ -912,6 +1002,8 @@ impl Assyst {
         }
     }
 
+    /// Check if the command invocation contains a valid user mention
+    /// or ID, and use the avatar of that user if it does
     async fn validate_user_argument(&self, argument: &str) -> Option<String> {
         let user_id = regexes::USER_MENTION
             .captures(argument)
@@ -940,10 +1032,12 @@ impl Assyst {
         }
     }
 
+    /// Get the average time to process commands in ms
     pub async fn get_average_processing_time(&self) -> f32 {
         self.metrics.read().await.processing.avg()
     }
 
+    /// Get the [`Uptime`] of this instance of Assyst
     pub fn uptime(&self) -> Uptime {
         Uptime::new(get_current_millis() - self.started_at)
     }
