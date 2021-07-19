@@ -1,4 +1,4 @@
-use crate::{assyst::Assyst, database::Reminder, util::message_link};
+use crate::{assyst::Assyst, database::DatabaseReminder, util::message_link};
 use std::{sync::Arc, time::Duration};
 use tokio::time::sleep;
 use twilight_model::{
@@ -10,7 +10,7 @@ const FETCH_INTERVAL: i64 = 30000;
 
 async fn process_single_reminder(
     assyst: &Arc<Assyst>,
-    reminder: &Reminder,
+    reminder: &DatabaseReminder,
 ) -> Result<(), Box<dyn std::error::Error>> {
     assyst
         .http
@@ -37,7 +37,7 @@ async fn process_single_reminder(
 
 async fn process_reminders(
     assyst: &Arc<Assyst>,
-    reminders: Vec<Reminder>,
+    reminders: Vec<DatabaseReminder>,
 ) -> Result<(), sqlx::Error> {
     if reminders.len() < 1 {
         return Ok(());

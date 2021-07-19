@@ -2,11 +2,15 @@ use crate::assyst::Assyst;
 use bytes::Bytes;
 use reqwest::Error;
 use serde::Deserialize;
-use twilight_model::id::UserId;
 use std::{future::Future, pin::Pin, sync::Arc};
+use twilight_model::id::UserId;
 
 pub type NoArgFunction = Box<
-    dyn Fn(Arc<Assyst>, Bytes, UserId) -> Pin<Box<dyn Future<Output = Result<Bytes, RequestError>> + Send>>
+    dyn Fn(
+            Arc<Assyst>,
+            Bytes,
+            UserId,
+        ) -> Pin<Box<dyn Future<Output = Result<Bytes, RequestError>> + Send>>
         + Send
         + Sync,
 >;
@@ -59,7 +63,7 @@ mod routes {
 pub struct Stats {
     pub current_requests: usize,
     pub total_workers: usize,
-    pub uptime_ms: usize
+    pub uptime_ms: usize,
 }
 
 #[derive(Deserialize)]
@@ -76,7 +80,7 @@ pub struct ImageInfo {
     pub frames: Option<usize>,
     pub frame_delays: Option<Vec<usize>>,
     pub repeat: Option<isize>,
-    pub comments: Vec<String>
+    pub comments: Vec<String>,
 }
 
 pub enum RequestError {
@@ -89,7 +93,7 @@ pub async fn request_bytes(
     route: &str,
     image: Bytes,
     query: &[(&str, &str)],
-    user_id: UserId
+    user_id: UserId,
 ) -> Result<Bytes, RequestError> {
     let mut premium_level = 0;
     let lock = assyst.patrons.read().await;
@@ -100,7 +104,7 @@ pub async fn request_bytes(
 
     let result = assyst
         .reqwest_client
-        .post(&format!("{}{}", assyst.config.url.wsi, route))
+        .post(&format!("{}{}", assyst.config.auth.wsi, route))
         .header(
             reqwest::header::AUTHORIZATION,
             assyst.config.auth.wsi.as_ref(),
@@ -123,25 +127,44 @@ pub async fn request_bytes(
     };
 }
 
-pub async fn _3d_rotate(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn _3d_rotate(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::_3D_ROTATE, image, &[], user_id).await
 }
 
-pub async fn blur(assyst: Arc<Assyst>, image: Bytes, user_id: UserId, power: &str) -> Result<Bytes, RequestError> {
+pub async fn blur(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+    power: &str,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::BLUR, image, &[("power", power)], user_id).await
 }
 
-pub async fn caption(assyst: Arc<Assyst>, image: Bytes, user_id: UserId, text: &str) -> Result<Bytes, RequestError> {
+pub async fn caption(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+    text: &str,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::CAPTION, image, &[("text", text)], user_id).await
 }
 
-pub async fn convert_png(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn convert_png(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::CONVERT_PNG, image, &[], user_id).await
 }
 
 pub async fn compress(
     assyst: Arc<Assyst>,
-    image: Bytes, user_id: UserId,
+    image: Bytes,
+    user_id: UserId,
     level: usize,
 ) -> Result<Bytes, RequestError> {
     request_bytes(
@@ -149,29 +172,46 @@ pub async fn compress(
         routes::COMPRESS,
         image,
         &[("level", &level.to_string())],
-        user_id
+        user_id,
     )
     .await
 }
 
-pub async fn fix_transparency(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn fix_transparency(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::FIX_TRANSPARENCY, image, &[], user_id).await
 }
 
-pub async fn flash(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn flash(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::FLASH, image, &[], user_id).await
 }
-pub async fn flip(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn flip(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::FLIP, image, &[], user_id).await
 }
 
-pub async fn flop(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn flop(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::FLOP, image, &[], user_id).await
 }
 
 pub async fn motivate(
     assyst: Arc<Assyst>,
-    image: Bytes, user_id: UserId,
+    image: Bytes,
+    user_id: UserId,
     top_text: &str,
     bottom_text: &str,
 ) -> Result<Bytes, RequestError> {
@@ -180,34 +220,56 @@ pub async fn motivate(
         routes::MOTIVATE,
         image,
         &[("top", top_text), ("bottom", bottom_text)],
-        user_id
+        user_id,
     )
     .await
 }
 
-pub async fn ghost(assyst: Arc<Assyst>, image: Bytes, user_id: UserId, depth: &str) -> Result<Bytes, RequestError> {
+pub async fn ghost(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+    depth: &str,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::GHOST, image, &[("depth", depth)], user_id).await
 }
 
-pub async fn gif_loop(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn gif_loop(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::GIF_LOOP, image, &[], user_id).await
 }
 
-pub async fn gif_magik(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn gif_magik(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::GIF_MAGIK, image, &[], user_id).await
 }
 
-pub async fn gif_scramble(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn gif_scramble(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::GIF_SCRAMBLE, image, &[], user_id).await
 }
 
-pub async fn grayscale(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn grayscale(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::GRAYSCALE, image, &[], user_id).await
 }
 
 pub async fn gif_speed(
     assyst: Arc<Assyst>,
-    image: Bytes, user_id: UserId,
+    image: Bytes,
+    user_id: UserId,
     delay: Option<&str>,
 ) -> Result<Bytes, RequestError> {
     let query = match delay {
@@ -258,26 +320,39 @@ pub async fn imagemagick_eval(
         routes::IMAGEMAGICK_EVAL,
         image,
         &[("script", script)],
-        user_id
+        user_id,
     )
     .await
 }
 
-pub async fn invert(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn invert(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::INVERT, image, &[], user_id).await
 }
 
-pub async fn jpeg(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn jpeg(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::JPEG, image, &[], user_id).await
 }
 
-pub async fn magik(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn magik(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::MAGIK, image, &[], user_id).await
 }
 
 pub async fn meme(
     assyst: Arc<Assyst>,
-    image: Bytes, user_id: UserId,
+    image: Bytes,
+    user_id: UserId,
     top: &str,
     bottom: &str,
 ) -> Result<Bytes, RequestError> {
@@ -286,43 +361,68 @@ pub async fn meme(
         routes::MEME,
         image,
         &[("top", top), ("bottom", bottom)],
-        user_id
+        user_id,
     )
     .await
 }
 
 pub async fn pixelate(
     assyst: Arc<Assyst>,
-    image: Bytes, user_id: UserId,
+    image: Bytes,
+    user_id: UserId,
     downscaled_height: Option<&str>,
 ) -> Result<Bytes, RequestError> {
     match downscaled_height {
         Some(d) => {
-            request_bytes(assyst, routes::PIXELATE, image, &[("downscaled_height", d)], user_id).await
+            request_bytes(
+                assyst,
+                routes::PIXELATE,
+                image,
+                &[("downscaled_height", d)],
+                user_id,
+            )
+            .await
         }
         None => request_bytes(assyst, routes::PIXELATE, image, &[], user_id).await,
     }
 }
 
-pub async fn preprocess(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn preprocess(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::PREPROCESS, image, &[], user_id).await
 }
 
-pub async fn printer(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn printer(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::PRINTER, image, &[], user_id).await
 }
 
-pub async fn rainbow(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn rainbow(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::RAINBOW, image, &[], user_id).await
 }
 
-pub async fn resize(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn resize(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::RESIZE, image, &[], user_id).await
 }
 
 pub async fn resize_scale(
     assyst: Arc<Assyst>,
-    image: Bytes, user_id: UserId,
+    image: Bytes,
+    user_id: UserId,
     scale: f32,
 ) -> Result<Bytes, RequestError> {
     request_bytes(
@@ -330,14 +430,15 @@ pub async fn resize_scale(
         routes::RESIZE,
         image,
         &[("scale", &scale.to_string())],
-        user_id
+        user_id,
     )
     .await
 }
 
 pub async fn resize_width_height(
     assyst: Arc<Assyst>,
-    image: Bytes, user_id: UserId,
+    image: Bytes,
+    user_id: UserId,
     width: usize,
     height: usize,
 ) -> Result<Bytes, RequestError> {
@@ -349,17 +450,25 @@ pub async fn resize_width_height(
             ("width", &width.to_string()),
             ("height", &height.to_string()),
         ],
-        user_id
+        user_id,
     )
     .await
 }
 
 pub async fn overlay(
     assyst: Arc<Assyst>,
-    image: Bytes, user_id: UserId,
+    image: Bytes,
+    user_id: UserId,
     overlay: &str,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::OVERLAY, image, &[("overlay", overlay)], user_id).await
+    request_bytes(
+        assyst,
+        routes::OVERLAY,
+        image,
+        &[("overlay", overlay)],
+        user_id,
+    )
+    .await
 }
 
 pub async fn restart(assyst: Arc<Assyst>) -> Result<(), RequestError> {
@@ -385,21 +494,34 @@ pub async fn restart(assyst: Arc<Assyst>) -> Result<(), RequestError> {
     };
 }
 
-pub async fn reverse(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn reverse(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::REVERSE, image, &[], user_id).await
 }
 
 pub async fn rotate(
     assyst: Arc<Assyst>,
-    image: Bytes, user_id: UserId,
+    image: Bytes,
+    user_id: UserId,
     degrees: &str,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::ROTATE, image, &[("degrees", degrees)], user_id).await
+    request_bytes(
+        assyst,
+        routes::ROTATE,
+        image,
+        &[("degrees", degrees)],
+        user_id,
+    )
+    .await
 }
 
 pub async fn set_loop(
     assyst: Arc<Assyst>,
-    image: Bytes, user_id: UserId,
+    image: Bytes,
+    user_id: UserId,
     looping: bool,
 ) -> Result<Bytes, RequestError> {
     request_bytes(
@@ -407,16 +529,24 @@ pub async fn set_loop(
         routes::SET_LOOP,
         image,
         &[("loop", &looping.to_string())],
-        user_id
+        user_id,
     )
     .await
 }
 
-pub async fn spin(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn spin(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::SPIN, image, &[], user_id).await
 }
 
-pub async fn spread(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn spread(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::SPREAD, image, &[], user_id).await
 }
 
@@ -443,27 +573,51 @@ pub async fn stats(assyst: Arc<Assyst>) -> Result<Stats, RequestError> {
     };
 }
 
-pub async fn swirl(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn swirl(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::SWIRL, image, &[], user_id).await
 }
 
-pub async fn tehi(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn tehi(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::TEHI, image, &[], user_id).await
 }
 
-pub async fn wall(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn wall(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::WALL, image, &[], user_id).await
 }
 
-pub async fn wave(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn wave(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::WAVE, image, &[], user_id).await
 }
 
-pub async fn wormhole(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn wormhole(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::WORMHOLE, image, &[], user_id).await
 }
 
-pub async fn zoom(assyst: Arc<Assyst>, image: Bytes, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn zoom(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::ZOOM, image, &[], user_id).await
 }
 

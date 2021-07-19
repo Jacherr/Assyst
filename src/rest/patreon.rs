@@ -116,7 +116,8 @@ pub struct Patron {
 }
 
 pub async fn get_patrons(assyst: Arc<Assyst>, api_key: &str) -> Result<Vec<Patron>, Error> {
-    let response = assyst.reqwest_client
+    let response = assyst
+        .reqwest_client
         .get(routes::PATREON_PATRONS)
         .header(reqwest::header::AUTHORIZATION, api_key)
         .send()
@@ -132,7 +133,7 @@ pub async fn get_patrons(assyst: Arc<Assyst>, api_key: &str) -> Result<Vec<Patro
             let tier = get_tier_from_pledge(d.attributes.currently_entitled_amount_cents);
             entitled_tiers.insert(d.relationships.user.data.id.clone(), tier);
         }
-    };
+    }
 
     for i in response.included {
         let id = i.id.clone();
@@ -141,14 +142,14 @@ pub async fn get_patrons(assyst: Arc<Assyst>, api_key: &str) -> Result<Vec<Patro
             .social_connections
             .as_ref()
             .map(|s| s.discord.as_ref().map(|d| d.user_id.clone()));
-        
+
         match discord {
             Some(Some(d)) => {
                 discord_connections.insert(id, UserId::from(d.parse::<u64>().unwrap()));
-            },
-            _ => ()
+            }
+            _ => (),
         };
-    };
+    }
 
     let mut patrons: Vec<Patron> = vec![];
 
@@ -161,17 +162,17 @@ pub async fn get_patrons(assyst: Arc<Assyst>, api_key: &str) -> Result<Vec<Patro
             Some(d) => {
                 patrons.push(Patron {
                     user_id: d.clone(),
-                    tier
+                    tier,
                 });
-            },
-            _ => ()
+            }
+            _ => (),
         };
-    };
+    }
 
     for i in assyst.config.user.admins.iter() {
         patrons.push(Patron {
             user_id: UserId::from(*i),
-            tier: 3
+            tier: 3,
         })
     }
 

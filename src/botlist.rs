@@ -1,10 +1,10 @@
 // TODO
 
 use crate::assyst::Assyst;
+use crate::consts::BOT_ID;
 use lazy_static::lazy_static;
 use serde::Deserialize;
-use std::{sync::Arc};
-use crate::consts::BOT_ID;
+use std::sync::Arc;
 
 const VOTE_FREE_TIER_1_REQUESTS: usize = 5;
 
@@ -29,16 +29,19 @@ lazy_static! {
 }
 
 mod filters {
+    use super::{handlers, DISCORD_BOT_LIST};
+    use crate::assyst::Assyst;
     use std::sync::Arc;
     use warp::{Filter, Rejection, Reply};
-    use crate::assyst::Assyst;
-    use super::{DISCORD_BOT_LIST, handlers};
 
     pub fn root() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
         warp::path::end().and(warp::get()).and_then(handlers::root)
     }
 
-    pub fn dbl(assyst: Arc<Assyst>, auth: &'static str) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    pub fn dbl(
+        assyst: Arc<Assyst>,
+        auth: &'static str,
+    ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
         warp::path(DISCORD_BOT_LIST.webhook_route)
             .and(warp::post())
             .and(warp::header::exact("authorization", auth))
@@ -50,16 +53,18 @@ mod filters {
 
 mod handlers {
     use super::DiscordBotListWebhookBody;
-    use warp::{Rejection, Reply};
     use crate::assyst::Assyst;
     use std::sync::Arc;
+    use warp::{Rejection, Reply};
 
     pub async fn root() -> Result<impl Reply, Rejection> {
         Ok(warp::reply::reply())
     }
 
-    pub async fn dbl(_body: DiscordBotListWebhookBody, _assyst: Arc<Assyst>) -> Result<impl Reply, Rejection> {
-        
+    pub async fn dbl(
+        _body: DiscordBotListWebhookBody,
+        _assyst: Arc<Assyst>,
+    ) -> Result<impl Reply, Rejection> {
         Ok(warp::reply::reply())
     }
 }

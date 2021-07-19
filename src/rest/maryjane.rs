@@ -73,7 +73,7 @@ pub async fn get_application(assyst: Arc<Assyst>, id: u64) -> Result<Application
     get::<Application>(
         assyst,
         &parse_path_parameter(routes::APPLICATION.to_owned(), ("id", &id.to_string())),
-        &[],
+        &[("update", "true")],
     )
     .await
 }

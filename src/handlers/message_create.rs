@@ -2,7 +2,7 @@ use crate::Assyst;
 use std::sync::Arc;
 use twilight_model::gateway::payload::MessageCreate;
 
-pub async fn handle(assyst: Arc<Assyst>, message: Box<MessageCreate>) -> () {
+pub async fn handle(assyst: Arc<Assyst>, message: Box<MessageCreate>) {
     // If this is the first message, we want to populate the BT channel cache
     // If it fails, we just log the error and disable it
     if assyst.badtranslator.should_fetch().await {
@@ -33,6 +33,7 @@ pub async fn handle(assyst: Arc<Assyst>, message: Box<MessageCreate>) -> () {
     if !should_handle_message(&message).await {
         return;
     };
+
     if let Err(e) = assyst.handle_command(message.0).await {
         assyst
             .logger

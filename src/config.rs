@@ -8,7 +8,7 @@ pub struct Auth {
     pub bot_list_webhook: Box<str>,
     pub maryjane: Box<str>,
     pub patreon: Box<str>,
-    pub wsi: Box<str>
+    pub wsi: Box<str>,
 }
 
 #[derive(Clone, Deserialize)]
@@ -37,20 +37,20 @@ pub struct Logs {
 #[derive(Clone, Deserialize)]
 pub struct Prefix {
     pub default: Box<str>,
-    pub r#override: Box<str>
+    pub r#override: Box<str>,
 }
 
 #[derive(Clone, Deserialize)]
 pub struct Url {
     pub annmarie: Box<str>,
     pub maryjane: Box<str>,
-    pub wsi: Box<str>
+    pub wsi: Box<str>,
 }
 
 #[derive(Clone, Deserialize)]
 pub struct User {
     pub admins: HashSet<u64>,
-    pub blacklist: HashSet<u64>
+    pub blacklist: HashSet<u64>,
 }
 
 #[derive(Clone, Deserialize)]
@@ -64,7 +64,7 @@ pub struct Config {
     pub logs: Logs,
     pub prefix: Prefix,
     pub url: Url,
-    pub user: User 
+    pub user: User,
 }
 impl Config {
     pub fn new() -> Self {

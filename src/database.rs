@@ -11,6 +11,17 @@ use twilight_model::id::GuildId;
 use crate::{badtranslator::ChannelCache, caching::Cache, util::get_current_millis};
 
 #[derive(sqlx::FromRow, Debug)]
+pub struct DatabaseReminder {
+    pub id: i32,
+    pub user_id: i64,
+    pub timestamp: i64,
+    pub guild_id: i64,
+    pub channel_id: i64,
+    pub message_id: i64,
+    pub message: String,
+}
+
+#[derive(sqlx::FromRow, Debug)]
 pub struct Reminder {
     pub user_id: i64,
     pub timestamp: i64,
@@ -19,6 +30,20 @@ pub struct Reminder {
     pub message_id: i64,
     pub message: String,
 }
+
+impl From<DatabaseReminder> for Reminder {
+    fn from(r: DatabaseReminder) -> Self {
+        Reminder {
+            user_id: r.user_id,
+            timestamp: r.timestamp,
+            guild_id: r.guild_id,
+            channel_id: r.channel_id,
+            message_id: r.message_id,
+            message: r.message,
+        }
+    }
+}
+
 #[derive(sqlx::FromRow, Debug, Clone)]
 pub struct CommandUsage {
     pub command_name: String,
@@ -179,48 +204,47 @@ impl Database {
         &self,
         user: u64,
         count: u64,
-    ) -> Result<Vec<Reminder>, sqlx::Error> {
+    ) -> Result<Vec<DatabaseReminder>, sqlx::Error> {
         let query = r#"SELECT * FROM reminders WHERE user_id = $1 ORDER BY timestamp ASC LIMIT $2"#;
 
-        sqlx::query_as::<_, Reminder>(query)
+        sqlx::query_as::<_, DatabaseReminder>(query)
             .bind(user as i64)
             .bind(count as i64)
             .fetch_all(&self.pool)
             .await
     }
 
-    pub async fn delete_reminder(
-        &self,
-        user_id: u64,
-        channel_id: u64,
-        message_id: u64,
-    ) -> Result<bool, sqlx::Error> {
-        let query = r#"DELETE FROM reminders WHERE user_id = $1 AND channel_id = $2 AND message_id = $3 RETURNING *"#;
+    pub async fn delete_reminder_by_id(&self, user_id: u64, id: i32) -> Result<bool, sqlx::Error> {
+        let query = r#"DELETE FROM reminders WHERE user_id = $1 AND id = $2 RETURNING *"#;
 
         sqlx::query(query)
             .bind(user_id as i64)
-            .bind(channel_id as i64)
-            .bind(message_id as i64)
+            .bind(id)
             .fetch_all(&self.pool)
             .await
             .map(|s| !s.is_empty())
     }
 
-    pub async fn fetch_reminders(&self, time_delta: i64) -> Result<Vec<Reminder>, sqlx::Error> {
+    pub async fn fetch_reminders(
+        &self,
+        time_delta: i64,
+    ) -> Result<Vec<DatabaseReminder>, sqlx::Error> {
         let query = "SELECT * FROM reminders WHERE timestamp < $1";
 
-        sqlx::query_as::<_, Reminder>(query)
+        sqlx::query_as::<_, DatabaseReminder>(query)
             .bind(get_current_millis() as i64 + time_delta)
             .fetch_all(&self.pool)
             .await
     }
 
-    pub async fn delete_reminders(&self, reminders: Vec<Reminder>) -> Result<(), sqlx::Error> {
+    pub async fn delete_reminders<R>(&self, reminders: Vec<R>) -> Result<(), sqlx::Error>
+    where
+        R: Into<Reminder>,
+    {
         let mut tx = self.pool.begin().await?;
 
-        println!("Deleting {:?}", reminders);
-
         for reminder in reminders {
+            let reminder = reminder.into();
             sqlx::query("DELETE FROM reminders WHERE message_id = $1 AND channel_id = $2")
                 .bind(reminder.message_id)
                 .bind(reminder.channel_id)

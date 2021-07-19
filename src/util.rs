@@ -10,10 +10,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 use twilight_http::{error::Error, Client};
-use twilight_model::{
-    channel::Message,
-    id::{GuildId, UserId},
-};
+use twilight_model::id::{GuildId, UserId};
 
 #[macro_export]
 macro_rules! box_str {
@@ -74,12 +71,18 @@ pub fn generate_table(input: &[(&str, &str)]) -> String {
         .fold(String::new(), |a, b| a + &b)
 }
 
-pub fn generate_list<K: AsRef<str>, V: AsRef<str>>(key_name: &str, value_name: &str, values: &[(K, V)]) -> String {
+pub fn generate_list<K: AsRef<str>, V: AsRef<str>>(
+    key_name: &str,
+    value_name: &str,
+    values: &[(K, V)],
+) -> String {
     let longest = get_longer_str(
         key_name,
-        values.iter().fold(values[0].0.as_ref(), |previous, (current, _)| {
-            get_longer_str(previous, current.as_ref())
-        }),
+        values
+            .iter()
+            .fold(values[0].0.as_ref(), |previous, (current, _)| {
+                get_longer_str(previous, current.as_ref())
+            }),
     );
 
     let mut output = format!(
@@ -93,7 +96,14 @@ pub fn generate_list<K: AsRef<str>, V: AsRef<str>>(key_name: &str, value_name: &
 
     let formatted_values = values
         .iter()
-        .map(|(k, v)| format!(" {}{}\t{}", " ".repeat(longest.len() - k.as_ref().len()), k.as_ref(), v.as_ref()))
+        .map(|(k, v)| {
+            format!(
+                " {}{}\t{}",
+                " ".repeat(longest.len() - k.as_ref().len()),
+                k.as_ref(),
+                v.as_ref()
+            )
+        })
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -269,15 +279,6 @@ pub fn message_link(guild_id: u64, channel_id: u64, message_id: u64) -> String {
         "https://discord.com/channels/{}/{}/{}",
         guild_id, channel_id, message_id
     )
-}
-
-pub fn get_sticker_url_from_message(message: &Message) -> Option<String> {
-    message.stickers.get(0).and_then(|s| {
-        Some(format!(
-            "https://distok.top/stickers/{}/{}-small.gif",
-            s.pack_id, s.id
-        ))
-    })
 }
 
 pub struct CommandOutput {

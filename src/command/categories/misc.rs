@@ -1,14 +1,21 @@
-use crate::{command::{
+use crate::{
+    command::{
         command::{
             force_as, Argument, Command, CommandAvailability, CommandBuilder, ParsedArgument,
         },
         context::Context,
         messagebuilder::MessageBuilder,
         registry::CommandResult,
-    }, rest::{annmarie::{self, info}, fake_eval, wsi}, util::{
+    },
+    rest::{
+        annmarie::{self, info},
+        fake_eval, wsi,
+    },
+    util::{
         codeblock, exec_sync, extract_page_title, format_time, generate_list, generate_table,
         get_memory_usage, parse_codeblock,
-    }};
+    },
+};
 use crate::{
     consts::Y21,
     database::Reminder,
@@ -101,7 +108,8 @@ lazy_static! {
         .example("1d10h hello")
         .example("44m yea")
         .example("list")
-        .usage("[when|list] <[description]>")
+        .example("delete 10")
+        .usage("[when|list|delete|remove] <[description|index]>")
         .cooldown(Duration::from_secs(2))
         .category(CATEGORY_NAME)
         .build();
@@ -421,7 +429,7 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
 
             format!("Total: {}, Server: {}", total, guild)
         }),
-        ("Commands Ran", &total_command_calls)
+        ("Commands Ran", &total_command_calls),
     ]);
 
     context
@@ -480,35 +488,62 @@ pub async fn run_rust_command(context: Arc<Context>, args: Vec<ParsedArgument>) 
 pub async fn run_remind_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
     let time = force_as::text(&args[0]);
 
-    if time == "list" {
-        let user_id = context.message.author.id.0;
+    match time {
+        "list" => {
+            let user_id = context.message.author.id.0;
 
-        // If the first argument is "list", then we want to fetch a list of reminders
-        let reminders = context
-            .assyst
-            .database
-            .fetch_user_reminders(user_id, 10)
-            .await
-            .map_err(|e| e.to_string())?
-            .iter()
-            .map(|reminder| {
-                format!(
-                    "In {}: `{}`\n",
-                    format_time(reminder.timestamp as u64 - get_current_millis()),
-                    reminder.message
-                )
-            })
-            .collect::<String>();
+            // If the first argument is "list", then we want to fetch a list of reminders
+            let reminders = context
+                .assyst
+                .database
+                .fetch_user_reminders(user_id, 10)
+                .await
+                .map_err(|e| e.to_string())?
+                .iter()
+                .map(|reminder| {
+                    format!(
+                        "[#{}] <t:{}:R>: `{}`\n",
+                        reminder.id,
+                        reminder.timestamp / 1000,
+                        reminder.message
+                    )
+                })
+                .collect::<String>();
 
-        let output = if reminders.len() > 0 {
-            format!(":calendar: **Upcoming Reminders:**\n\n{}", reminders)
-        } else {
-            ":calendar: You have no set reminders.".to_owned()
-        };
+            let output = if reminders.len() > 0 {
+                format!(":calendar: **Upcoming Reminders:**\nThe number on the left side is the reminder ID, use it to delete a reminder: `-remind delete 10`\n\n{}", reminders)
+            } else {
+                ":calendar: You have no set reminders.".to_owned()
+            };
 
-        context.reply_with_text(&output).await.unwrap();
-        return Ok(());
-    }
+            context.reply_with_text(&output).await.unwrap();
+            return Ok(());
+        }
+        "remove" | "delete" => {
+            let user_id = context.message.author.id.0;
+            let reminder_id = force_as::text(&args[1])
+                .parse::<i32>()
+                .map_err(|e| e.to_string())?;
+
+            let was_deleted = context
+                .assyst
+                .database
+                .delete_reminder_by_id(user_id, reminder_id)
+                .await
+                .map_err(|e| e.to_string())?;
+
+            if was_deleted {
+                context
+                    .reply_with_text(":white_check_mark: Reminder deleted.")
+                    .await?;
+
+                return Ok(());
+            }
+
+            return Err("Failed to delete reminder, either because the ID is wrong or the reminder is not yours.".to_owned());
+        }
+        _ => {}
+    };
 
     let comment = match args.get(1) {
         Some(ParsedArgument::Text(arg)) => arg,
@@ -828,10 +863,12 @@ pub async fn run_patron_status_command(
             context
                 .reply_with_text(&format!("You're a tier {} patron.", u.tier))
                 .await?;
-        },
+        }
         None => {
             context
-                .reply_with_text("You're not a patron. You can become one at <https://patreon.com/jacher>")
+                .reply_with_text(
+                    "You're not a patron. You can become one at <https://patreon.com/jacher>",
+                )
                 .await?;
         }
     }
@@ -846,27 +883,33 @@ pub async fn run_cache_status_command(
     let replies_size = context.assyst.replies.read().await.size();
     let ratelimits_size = context.assyst.command_ratelimits.read().await.size();
     context
-        .reply_with_text(&format!("Replies: {}\nRatelimits: {}", replies_size, ratelimits_size))
+        .reply_with_text(&format!(
+            "Replies: {}\nRatelimits: {}",
+            replies_size, ratelimits_size
+        ))
         .await?;
     Ok(())
 }
 
-pub async fn run_uptime_command(
-    context: Arc<Context>,
-    _: Vec<ParsedArgument>,
-) -> CommandResult {
+pub async fn run_uptime_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
     let assyst_uptime = context.assyst.uptime().format();
 
-    let annmarie_info = info(context.assyst.clone()).await.map_err(annmarie::format_err)?;
+    let annmarie_info = info(context.assyst.clone())
+        .await
+        .map_err(annmarie::format_err)?;
     let annmarie_uptime = format_time(annmarie_info.uptime.floor() as u64 * 1000);
 
-    let wsi_info = wsi::stats(context.assyst.clone()).await.map_err(wsi::format_err)?;
+    let wsi_info = wsi::stats(context.assyst.clone())
+        .await
+        .map_err(wsi::format_err)?;
     let wsi_uptime = format_time(wsi_info.uptime_ms as u64);
 
-    let output = generate_table(&[("Assyst", &assyst_uptime), ("Annmarie", &annmarie_uptime), ("WSI", &wsi_uptime)]);
+    let output = generate_table(&[
+        ("Assyst", &assyst_uptime),
+        ("Annmarie", &annmarie_uptime),
+        ("WSI", &wsi_uptime),
+    ]);
 
-    context
-        .reply_with_text(&codeblock(&output, "yaml"))
-        .await?;
+    context.reply_with_text(&codeblock(&output, "yaml")).await?;
     Ok(())
 }

@@ -65,7 +65,7 @@ fn convert_message_update_to_message(event: MessageUpdate) -> Option<Message> {
         reactions: vec![],
         reference: None,
         referenced_message: None,
-        stickers: vec![],
+        sticker_items: vec![],
         timestamp,
         tts: false,
         webhook_id: None,

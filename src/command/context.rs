@@ -117,7 +117,7 @@ impl Context {
             .allowed_mentions(AllowedMentions::default());
 
         if let Some(attachment) = message_builder.attachment {
-            create_message = create_message.file(attachment.name, attachment.data.to_vec());
+            create_message = create_message.files([(attachment.name, attachment.data.to_vec())]);
         };
         if let Some(content) = message_builder.content {
             create_message = create_message.content(
@@ -128,7 +128,7 @@ impl Context {
             )?
         };
         if let Some(embed) = message_builder.embed {
-            create_message = create_message.embed(embed)?;
+            create_message = create_message.embeds([embed])?;
         };
         let result = Arc::new(create_message.await?);
         Ok(result)
@@ -153,8 +153,8 @@ impl Context {
         };
 
         match message_builder.embed {
-            Some(embed) => update_message = update_message.embed(embed)?,
-            None => update_message = update_message.embed(None)?,
+            Some(embed) => update_message = update_message.embeds([embed])?,
+            None => update_message = update_message.embeds([])?,
         };
 
         let result = Arc::new(update_message.await?);
