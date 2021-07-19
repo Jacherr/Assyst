@@ -1,10 +1,10 @@
+use crate::consts::MESSAGE_EDIT_HANDLE_LIMIT;
 use std::sync::Arc;
 use std::{collections::HashMap, hash::Hash, u64, usize};
 use tokio::sync::Mutex;
 use twilight_model::channel::Message;
 use twilight_model::id::MessageId;
 use util::get_current_millis;
-use crate::consts::MESSAGE_EDIT_HANDLE_LIMIT;
 
 use crate::{box_str, command::command::Command, util};
 
@@ -122,6 +122,7 @@ impl Replies {
             .iter()
             .map(|a| (a.0.clone(), a.1.clone()))
             .collect::<Vec<_>>();
+
         for (key, value) in entries {
             if value.lock().await.has_expired() {
                 self.cache.remove(&key);

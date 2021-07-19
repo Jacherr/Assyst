@@ -16,10 +16,7 @@ use crate::{
     logging::Logger,
     metrics::GlobalMetrics,
     rest::patreon::Patron,
-    util::{
-        download_content, get_current_millis, get_guild_owner, get_sticker_url_from_message,
-        regexes, Uptime,
-    },
+    util::{download_content, get_current_millis, get_guild_owner, regexes, Uptime},
 };
 
 use bytes::Bytes;
@@ -929,10 +926,9 @@ impl Assyst {
             .attachments
             .first()
             .and_then(|a| Some(a.url.clone()))
-            .or_else(|| get_sticker_url_from_message(message))
     }
 
-    /// Looks at a source [`Message`] and see if it has any embeds with an image, 
+    /// Looks at a source [`Message`] and see if it has any embeds with an image,
     /// returning the first one if it does.
     fn validate_message_embed<'a>(&self, message: &'a Message) -> Option<Cow<'a, String>> {
         let embed = message.embeds.first()?;
@@ -981,7 +977,6 @@ impl Assyst {
                         .attachments
                         .first()
                         .and_then(|a| Some(Cow::Borrowed(&a.url)))
-                        .or_else(|| Some(Cow::Owned(get_sticker_url_from_message(message)?)))
                 }
             })
             .collect();

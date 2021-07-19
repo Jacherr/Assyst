@@ -1,8 +1,7 @@
 use crate::{
     command::{
         command::{
-            force_as, Argument, Command, CommandAvailability, CommandBuilder,
-            ParsedArgument,
+            force_as, Argument, Command, CommandAvailability, CommandBuilder, ParsedArgument,
         },
         context::Context,
         registry::CommandResult,
@@ -621,7 +620,7 @@ pub async fn run_annmarie_command(
         &format!("/{}", endpoint),
         image,
         &[],
-        context.author_id()
+        context.author_id(),
     )
     .await
     .map_err(annmarie::format_err)?;
@@ -651,7 +650,7 @@ pub async fn run_blur_command(
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let power = force_as::text(&args[0]);
     context.reply_with_text("processing...").await?;
-    let result = wsi::blur(context.assyst.clone(), image, context.author_id(),power)
+    let result = wsi::blur(context.assyst.clone(), image, context.author_id(), power)
         .await
         .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
@@ -679,7 +678,7 @@ pub async fn run_caption_command(
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let text = force_as::text(&args[0]);
     context.reply_with_text("processing...").await?;
-    let result = wsi::caption(context.assyst.clone(), image, context.author_id(),text)
+    let result = wsi::caption(context.assyst.clone(), image, context.author_id(), text)
         .await
         .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
@@ -792,7 +791,7 @@ pub async fn run_ghost_command(
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let depth = force_as::text(&args[0]);
     context.reply_with_text("processing...").await?;
-    let result = wsi::ghost(context.assyst.clone(), image, context.author_id(),depth)
+    let result = wsi::ghost(context.assyst.clone(), image, context.author_id(), depth)
         .await
         .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
@@ -853,7 +852,7 @@ pub async fn run_gif_speed_command(
         Some(force_as::text(&args[0]))
     };
     context.reply_with_text("processing...").await?;
-    let result = wsi::gif_speed(context.assyst.clone(), image, context.author_id(),delay)
+    let result = wsi::gif_speed(context.assyst.clone(), image, context.author_id(), delay)
         .await
         .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
@@ -935,7 +934,7 @@ pub async fn run_imagemagick_eval_command(
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let text = force_as::text(&args[0]);
     context.reply_with_text("processing...").await?;
-    let result = wsi::imagemagick_eval(context.assyst.clone(), image,context.author_id(), text)
+    let result = wsi::imagemagick_eval(context.assyst.clone(), image, context.author_id(), text)
         .await
         .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
@@ -1005,9 +1004,15 @@ pub async fn run_meme_command(
     let bottom_text = parts.drain(1..).collect::<Vec<&str>>().join(" ");
 
     context.reply_with_text("processing...").await?;
-    let result = wsi::meme(context.assyst.clone(), image, context.author_id(),top_text.trim(), bottom_text.trim())
-        .await
-        .map_err(wsi::format_err)?;
+    let result = wsi::meme(
+        context.assyst.clone(),
+        image,
+        context.author_id(),
+        top_text.trim(),
+        bottom_text.trim(),
+    )
+    .await
+    .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -1033,9 +1038,15 @@ pub async fn run_motivate_command(
     let bottom_text = parts.drain(1..).collect::<Vec<&str>>().join(" ");
 
     context.reply_with_text("processing...").await?;
-    let result = wsi::motivate(context.assyst.clone(), image, context.author_id(),top_text.trim(), bottom_text.trim())
-        .await
-        .map_err(wsi::format_err)?;
+    let result = wsi::motivate(
+        context.assyst.clone(),
+        image,
+        context.author_id(),
+        top_text.trim(),
+        bottom_text.trim(),
+    )
+    .await
+    .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -1048,7 +1059,7 @@ pub async fn run_neon_command(
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let radius = force_as::text(&args[0]);
     context.reply_with_text("processing...").await?;
-    let result = annmarie::neon(context.assyst.clone(), image, context.author_id(),radius)
+    let result = annmarie::neon(context.assyst.clone(), image, context.author_id(), radius)
         .await
         .map_err(annmarie::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
@@ -1079,9 +1090,14 @@ pub async fn run_overlay_command(
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let overlay = force_as::text(&args[0]);
     context.reply_with_text("processing...").await?;
-    let result = wsi::overlay(context.assyst.clone(), image, context.author_id(),&overlay.to_ascii_lowercase())
-        .await
-        .map_err(wsi::format_err)?;
+    let result = wsi::overlay(
+        context.assyst.clone(),
+        image,
+        context.author_id(),
+        &overlay.to_ascii_lowercase(),
+    )
+    .await
+    .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -1105,9 +1121,14 @@ pub async fn run_pixelate_command(
         Some(force_as::text(&args[0]))
     };
     context.reply_with_text("processing...").await?;
-    let result = wsi::pixelate(context.assyst.clone(), image, context.author_id(),downscaled_height)
-        .await
-        .map_err(wsi::format_err)?;
+    let result = wsi::pixelate(
+        context.assyst.clone(),
+        image,
+        context.author_id(),
+        downscaled_height,
+    )
+    .await
+    .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -1170,9 +1191,15 @@ pub async fn run_resize_command(
                 .parse::<usize>()
                 .map_err(|_| "Invalid resolution.".to_owned())?;
 
-            result = wsi::resize_width_height(context.assyst.clone(), image, context.author_id(), width, height)
-                .await
-                .map_err(wsi::format_err)?;
+            result = wsi::resize_width_height(
+                context.assyst.clone(),
+                image,
+                context.author_id(),
+                width,
+                height,
+            )
+            .await
+            .map_err(wsi::format_err)?;
         } else {
             let scale = text
                 .parse::<f32>()
@@ -1390,6 +1417,7 @@ async fn run_wsi_noarg_command(
         .await
         .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+
     context.reply_with_image(format, result).await?;
     Ok(())
 }
