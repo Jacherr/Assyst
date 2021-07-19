@@ -104,7 +104,7 @@ pub async fn request_bytes(
 
     let result = assyst
         .reqwest_client
-        .post(&format!("{}{}", assyst.config.auth.wsi, route))
+        .post(&format!("{}{}", assyst.config.url.wsi, route))
         .header(
             reqwest::header::AUTHORIZATION,
             assyst.config.auth.wsi.as_ref(),
