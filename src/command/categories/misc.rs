@@ -276,7 +276,7 @@ pub async fn run_help_command(context: Arc<Context>, args: Vec<ParsedArgument>) 
         context
             .reply_with_text(
                 &format!(
-                    "{}\n*Do {}help [command] for more info on a command.*\nInvite the bot: <https://jacher.io/assyst>\nSupport server: <https://discord.gg/VRPGgMEhGkg>\n**Note: The default bot prefix is `{}`**",
+                    "{}\n*Do {}help [command] for more info on a command.*\nInvite the bot: <https://jacher.io/assyst>\nSupport server: <https://discord.gg/VRPGgMEhGk>\n**Note: The default bot prefix is `{}`**",
                     &command_help_entries.join("\n"),
                     context.prefix,
                     context.assyst.config.prefix.default
