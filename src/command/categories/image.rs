@@ -586,7 +586,7 @@ lazy_static! {
             .category(CATEGORY_NAME)
             .build();
         pub static ref IDENTIFY_COMMAND: Command = CommandBuilder::new("identify")
-            .arg(Argument::String)
+            .arg(Argument::ImageUrl)
             .public()
             .description("identify an image")
             .example("https://media.discordapp.net/attachments/827679274852286475/870284473877544980/20210729_153930.jpg")
