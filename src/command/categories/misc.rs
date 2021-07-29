@@ -354,7 +354,7 @@ pub async fn run_invite_command(context: Arc<Context>, _: Vec<ParsedArgument>) -
             MessageBuilder::new()
                 .content(
                     &format!(
-                        "Bot invite: <https://jacher.io/assyst>\nSupport server: <>\n**Note: The default bot prefix is `{}`**", 
+                        "Bot invite: <https://jacher.io/assyst>\nSupport server: <https://discord.gg/VRPGgMEhGk>\n**Note: The default bot prefix is `{}`**", 
                         context.assyst.config.prefix.default
                     ),
                 )
