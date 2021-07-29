@@ -186,5 +186,6 @@ impl CommandRegistry {
         register_command!(self, WSI_STATS_COMMAND, run_wsi_stats_command);
         register_command!(self, ZOOM_BLUR_COMMAND, run_zoom_blur_command);
         register_command!(self, ZOOM_COMMAND, run_zoom_command);
+        register_command!(self, IDENTIFY_COMMAND, run_identify_command);
     }
 }
