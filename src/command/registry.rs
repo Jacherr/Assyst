@@ -108,6 +108,7 @@ impl CommandRegistry {
     pub fn register_commands(&mut self) {
         // register_command!(self, UPTIME_COMMAND, run_uptime_command);
         // register_command!(self, _3D_ROTATE_COMMAND, run_3d_rotate_command);
+        // register_command!(self, FLASH_COMMAND, run_flash_command);
         register_command!(self, AHSHIT_COMMAND, run_ahshit_command);
         register_command!(self, ANNMARIE_COMMAND, run_annmarie_command);
         register_command!(self, APRIL_FOOLS_COMMAND, run_aprilfools_command);
@@ -130,7 +131,6 @@ impl CommandRegistry {
         register_command!(self, FISHEYE_COMMAND, run_fisheye_command);
         register_command!(self, FIX_TRANSPARENCY_COMMAND, run_fix_transparency_command);
         register_command!(self, FLAG_COMMAND, run_flag_command);
-        register_command!(self, FLASH_COMMAND, run_flash_command);
         register_command!(self, FLIP_COMMAND, run_flip_command);
         register_command!(self, FLOP_COMMAND, run_flop_command);
         register_command!(self, FRINGE_COMMAND, run_fringe_command);

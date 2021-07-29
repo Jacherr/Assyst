@@ -159,7 +159,7 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
-    pub static ref FLASH_COMMAND: Command = CommandBuilder::new("flash")
+    /*pub static ref FLASH_COMMAND: Command = CommandBuilder::new("flash")
         .arg(Argument::ImageBuffer)
         .public()
         .description("flash an image")
@@ -167,7 +167,7 @@ lazy_static! {
         .usage("[image]")
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
-        .build();
+        .build();*/
     pub static ref FLIP_COMMAND: Command = CommandBuilder::new("flip")
         .arg(Argument::ImageBuffer)
         .public()
@@ -728,7 +728,7 @@ pub async fn run_flag_command(
     run_annmarie_noarg_command!(annmarie::flag, args, context)
 }
 
-pub async fn run_flash_command(
+/*pub async fn run_flash_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
 ) -> CommandResult {
@@ -740,7 +740,7 @@ pub async fn run_flash_command(
         Box::new(move |assyst, bytes, user_id| Box::pin(wsi_fn(assyst, bytes, user_id))),
     )
     .await
-}
+}*/
 
 pub async fn run_flip_command(
     context: Arc<Context>,
