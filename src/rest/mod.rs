@@ -5,9 +5,9 @@ use serde::{Deserialize, Serialize};
 pub mod annmarie;
 pub mod bt;
 pub mod maryjane;
+pub mod patreon;
 pub mod rust;
 pub mod wsi;
-pub mod patreon;
 
 mod routes {
     pub const COOL_TEXT: &str = "https://cooltext.com/PostChange";
@@ -15,6 +15,7 @@ mod routes {
     pub const OCR: &str = "http://ocr.y21_.repl.co/?url=";
     pub const CHARINFO: &str = "https://www.fileformat.info/info/unicode/char/";
     pub const FAKE_EVAL: &str = "https://jacher.io/eval";
+    pub const IDENTIFY: &str = "https://captionbot2.azurewebsites.net/api/messages?language=en-US";
 }
 
 pub enum OcrError {
@@ -50,6 +51,14 @@ pub struct CoolTextResponse {
     pub is_animated: bool,
 }
 
+#[derive(Serialize)]
+pub struct IdentifyBody<'a> {
+    #[serde(rename = "Type")]
+    pub ty: &'static str,
+    #[serde(rename = "Content")]
+    pub content: &'a str,
+}
+
 pub async fn ocr_image(client: &Client, url: &str) -> Result<String, OcrError> {
     let text = client
         .get(&format!("{}{}", routes::OCR, url))
@@ -80,6 +89,19 @@ pub async fn upload_to_filer(
         .send()
         .await?
         .text()
+        .await
+}
+
+pub async fn identify_image(client: &Client, url: &str) -> Result<String, Error> {
+    client
+        .post(routes::IDENTIFY)
+        .json(&IdentifyBody {
+            ty: "CaptionRequest",
+            content: url,
+        })
+        .send()
+        .await?
+        .json()
         .await
 }
 

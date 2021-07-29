@@ -576,15 +576,24 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
-    pub static ref APRIL_FOOLS_COMMAND: Command = CommandBuilder::new("aprilfools")
-        .arg(Argument::ImageBuffer)
-        .public()
-        .description("april fools")
-        .example(Y21)
-        .usage("[image]")
-        .cooldown(Duration::from_secs(4))
-        .category(CATEGORY_NAME)
-        .build();
+        pub static ref APRIL_FOOLS_COMMAND: Command = CommandBuilder::new("aprilfools")
+            .arg(Argument::ImageBuffer)
+            .public()
+            .description("april fools")
+            .example(Y21)
+            .usage("[image]")
+            .cooldown(Duration::from_secs(4))
+            .category(CATEGORY_NAME)
+            .build();
+        pub static ref IDENTIFY_COMMAND: Command = CommandBuilder::new("identify")
+            .arg(Argument::String)
+            .public()
+            .description("identify an image")
+            .example("https://media.discordapp.net/attachments/827679274852286475/870284473877544980/20210729_153930.jpg")
+            .usage("[url]")
+            .cooldown(Duration::from_secs(1))
+            .category(CATEGORY_NAME)
+            .build();
 }
 
 pub async fn run_3d_rotate_command(
@@ -1404,6 +1413,23 @@ pub async fn run_zoom_blur_command(
         .map_err(annmarie::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
+    Ok(())
+}
+
+pub async fn run_identify_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let url = force_as::text(&args[0]);
+    let identify = rest::identify_image(&context.assyst.reqwest_client, url)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    context
+        .reply_with_text(&identify)
+        .await
+        .map_err(|e| e.to_string())?;
+
     Ok(())
 }
 
