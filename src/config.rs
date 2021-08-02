@@ -6,8 +6,10 @@ use serde::Deserialize;
 pub struct Auth {
     pub annmarie: Box<str>,
     pub bot_list_webhook: Box<str>,
+    pub discord_bot_list_post_stats: Box<str>,
     pub maryjane: Box<str>,
     pub patreon: Box<str>,
+    pub top_gg_post_stats: Box<str>,
     pub wsi: Box<str>,
 }
 

@@ -66,7 +66,7 @@ pub struct Stats {
     pub uptime_ms: usize,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct WsiError {
     pub code: u16,
     pub message: Box<str>,
@@ -83,6 +83,7 @@ pub struct ImageInfo {
     pub comments: Vec<String>,
 }
 
+#[derive(Debug)]
 pub enum RequestError {
     Reqwest(Error),
     Wsi(WsiError),

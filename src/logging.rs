@@ -9,6 +9,7 @@ impl Logger {
     pub async fn fatal(&self, assyst: Arc<Assyst>, message: &str) {
         let url: &str = assyst.config.logs.fatal.as_ref();
         if url.is_empty() {
+            println!("really bad error: {}", message);
             return;
         };
 
@@ -22,6 +23,7 @@ impl Logger {
     pub async fn info(&self, assyst: Arc<Assyst>, message: &str) {
         let url: &str = assyst.config.logs.info.as_ref();
         if url.is_empty() {
+            println!("info: {}", message);
             return;
         };
 

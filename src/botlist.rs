@@ -26,6 +26,10 @@ lazy_static! {
         webhook_route: "dbl",
         post_guilds_url: format!("https://discordbotlist.com/api/v1/bots/{}/stats", BOT_ID),
     };
+    pub static ref TOP_GG: BotList = BotList {
+        webhook_route: "top_gg",
+        post_guilds_url: format!("https://top.gg/bots/{}/stats", BOT_ID),
+    };
 }
 
 mod filters {

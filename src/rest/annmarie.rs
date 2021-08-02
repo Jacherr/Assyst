@@ -33,7 +33,7 @@ mod routes {
     pub const ZOOM_BLUR: &str = "/zoom-blur";
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct AnnmarieError {
     pub message: Box<str>,
 }
@@ -43,6 +43,7 @@ pub struct AnnmarieInfo {
     pub uptime: f64,
 }
 
+#[derive(Debug)]
 pub enum RequestError {
     Reqwest(String),
     Annmarie(AnnmarieError, StatusCode),

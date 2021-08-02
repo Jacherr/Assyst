@@ -70,6 +70,7 @@ async fn main() {
     tokio::spawn(async move { spawned_cluster.up().await });
 
     // Tasks
+    tasks::init_bot_list_posting_loop(assyst.clone());
     tasks::init_reminder_loop(assyst.clone());
     tasks::init_caching_gc_loop(assyst.clone());
     tasks::update_patrons(assyst.clone());

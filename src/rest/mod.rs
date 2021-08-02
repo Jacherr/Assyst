@@ -1,6 +1,7 @@
 use bytes::Bytes;
 use reqwest::{Client, Error};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 pub mod annmarie;
 pub mod bt;
@@ -10,12 +11,22 @@ pub mod rust;
 pub mod wsi;
 
 mod routes {
+    use crate::consts::BOT_ID;
+
     pub const COOL_TEXT: &str = "https://cooltext.com/PostChange";
     pub const CDN: &str = "https://cdn.jacher.io";
     pub const OCR: &str = "http://ocr.y21_.repl.co/?url=";
     pub const CHARINFO: &str = "https://www.fileformat.info/info/unicode/char/";
     pub const FAKE_EVAL: &str = "https://jacher.io/eval";
     pub const IDENTIFY: &str = "https://captionbot2.azurewebsites.net/api/messages?language=en-US";
+
+    pub fn discord_bot_list_stats_url() -> String {
+        format!("https://discordbotlist.com/api/v1/bots/{}/stats", BOT_ID)
+    }
+
+    pub fn top_gg_stats_url() -> String {
+        format!("https://top.gg/api/bots/{}/stats", BOT_ID)
+    }
 }
 
 pub enum OcrError {
@@ -157,4 +168,28 @@ pub async fn burning_text(client: &Client, text: &str) -> Result<Bytes, Error> {
         .await?;
 
     Ok(content)
+}
+
+pub async fn post_bot_stats(client: &Client, discord_bot_list_token: &str, top_gg_token: &str, guild_count: u32) -> Result<(), Error> { 
+    client
+        .post(routes::discord_bot_list_stats_url())
+        .header("authorization", discord_bot_list_token)
+        .json(&json!({
+            "guilds": guild_count
+        }))
+        .send()
+        .await?
+        .error_for_status()?;
+
+    client
+        .post(routes::top_gg_stats_url())
+        .header("authorization", top_gg_token)
+        .json(&json!({
+            "server_count": guild_count
+        }))
+        .send()
+        .await?
+        .error_for_status()?;
+
+    Ok(())
 }
