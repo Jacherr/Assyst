@@ -122,7 +122,7 @@ mod handlers {
         super::handle_vote(
             assyst.clone(),
             body.id.parse().unwrap(),
-            "discordbotlist.com",
+            "[discordbotlist.com](https://discordbotlist.com/bots/assyst/upvote)",
         )
         .await;
 
@@ -133,7 +133,7 @@ mod handlers {
         body: TopGgWebhookBody,
         assyst: Arc<Assyst>,
     ) -> Result<impl Reply, Rejection> {
-        super::handle_vote(assyst.clone(), body.user.parse().unwrap(), "top.gg").await;
+        super::handle_vote(assyst.clone(), body.user.parse().unwrap(), "[top.gg](https://top.gg/bot/571661221854707713/vote)").await;
 
         Ok(warp::reply::reply())
     }
