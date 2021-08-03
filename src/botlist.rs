@@ -119,6 +119,8 @@ mod handlers {
         body: DiscordBotListWebhookBody,
         assyst: Arc<Assyst>,
     ) -> Result<impl Reply, Rejection> {
+        println!("a");
+
         super::handle_vote(
             assyst.clone(),
             body.id.parse().unwrap(),
@@ -133,6 +135,8 @@ mod handlers {
         body: TopGgWebhookBody,
         assyst: Arc<Assyst>,
     ) -> Result<impl Reply, Rejection> {
+        println!("b");
+
         super::handle_vote(assyst.clone(), body.user.parse().unwrap(), "top.gg").await;
 
         Ok(warp::reply::reply())
