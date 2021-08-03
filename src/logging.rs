@@ -34,6 +34,20 @@ impl Logger {
             .await;
     }
 
+    pub async fn log_vote(&self, assyst: Arc<Assyst>, message: &str) {
+        let url: &str = assyst.config.logs.vote.as_ref();
+        if url.is_empty() {
+            println!("vote: {}", message);
+            return;
+        };
+
+        let message = format!("**User Voted**: {}", message);
+
+        let _ = self
+            .exec_webhook_with(assyst.clone(), url, &message, 0x00FF33)
+            .await;
+    }
+
     async fn exec_webhook_with(
         &self,
         assyst: Arc<Assyst>,
