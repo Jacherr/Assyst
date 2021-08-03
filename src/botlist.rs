@@ -45,6 +45,12 @@ pub async fn handle_vote(assyst: Arc<Assyst>, user_id: i64, service: &'static st
     } else {
         let user = assyst.http.user(UserId::from(user_id as u64)).await.unwrap();
         let message;
+        let user_votes_entry = assyst.database.get_voter(user_id).await;
+        let user_votes = if let Some(u) = user_votes_entry {
+            u.count
+        } else {
+            0
+        };
 
         match user {
             Some(u) => {
@@ -54,8 +60,8 @@ pub async fn handle_vote(assyst: Arc<Assyst>, user_id: i64, service: &'static st
                     .await;
 
                 message = format!(
-                    "{}#{} voted for Assyst on {} and got {} free tier 1 requests!",
-                    u.name, u.discriminator, service, VOTE_FREE_TIER_1_REQUESTS
+                    "{0}#{1} voted for Assyst on {2} and got {3} free tier 1 requests!\n{0}#{1} has voted {4} total times.",
+                    u.name, u.discriminator, service, VOTE_FREE_TIER_1_REQUESTS, user_votes
                 )
             }
             None => {

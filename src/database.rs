@@ -502,4 +502,16 @@ impl Database {
         
         return result;
     }
+
+    pub async fn get_voter(&self, user_id: i64) -> Option<Voter> {
+        let fetch_query = "select * from user_votes where user_id = $1";
+
+        let result = sqlx::query_as::<_, Voter>(fetch_query)
+            .bind(user_id)
+            .fetch_optional(&self.pool)
+            .await
+            .unwrap();
+        
+        return result;
+    }
 }
