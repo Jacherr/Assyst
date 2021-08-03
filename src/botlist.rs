@@ -49,12 +49,12 @@ pub async fn handle_vote(assyst: Arc<Assyst>, user_id: i64, service: &'static st
             .await
             .map(|u| match u {
                 Some(u) => format!(
-                    "{}#{} ({}) voted for Assyst on {}!",
-                    u.name, u.discriminator, u.id, service
+                    "{}#{} voted for Assyst on {} and got {} free tier 1 requests!",
+                    u.name, u.discriminator, service, VOTE_FREE_TIER_1_REQUESTS
                 ),
                 None => format!(
-                    "An unknown user ({}) voted for Assyst on {}!",
-                    user_id, service
+                    "An unknown user voted for Assyst on {} and got {} free tier 1 requests!",
+                    service, VOTE_FREE_TIER_1_REQUESTS
                 ),
             })
             .unwrap();
@@ -119,8 +119,6 @@ mod handlers {
         body: DiscordBotListWebhookBody,
         assyst: Arc<Assyst>,
     ) -> Result<impl Reply, Rejection> {
-        println!("a");
-
         super::handle_vote(
             assyst.clone(),
             body.id.parse().unwrap(),
@@ -135,8 +133,6 @@ mod handlers {
         body: TopGgWebhookBody,
         assyst: Arc<Assyst>,
     ) -> Result<impl Reply, Rejection> {
-        println!("b");
-
         super::handle_vote(assyst.clone(), body.user.parse().unwrap(), "top.gg").await;
 
         Ok(warp::reply::reply())
@@ -145,10 +141,12 @@ mod handlers {
 
 pub fn run(assyst: Arc<Assyst>) {
     use filters::*;
-    use warp::{Filter, serve};
+    use warp::{serve, Filter};
 
     let filters = root().or(dbl(assyst.clone())).or(topgg(assyst.clone()));
     tokio::spawn(async move {
-        serve(filters).run(([0, 0, 0, 0], assyst.config.bot_list_port)).await;
+        serve(filters)
+            .run(([0, 0, 0, 0], assyst.config.bot_list_port))
+            .await;
     });
 }

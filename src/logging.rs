@@ -44,7 +44,7 @@ impl Logger {
         let message = format!("**User Voted**: {}", message);
 
         let _ = self
-            .exec_webhook_with(assyst.clone(), url, &message, 0x00FF33)
+            .exec_webhook_with(assyst.clone(), url, &message, 0xFFFFFF)
             .await;
     }
 
