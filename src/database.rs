@@ -481,7 +481,7 @@ impl Database {
     }
 
     pub async fn increment_user_votes(&self, user_id: i64, username: &str, discriminator: &str) {
-        let query = "insert into user_votes values($1, $2, $3, $4) on conflict (user_id) do update set count = user_votes.count + 1 where user_votes.user_id = $1";
+        let query = "insert into user_votes values($1, $2, $3, 1) on conflict (user_id) do update set count = user_votes.count + 1 where user_votes.user_id = $1";
 
         sqlx::query(query)
             .bind(user_id)
