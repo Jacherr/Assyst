@@ -857,21 +857,27 @@ pub async fn run_patron_status_command(
 ) -> CommandResult {
     let lock = context.assyst.patrons.read().await;
     let user = lock.iter().find(|i| i.user_id == context.message.author.id);
+    let patron_text;
+    let free_requests_text;
 
     match user {
         Some(u) => {
-            context
-                .reply_with_text(&format!("You're a tier {} patron.", u.tier))
-                .await?;
+            patron_text = format!("You're a tier {} patron.", u.tier);
         }
         None => {
-            context
-                .reply_with_text(
-                    "You're not a patron. You can become one at <https://patreon.com/jacher>",
-                )
-                .await?;
+            patron_text = String::from("You're not a patron. You can become one at <https://patreon.com/jacher>.");
         }
     }
+
+    let user_free_requests = context.assyst.database.get_user_free_tier1_requests(context.author_id().0 as i64).await;
+
+    if user_free_requests == 0 {
+        free_requests_text = String::from("You don't have any free elevated voting image commands. You can vote at <https://top.gg/bot/571661221854707713/vote> and <https://discordbotlist.com/bots/assyst/upvote>.")
+    } else {
+        free_requests_text = format!("You have {} free elevated voting image commands.", user_free_requests);
+    }
+
+    context.reply_with_text(&format!("{}\n{}", patron_text, free_requests_text)).await?;
 
     Ok(())
 }
