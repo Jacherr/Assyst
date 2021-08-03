@@ -311,3 +311,7 @@ pub fn bytes_to_readable(bytes: usize) -> String {
         format!("{}B", bytes)
     }
 }
+
+pub fn to_static_str(s: &Box<str>) -> &'static mut str {
+    Box::leak(s.clone())
+}
