@@ -56,7 +56,8 @@ pub async fn handle_vote(assyst: Arc<Assyst>, user_id: i64, service: &'static st
                     "An unknown user ({}) voted for Assyst on {}!",
                     user_id, service
                 ),
-            }).unwrap();
+            })
+            .unwrap();
 
         assyst.logger.log_vote(assyst.clone(), &message).await;
     }
@@ -64,7 +65,7 @@ pub async fn handle_vote(assyst: Arc<Assyst>, user_id: i64, service: &'static st
 
 mod filters {
     use super::handlers;
-    use crate::assyst::Assyst;
+    use crate::{assyst::Assyst, util::to_static_str};
     use std::sync::Arc;
     use warp::{Filter, Rejection, Reply};
 
@@ -77,11 +78,13 @@ mod filters {
 
     pub fn dbl(
         assyst: Arc<Assyst>,
-        auth: &'static str,
     ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
         warp::path(DISCORD_BOT_LIST_ENDPOINT)
             .and(warp::post())
-            .and(warp::header::exact("authorization", auth))
+            .and(warp::header::exact(
+                "authorization",
+                to_static_str(&assyst.config.auth.bot_list_webhook),
+            ))
             .and(warp::body::json())
             .and(warp::any().map(move || assyst.clone()))
             .and_then(handlers::dbl)
@@ -89,11 +92,13 @@ mod filters {
 
     pub fn topgg(
         assyst: Arc<Assyst>,
-        auth: &'static str,
     ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
         warp::path(TOP_GG_ENDPOINT)
             .and(warp::post())
-            .and(warp::header::exact("authorization", auth))
+            .and(warp::header::exact(
+                "authorization",
+                to_static_str(&assyst.config.auth.bot_list_webhook),
+            ))
             .and(warp::body::json())
             .and(warp::any().map(move || assyst.clone()))
             .and_then(handlers::dbl)
@@ -132,4 +137,14 @@ mod handlers {
 
         Ok(warp::reply::reply())
     }
+}
+
+pub fn run(assyst: Arc<Assyst>) {
+    use filters::*;
+    use warp::{Filter, serve};
+
+    let filters = root().or(dbl(assyst.clone())).or(topgg(assyst.clone()));
+    tokio::spawn(async move {
+        serve(filters).run(([0, 0, 0, 0], assyst.config.bot_list_port)).await;
+    });
 }

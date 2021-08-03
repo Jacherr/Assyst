@@ -29,6 +29,7 @@ use twilight_model::gateway::{
     presence::{Activity, ActivityType, Status},
     Intents,
 };
+use botlist::run as botlist_run;
 
 #[tokio::main]
 async fn main() {
@@ -74,6 +75,9 @@ async fn main() {
     tasks::init_reminder_loop(assyst.clone());
     tasks::init_caching_gc_loop(assyst.clone());
     tasks::update_patrons(assyst.clone());
+
+    // Bot list webhooks
+    botlist_run(assyst.clone());
 
     while let Some((_, event)) = events.next().await {
         let assyst_clone = assyst.clone();
