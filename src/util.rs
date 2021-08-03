@@ -1,14 +1,8 @@
-use crate::filetype;
+use crate::{assyst::Assyst, filetype};
 use bytes::Bytes;
 use futures_util::StreamExt;
 use regex::Captures;
-use std::{
-    borrow::Cow,
-    convert::TryInto,
-    num::ParseIntError,
-    process::Command,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::{borrow::Cow, convert::TryInto, num::ParseIntError, process::Command, sync::Arc, time::{SystemTime, UNIX_EPOCH}};
 use twilight_http::{error::Error, Client};
 use twilight_model::id::{GuildId, UserId};
 
@@ -314,4 +308,18 @@ pub fn bytes_to_readable(bytes: usize) -> String {
 
 pub fn to_static_str(s: &Box<str>) -> &'static mut str {
     Box::leak(s.clone())
+}
+
+/// This function will remove a free voter request if the user has any
+/// and are not a patron!
+pub async fn get_wsi_request_tier(assyst: Arc<Assyst>, user_id: UserId) -> usize {
+    let patrons = assyst.patrons.read().await;
+    let patron = patrons.iter().find(|i| i.user_id == user_id);
+    if let Some(p) = patron {
+        return p.tier;
+    }
+
+    let has_free_tier_1 = assyst.database.get_and_subtract_free_tier_1_request(user_id.0 as i64).await;
+
+    if has_free_tier_1 { 1 } else { 0 }
 }

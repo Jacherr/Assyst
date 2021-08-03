@@ -62,6 +62,12 @@ pub struct DisabledCommandEntry {
     pub guild_id: i64,
 }
 
+#[derive(sqlx::FromRow, Debug)]
+pub struct FreeTier1Requests {
+    pub user_id: i64,
+    pub count: i32,
+}
+
 type GuildDisabledCommands = Cache<GuildId, HashSet<String>>;
 
 pub struct DatabaseCache {
@@ -415,6 +421,53 @@ impl Database {
             .bind(add)
             .execute(&self.pool)
             .await?;
+
+        Ok(())
+    }
+
+    pub async fn get_and_subtract_free_tier_1_request(&self, user_id: i64) -> bool {
+        let result = self.get_user_free_tier1_requests(user_id).await;
+
+        if result == 0 {
+            false
+        } else {
+            let new_count = result - 1;
+
+            if new_count < 1 {
+                self.delete_user_from_free_tier_1_requests(user_id)
+                    .await
+                    .unwrap();
+            } else {
+                self.add_free_tier_1_requests(user_id, -1).await.unwrap();
+            }
+
+            true
+        }
+    }
+
+    pub async fn get_user_free_tier1_requests(&self, user_id: i64) -> i32 {
+        let fetch_query = "select * from free_tier1_requests where user_id = $1";
+
+        let result: Vec<FreeTier1Requests> = sqlx::query_as::<_, FreeTier1Requests>(fetch_query)
+            .bind(user_id)
+            .fetch_all(&self.pool)
+            .await
+            .unwrap();
+
+        if result.is_empty() {
+            0
+        } else {
+            result[0].count
+        }
+    }
+
+    pub async fn delete_user_from_free_tier_1_requests(
+        &self,
+        user_id: i64,
+    ) -> Result<(), sqlx::Error> {
+        let query = "delete from free_tier1_requests where user_id = $1";
+
+        sqlx::query(query).bind(user_id).execute(&self.pool).await?;
 
         Ok(())
     }

@@ -4,6 +4,7 @@ use reqwest::Error;
 use serde::Deserialize;
 use std::{future::Future, pin::Pin, sync::Arc};
 use twilight_model::id::UserId;
+use crate::util::get_wsi_request_tier;
 
 pub type NoArgFunction = Box<
     dyn Fn(
@@ -96,12 +97,7 @@ pub async fn request_bytes(
     query: &[(&str, &str)],
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    let mut premium_level = 0;
-    let lock = assyst.patrons.read().await;
-    let patron = lock.iter().find(|i| i.user_id == user_id);
-    if let Some(p) = patron {
-        premium_level = p.tier;
-    }
+    let premium_level = get_wsi_request_tier(assyst.clone(), user_id).await;
 
     let result = assyst
         .reqwest_client
