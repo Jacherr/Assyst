@@ -101,7 +101,7 @@ mod filters {
             ))
             .and(warp::body::json())
             .and(warp::any().map(move || assyst.clone()))
-            .and_then(handlers::dbl)
+            .and_then(handlers::topgg)
     }
 }
 
