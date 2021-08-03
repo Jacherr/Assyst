@@ -5,3 +5,4 @@ pub const MAX_CHAIN_LENGTH: usize = 100;
 pub const Y21: &'static str = "312715611413413889";
 pub const MESSAGE_CHARACTER_LIMIT: usize = 2000;
 pub const MESSAGE_EDIT_HANDLE_LIMIT: u32 = 60000;
+pub const IDENTIFY_ERROR_MESSAGE: &str = "I really can't describe the picture :flushed:";
