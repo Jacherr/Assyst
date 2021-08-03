@@ -34,6 +34,7 @@ impl Database {
 pub struct Logs {
     pub fatal: String,
     pub info: String,
+    pub vote: String
 }
 
 #[derive(Clone, Deserialize)]
