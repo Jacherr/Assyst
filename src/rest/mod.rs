@@ -3,6 +3,8 @@ use reqwest::{Client, Error};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
+use crate::consts;
+
 pub mod annmarie;
 pub mod bt;
 pub mod maryjane;
@@ -104,7 +106,7 @@ pub async fn upload_to_filer(
 }
 
 pub async fn identify_image(client: &Client, url: &str) -> Result<String, Error> {
-    client
+    Ok(client
         .post(routes::IDENTIFY)
         .json(&IdentifyBody {
             ty: "CaptionRequest",
@@ -114,6 +116,7 @@ pub async fn identify_image(client: &Client, url: &str) -> Result<String, Error>
         .await?
         .json()
         .await
+        .unwrap_or_else(|_| String::from(consts::IDENTIFY_ERROR_MESSAGE)))
 }
 
 pub async fn get_char_info(client: &Client, ch: char) -> Result<(String, String), Error> {
@@ -170,13 +173,16 @@ pub async fn burning_text(client: &Client, text: &str) -> Result<Bytes, Error> {
     Ok(content)
 }
 
-pub async fn post_bot_stats(client: &Client, discord_bot_list_token: &str, top_gg_token: &str, guild_count: u32) -> Result<(), Error> { 
+pub async fn post_bot_stats(
+    client: &Client,
+    discord_bot_list_token: &str,
+    top_gg_token: &str,
+    guild_count: u32,
+) -> Result<(), Error> {
     client
         .post(routes::discord_bot_list_stats_url())
         .header("authorization", discord_bot_list_token)
-        .json(&json!({
-            "guilds": guild_count
-        }))
+        .json(&json!({ "guilds": guild_count }))
         .send()
         .await?
         .error_for_status()?;
@@ -184,9 +190,7 @@ pub async fn post_bot_stats(client: &Client, discord_bot_list_token: &str, top_g
     client
         .post(routes::top_gg_stats_url())
         .header("authorization", top_gg_token)
-        .json(&json!({
-            "server_count": guild_count
-        }))
+        .json(&json!({ "server_count": guild_count }))
         .send()
         .await?
         .error_for_status()?;
