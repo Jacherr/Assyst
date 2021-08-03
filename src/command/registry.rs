@@ -178,6 +178,7 @@ impl CommandRegistry {
         register_command!(self, TERRARIA_COMMAND, run_terraria_command);
         register_command!(self, TOP_BT_COMMAND, run_top_bt_command);
         register_command!(self, TOP_COMMANDS_COMMAND, run_top_commands_command);
+        register_command!(self, TOP_VOTERS_COMMAND, run_top_voters_command);
         register_command!(self, TRANSLATE_COMMAND, run_translate_command);
         register_command!(self, WALL_COMMAND, run_wall_command);
         register_command!(self, WAVE_COMMAND, run_wave_command);

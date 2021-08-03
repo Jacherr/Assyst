@@ -43,21 +43,28 @@ pub async fn handle_vote(assyst: Arc<Assyst>, user_id: i64, service: &'static st
             )
             .await;
     } else {
-        let message = assyst
-            .http
-            .user(UserId::from(user_id as u64))
-            .await
-            .map(|u| match u {
-                Some(u) => format!(
+        let user = assyst.http.user(UserId::from(user_id as u64)).await.unwrap();
+        let message;
+
+        match user {
+            Some(u) => {
+                assyst
+                    .database
+                    .increment_user_votes(user_id, &u.name, &u.discriminator)
+                    .await;
+
+                message = format!(
                     "{}#{} voted for Assyst on {} and got {} free tier 1 requests!",
                     u.name, u.discriminator, service, VOTE_FREE_TIER_1_REQUESTS
-                ),
-                None => format!(
+                )
+            }
+            None => {
+                message = format!(
                     "An unknown user voted for Assyst on {} and got {} free tier 1 requests!",
                     service, VOTE_FREE_TIER_1_REQUESTS
-                ),
-            })
-            .unwrap();
+                )
+            }
+        }
 
         assyst.logger.log_vote(assyst.clone(), &message).await;
     }
@@ -133,7 +140,12 @@ mod handlers {
         body: TopGgWebhookBody,
         assyst: Arc<Assyst>,
     ) -> Result<impl Reply, Rejection> {
-        super::handle_vote(assyst.clone(), body.user.parse().unwrap(), "[top.gg](https://top.gg/bot/571661221854707713/vote)").await;
+        super::handle_vote(
+            assyst.clone(),
+            body.user.parse().unwrap(),
+            "[top.gg](https://top.gg/bot/571661221854707713/vote)",
+        )
+        .await;
 
         Ok(warp::reply::reply())
     }

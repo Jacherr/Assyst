@@ -206,6 +206,13 @@ lazy_static! {
         .cooldown(Duration::from_secs(1))
         .category(CATEGORY_NAME)
         .build();
+    pub static ref TOP_VOTERS_COMMAND: Command = CommandBuilder::new("topvoters")
+        .alias("topvotes")
+        .availability(CommandAvailability::Private)
+        .description("get top voter information")
+        .cooldown(Duration::from_secs(2))
+        .category(CATEGORY_NAME)
+        .build();
 }
 
 pub async fn run_ping_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
@@ -872,9 +879,9 @@ pub async fn run_patron_status_command(
     let user_free_requests = context.assyst.database.get_user_free_tier1_requests(context.author_id().0 as i64).await;
 
     if user_free_requests == 0 {
-        free_requests_text = String::from("You don't have any free elevated voting image commands. You can vote at <https://top.gg/bot/571661221854707713/vote> and <https://discordbotlist.com/bots/assyst/upvote>.")
+        free_requests_text = String::from("You don't have any free elevated voting image command invocations. You can vote at <https://top.gg/bot/571661221854707713/vote> and <https://discordbotlist.com/bots/assyst/upvote>.")
     } else {
-        free_requests_text = format!("You have {} free elevated voting image commands.", user_free_requests);
+        free_requests_text = format!("You have {} free elevated voting image command invocations.", user_free_requests);
     }
 
     context.reply_with_text(&format!("{}\n{}", patron_text, free_requests_text)).await?;
@@ -917,5 +924,40 @@ pub async fn run_uptime_command(context: Arc<Context>, _: Vec<ParsedArgument>) -
     ]);
 
     context.reply_with_text(&codeblock(&output, "yaml")).await?;
+    Ok(())
+}
+
+pub async fn run_top_voters_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
+    let top_voters = context
+        .assyst
+        .database
+        .get_voters()
+        .await;
+
+    let top_voters_formatted_raw: Vec<(String, String)> = top_voters
+        .iter()
+        .take(30)
+        .map(|t| (format!("{}#{}", t.username, t.discriminator), t.count.to_string()))
+        .collect::<Vec<_>>();
+
+    let top_commands_formatted = top_voters_formatted_raw
+        .iter()
+        .map(|(a, b)| (&a[..], &b[..]))
+        .collect::<Vec<_>>();
+
+    let table = generate_list("User", "Total Votes", &top_commands_formatted);
+
+    let user = top_voters.iter().find(|x| x.user_id == (context.author_id().0 as i64));
+    let count = match user {
+        Some(u) => u.count,
+        None => 0
+    };
+
+    let response = format!("You have voted {} times.\n{}", count, codeblock(&table, "hs"));
+
+    context
+        .reply_with_text(&response)
+        .await
+        .map_err(|e| e.to_string())?;
     Ok(())
 }

@@ -68,6 +68,14 @@ pub struct FreeTier1Requests {
     pub count: i32,
 }
 
+#[derive(sqlx::FromRow, Debug)]
+pub struct Voter {
+    pub user_id: i64,
+    pub username: String,
+    pub discriminator: String,
+    pub count: i32,
+}
+
 type GuildDisabledCommands = Cache<GuildId, HashSet<String>>;
 
 pub struct DatabaseCache {
@@ -470,5 +478,28 @@ impl Database {
         sqlx::query(query).bind(user_id).execute(&self.pool).await?;
 
         Ok(())
+    }
+
+    pub async fn increment_user_votes(&self, user_id: i64, username: &str, discriminator: &str) {
+        let query = "insert into user_votes values($1, $2, $3, $4) on conflict (user_id) do update set count = user_votes.count + 1 where user_votes.user_id = $1";
+
+        sqlx::query(query)
+            .bind(user_id)
+            .bind(username)
+            .bind(discriminator)
+            .execute(&self.pool)
+            .await
+            .unwrap();
+    }
+
+    pub async fn get_voters(&self) -> Vec<Voter> {
+        let fetch_query = "select * from user_votes order by count desc";
+
+        let result: Vec<Voter> = sqlx::query_as::<_, Voter>(fetch_query)
+            .fetch_all(&self.pool)
+            .await
+            .unwrap();
+        
+        return result;
     }
 }
