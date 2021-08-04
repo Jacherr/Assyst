@@ -879,7 +879,7 @@ pub async fn run_patron_status_command(
     let user_free_requests = context.assyst.database.get_user_free_tier1_requests(context.author_id().0 as i64).await;
 
     if user_free_requests == 0 {
-        free_requests_text = String::from("You don't have any free elevated voting image command invocations. You can vote at <https://top.gg/bot/571661221854707713/vote> and <https://discordbotlist.com/bots/assyst/upvote>.")
+        free_requests_text = String::from("You don't have any free elevated voting image command invocations. You can vote at <https://top.gg/bot/571661221854707713/vote> and <https://discord.ly/assyst/upvote>.")
     } else {
         free_requests_text = format!("You have {} free elevated voting image command invocations.", user_free_requests);
     }
