@@ -85,13 +85,19 @@ mod filters {
     use super::handlers;
     use crate::{assyst::Assyst, util::to_static_str};
     use std::sync::Arc;
-    use warp::{Filter, Rejection, Reply};
+    use warp::{http::Uri, Filter, Rejection, Reply};
 
     const DISCORD_BOT_LIST_ENDPOINT: &str = "dbl";
     const TOP_GG_ENDPOINT: &str = "topgg";
 
     pub fn root() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
         warp::path::end().and(warp::get()).and_then(handlers::root)
+    }
+
+    pub fn dbl_redirect() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+        warp::path(DISCORD_BOT_LIST_ENDPOINT)
+            .and(warp::get())
+            .and_then(handlers::dbl_redirect)
     }
 
     pub fn dbl(
@@ -106,6 +112,12 @@ mod filters {
             .and(warp::body::json())
             .and(warp::any().map(move || assyst.clone()))
             .and_then(handlers::dbl)
+    }
+
+    pub fn topgg_redirect() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+        warp::path(TOP_GG_ENDPOINT)
+            .and(warp::get())
+            .and_then(handlers::topgg_redirect)
     }
 
     pub fn topgg(
@@ -127,10 +139,16 @@ mod handlers {
     use super::{DiscordBotListWebhookBody, TopGgWebhookBody};
     use crate::assyst::Assyst;
     use std::sync::Arc;
-    use warp::{Rejection, Reply};
+    use warp::{hyper::Uri, Rejection, Reply};
 
     pub async fn root() -> Result<impl Reply, Rejection> {
         Ok(warp::reply::reply())
+    }
+
+    pub async fn dbl_redirect() -> Result<impl Reply, Rejection> {
+        Ok(warp::redirect::redirect(Uri::from_static(
+            "https://discordbotlist.com/bots/assyst/upvote",
+        )))
     }
 
     pub async fn dbl(
@@ -145,6 +163,12 @@ mod handlers {
         .await;
 
         Ok(warp::reply::reply())
+    }
+
+    pub async fn topgg_redirect() -> Result<impl Reply, Rejection> {
+        Ok(warp::redirect::redirect(Uri::from_static(
+            "https://top.gg/bot/571661221854707713/vote",
+        )))
     }
 
     pub async fn topgg(
@@ -166,7 +190,12 @@ pub fn run(assyst: Arc<Assyst>) {
     use filters::*;
     use warp::{serve, Filter};
 
-    let filters = root().or(dbl(assyst.clone())).or(topgg(assyst.clone()));
+    let filters = root()
+        .or(dbl(assyst.clone()))
+        .or(topgg(assyst.clone()))
+        .or(dbl_redirect())
+        .or(topgg_redirect());
+
     tokio::spawn(async move {
         serve(filters)
             .run(([0, 0, 0, 0], assyst.config.bot_list_port))
