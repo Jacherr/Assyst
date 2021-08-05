@@ -85,7 +85,7 @@ mod filters {
     use super::handlers;
     use crate::{assyst::Assyst, util::to_static_str};
     use std::sync::Arc;
-    use warp::{http::Uri, Filter, Rejection, Reply};
+    use warp::{Filter, Rejection, Reply};
 
     const DISCORD_BOT_LIST_ENDPOINT: &str = "dbl";
     const TOP_GG_ENDPOINT: &str = "topgg";
@@ -98,6 +98,7 @@ mod filters {
         warp::path(DISCORD_BOT_LIST_ENDPOINT)
             .and(warp::get())
             .and_then(handlers::dbl_redirect)
+            .boxed()
     }
 
     pub fn dbl(
@@ -112,12 +113,14 @@ mod filters {
             .and(warp::body::json())
             .and(warp::any().map(move || assyst.clone()))
             .and_then(handlers::dbl)
+            .boxed()
     }
 
     pub fn topgg_redirect() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
         warp::path(TOP_GG_ENDPOINT)
             .and(warp::get())
             .and_then(handlers::topgg_redirect)
+            .boxed()
     }
 
     pub fn topgg(
@@ -132,6 +135,7 @@ mod filters {
             .and(warp::body::json())
             .and(warp::any().map(move || assyst.clone()))
             .and_then(handlers::topgg)
+            .boxed()
     }
 }
 
@@ -142,7 +146,9 @@ mod handlers {
     use warp::{hyper::Uri, Rejection, Reply};
 
     pub async fn root() -> Result<impl Reply, Rejection> {
-        Ok(warp::reply::reply())
+        Ok(warp::redirect::redirect(Uri::from_static(
+            "https://jacher.io/assyst",
+        )))
     }
 
     pub async fn dbl_redirect() -> Result<impl Reply, Rejection> {
