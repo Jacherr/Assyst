@@ -977,6 +977,10 @@ impl Assyst {
         if attachment.is_some() {
             return attachment;
         };
+        let sticker = self.validate_message_sticker(message);
+        if sticker.is_some() {
+            return sticker;
+        }
         let embed = self.validate_message_embed(reply)?;
         Some(embed.to_string())
     }
