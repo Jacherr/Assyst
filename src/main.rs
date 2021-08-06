@@ -80,6 +80,7 @@ async fn main() {
     botlist_run(assyst.clone());
 
     while let Some((_, event)) = events.next().await {
+        assyst.metrics.write().await.processing.add_event();
         let assyst_clone = assyst.clone();
         tokio::spawn(async move {
             handle_event(assyst_clone, event).await;

@@ -29,7 +29,7 @@ use std::{
 use tokio::sync::RwLock;
 use twilight_gateway::Cluster;
 use twilight_http::Client as HttpClient;
-use twilight_model::{channel::Message, guild::Permissions, id::UserId};
+use twilight_model::{channel::{Message, message::sticker::StickerFormatType}, guild::Permissions, id::UserId};
 
 /// Takes an input string and prefix to parse and returns a tuple containing
 /// the command invocation (such as `help`) and any arguments to the command
@@ -587,16 +587,31 @@ impl Assyst {
             }
 
             Argument::StringRemaining => {
-                if args.len() <= *index {
-                    return Err(CommandParseError::with_reply(
+                // check if no extra args or if no referenced message  
+                if args.len() <= *index && context.message.referenced_message.is_none() {
+                    Err(CommandParseError::with_reply(
                         "This command expects a text argument that was not provided.".to_owned(),
                         Some(command),
                         CommandParseErrorType::MissingArgument,
-                    ));
+                    ))
+                // check if referenced message and if it has any content to use
+                } else if let Some(r) = &context.message.referenced_message {
+                    if r.content.is_empty() {
+                        Err(CommandParseError::with_reply(
+                            "This command expects a text argument that was not provided.".to_owned(),
+                            Some(command),
+                            CommandParseErrorType::MissingArgument,
+                        ))
+                    } else {
+                        Ok(ParsedArgumentResult::r#break(ParsedArgument::Text(
+                            r.content.clone(),
+                        )))
+                    }
+                } else {
+                    Ok(ParsedArgumentResult::r#break(ParsedArgument::Text(
+                        args[*index..].join(" "),
+                    )))
                 }
-                Ok(ParsedArgumentResult::r#break(ParsedArgument::Text(
-                    args[*index..].join(" "),
-                )))
             }
 
             Argument::Optional(a) => {
@@ -796,6 +811,9 @@ impl Assyst {
             try_url = self.validate_emoji_argument(argument).await;
         }
         if try_url.is_none() {
+            try_url = self.validate_message_sticker(message);
+        }
+        if try_url.is_none() {
             try_url = self.validate_previous_message_attachment(message).await;
             if try_url.is_some() {
                 should_increment = false
@@ -972,6 +990,8 @@ impl Assyst {
             .map(|message| {
                 if let Some(_) = message.embeds.first() {
                     self.validate_message_embed(message)
+                } else if let Some(_) = message.sticker_items.first() {
+                    self.validate_message_sticker(message).and_then(|a| Some(Cow::Owned(a.clone())))
                 } else {
                     message
                         .attachments
@@ -986,6 +1006,15 @@ impl Assyst {
             .find(|attachment| attachment.is_some())?
             .as_ref()
             .and_then(|x| Some(x.to_string()))
+    }
+
+    fn validate_message_sticker(&self, message: &Message) -> Option<String> {
+        let sticker = message.sticker_items.first()?;
+        let r#type = sticker.format_type;
+        if r#type == StickerFormatType::Lottie { None }
+        else {
+            Some(format!("https://media.discordapp.net/stickers/{}.png", sticker.id))
+        }
     }
 
     /// Check if the command invocation contains a valid URL

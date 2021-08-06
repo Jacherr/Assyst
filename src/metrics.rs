@@ -3,6 +3,7 @@ use std::collections::HashMap;
 pub struct CountableMetrics {
     pub total_commands: u32,
     pub total_processing_time: f32,
+    pub events: u32
 }
 
 impl CountableMetrics {
@@ -10,12 +11,17 @@ impl CountableMetrics {
         Self {
             total_commands: 0,
             total_processing_time: 0f32,
+            events: 0
         }
     }
 
     pub fn add(&mut self, time: f32) {
         self.total_commands += 1;
         self.total_processing_time += time;
+    }
+
+    pub fn add_event(&mut self) {
+        self.events += 1;
     }
 
     pub fn avg(&self) -> f32 {

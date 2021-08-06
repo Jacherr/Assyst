@@ -115,6 +115,9 @@ pub struct Patron {
     pub tier: usize,
 }
 
+
+/// I am not proud of this code but at the same time I am not proud
+/// of Patreon for making such a terrible API
 pub async fn get_patrons(assyst: Arc<Assyst>, api_key: &str) -> Result<Vec<Patron>, Error> {
     let response = assyst
         .reqwest_client
