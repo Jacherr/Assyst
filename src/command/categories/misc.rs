@@ -30,6 +30,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+const USEFUL_LINKS_TEXT: &str = "Invite the bot: <https://jacher.io/assyst>\nSupport server: <https://discord.gg/VRPGgMEhGk>\nVote for Assyst for some sweet perks! <https://vote.jacher.io/topgg> & <https://vote.jacher.io/dbl>";
+
 const CATEGORY_NAME: &str = "misc";
 
 lazy_static! {
@@ -103,6 +105,7 @@ lazy_static! {
         .arg(Argument::OptionalWithDefaultDynamic(Box::new(Argument::StringRemaining), |_| {
             ParsedArgument::Text(String::from("..."))
         }))
+        .alias("reminder")
         .public()
         .description("get reminders or set a reminder, time format is xdyhzm (check examples)")
         .example("1d10h hello")
@@ -222,12 +225,13 @@ pub async fn run_ping_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> 
         .reply(MessageBuilder::new().content("pong!").clone())
         .await
         .map_err(|e| e.to_string())?;
+
     context
         .assyst
         .http
         .update_message(message.channel_id, message.id)
         .content(format!(
-            "pong!\nprocessing time: {}µs\nresponse time:{}ms",
+            "pong!\nprocessing time: {}µs\nresponse time:{} ms",
             processing_time,
             start.elapsed().as_millis()
         ))
@@ -281,14 +285,12 @@ pub async fn run_help_command(context: Arc<Context>, args: Vec<ParsedArgument>) 
         });
 
         context
-            .reply_with_text(
-                &format!(
-                    "{}\n*Do {}help [command] for more info on a command.*\nInvite the bot: <https://jacher.io/assyst>\nSupport server: <https://discord.gg/VRPGgMEhGk>\n**Note: The default bot prefix is `{}`**",
-                    &command_help_entries.join("\n"),
-                    context.prefix,
-                    context.assyst.config.prefix.default
-                )
-            )
+            .reply_with_text(&format!(
+                "{}\n*Do {}help [command] for more info on a command.*\n{}",
+                &command_help_entries.join("\n"),
+                context.prefix,
+                USEFUL_LINKS_TEXT
+            ))
             .await
             .map_err(|e| e.to_string())?;
     } else {
@@ -357,16 +359,7 @@ pub async fn run_help_command(context: Arc<Context>, args: Vec<ParsedArgument>) 
 
 pub async fn run_invite_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
     context
-        .reply(
-            MessageBuilder::new()
-                .content(
-                    &format!(
-                        "Bot invite: <https://jacher.io/assyst>\nSupport server: <https://discord.gg/VRPGgMEhGk>\n**Note: The default bot prefix is `{}`**", 
-                        context.assyst.config.prefix.default
-                    ),
-                )
-                .clone(),
-        )
+        .reply(MessageBuilder::new().content(USEFUL_LINKS_TEXT).clone())
         .await
         .map_err(|e| e.to_string())?;
     Ok(())
@@ -410,6 +403,7 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
     let memory = get_memory_usage().unwrap_or("Unknown".to_owned());
     let commands = context.assyst.registry.get_command_count().to_string();
     let proc_time = (context.assyst.get_average_processing_time().await / 1e3).to_string();
+    let events = context.assyst.metrics.read().await.processing.events;
 
     let total_command_calls = context
         .assyst
@@ -437,6 +431,7 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
             format!("Total: {}, Server: {}", total, guild)
         }),
         ("Commands Ran", &total_command_calls),
+        ("Events Since Restart", &events.to_string()),
     ]);
 
     context
@@ -872,19 +867,30 @@ pub async fn run_patron_status_command(
             patron_text = format!("You're a tier {} patron.", u.tier);
         }
         None => {
-            patron_text = String::from("You're not a patron. You can become one at <https://patreon.com/jacher>.");
+            patron_text = String::from(
+                "You're not a patron. You can become one at <https://patreon.com/jacher>.",
+            );
         }
     }
 
-    let user_free_requests = context.assyst.database.get_user_free_tier1_requests(context.author_id().0 as i64).await;
+    let user_free_requests = context
+        .assyst
+        .database
+        .get_user_free_tier1_requests(context.author_id().0 as i64)
+        .await;
 
     if user_free_requests == 0 {
         free_requests_text = String::from("You don't have any free elevated voting image command invocations. You can vote at <https://vote.jacher.io/topgg> and <https://vote.jacher.io/dbl>.")
     } else {
-        free_requests_text = format!("You have {} free elevated voting image command invocations.", user_free_requests);
+        free_requests_text = format!(
+            "You have {} free elevated voting image command invocations.",
+            user_free_requests
+        );
     }
 
-    context.reply_with_text(&format!("{}\n{}", patron_text, free_requests_text)).await?;
+    context
+        .reply_with_text(&format!("{}\n{}", patron_text, free_requests_text))
+        .await?;
 
     Ok(())
 }
@@ -927,17 +933,21 @@ pub async fn run_uptime_command(context: Arc<Context>, _: Vec<ParsedArgument>) -
     Ok(())
 }
 
-pub async fn run_top_voters_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
-    let top_voters = context
-        .assyst
-        .database
-        .get_voters()
-        .await;
+pub async fn run_top_voters_command(
+    context: Arc<Context>,
+    _: Vec<ParsedArgument>,
+) -> CommandResult {
+    let top_voters = context.assyst.database.get_voters().await;
 
     let top_voters_formatted_raw: Vec<(String, String)> = top_voters
         .iter()
         .take(30)
-        .map(|t| (format!("{}#{}", t.username, t.discriminator), t.count.to_string()))
+        .map(|t| {
+            (
+                format!("{}#{}", t.username, t.discriminator),
+                t.count.to_string(),
+            )
+        })
         .collect::<Vec<_>>();
 
     let top_commands_formatted = top_voters_formatted_raw
@@ -947,13 +957,19 @@ pub async fn run_top_voters_command(context: Arc<Context>, _: Vec<ParsedArgument
 
     let table = generate_list("User", "Total Votes", &top_commands_formatted);
 
-    let user = top_voters.iter().find(|x| x.user_id == (context.author_id().0 as i64));
+    let user = top_voters
+        .iter()
+        .find(|x| x.user_id == (context.author_id().0 as i64));
     let count = match user {
         Some(u) => u.count,
-        None => 0
+        None => 0,
     };
 
-    let response = format!("You have voted {} times.\n{}", count, codeblock(&table, "hs"));
+    let response = format!(
+        "You have voted {} times.\n{}",
+        count,
+        codeblock(&table, "hs")
+    );
 
     context
         .reply_with_text(&response)
