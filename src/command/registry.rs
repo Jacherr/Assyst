@@ -148,6 +148,7 @@ impl CommandRegistry {
         register_command!(self, JPEG_COMMAND, run_jpeg_command);
         register_command!(self, MAGIK_COMMAND, run_magik_command);
         register_command!(self, MEME_COMMAND, run_meme_command);
+        register_command!(self, MONEY_COMMAND, run_money_command);
         register_command!(self, MOTIVATE_COMMAND, run_motivate_command);
         register_command!(self, NEON_COMMAND, run_neon_command);
         register_command!(self, OCR_COMMAND, run_ocr_command);
