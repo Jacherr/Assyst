@@ -8,7 +8,17 @@ use sqlx::postgres::{PgPool, PgPoolOptions};
 use tokio::sync::RwLock;
 use twilight_model::id::GuildId;
 
-use crate::{badtranslator::ChannelCache, caching::Cache, util::get_current_millis};
+use crate::{
+    badtranslator::{BadTranslatorEntry, ChannelCache},
+    caching::Cache,
+    util::get_current_millis,
+};
+
+#[derive(sqlx::FromRow, Debug)]
+pub struct BadTranslatorChannel {
+    pub id: i64,
+    pub target_language: String,
+}
 
 #[derive(sqlx::FromRow, Debug)]
 pub struct DatabaseReminder {
@@ -166,34 +176,53 @@ impl Database {
     }
 
     pub async fn get_bt_channels(&self) -> Result<ChannelCache, sqlx::Error> {
-        let query = "SELECT id FROM bt_channels";
+        let query = "SELECT * FROM bt_channels";
 
         let mut channels: ChannelCache = HashMap::new();
 
-        let mut rows = sqlx::query_as::<_, (i64,)>(query).fetch(&self.pool);
+        let mut rows = sqlx::query_as::<_, BadTranslatorChannel>(query).fetch(&self.pool);
 
         while let Some(Ok(row)) = rows.next().await {
-            channels.insert(row.0 as u64, None);
+            channels.insert(
+                row.id as u64,
+                BadTranslatorEntry::with_language(row.target_language),
+            );
         }
 
         Ok(channels)
     }
 
-    pub async fn delete_bt_channel(&self, id: u64) -> Result<(), sqlx::Error> {
-        let query = r#"DELETE FROM bt_channels WHERE id = $1"#;
+    pub async fn delete_bt_channel(&self, id: u64) -> Result<bool, sqlx::Error> {
+        let query = r#"DELETE FROM bt_channels WHERE id = $1 RETURNING *"#;
 
         sqlx::query(query)
             .bind(id as i64)
-            .execute(&self.pool)
+            .fetch_all(&self.pool)
             .await
-            .map(|_| ())
+            .map(|x| !x.is_empty())
     }
 
-    pub async fn add_bt_channel(&self, id: u64) -> Result<(), sqlx::Error> {
-        let query = r#"INSERT INTO bt_channels VALUES ($1)"#;
+    pub async fn update_bt_channel_language(
+        &self,
+        id: u64,
+        new_language: &str,
+    ) -> Result<bool, sqlx::Error> {
+        let query = r#"UPDATE bt_channels SET target_language = $1 WHERE id = $2 RETURNING *"#;
+
+        sqlx::query(query)
+            .bind(new_language)
+            .bind(id as i64)
+            .fetch_all(&self.pool)
+            .await
+            .map(|x| !x.is_empty())
+    }
+
+    pub async fn add_bt_channel(&self, id: u64, language: &str) -> Result<(), sqlx::Error> {
+        let query = r#"INSERT INTO bt_channels VALUES ($1, $2)"#;
 
         sqlx::query(query)
             .bind(id as i64)
+            .bind(language)
             .execute(&self.pool)
             .await
             .and_then(|_| Ok(()))
@@ -499,7 +528,7 @@ impl Database {
             .fetch_all(&self.pool)
             .await
             .unwrap();
-        
+
         return result;
     }
 
@@ -511,7 +540,7 @@ impl Database {
             .fetch_optional(&self.pool)
             .await
             .unwrap();
-        
+
         return result;
     }
 }

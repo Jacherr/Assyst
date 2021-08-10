@@ -270,6 +270,13 @@ pub mod force_as {
         }
     }
 
+    pub fn maybe_text(argument: &ParsedArgument) -> Option<&str> {
+        match argument {
+            ParsedArgument::Text(data) => Some(data),
+            _ => None,
+        }
+    }
+
     pub fn choice(argument: &ParsedArgument) -> &'static str {
         match argument {
             ParsedArgument::Choice(data) => data,

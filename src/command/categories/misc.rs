@@ -9,11 +9,12 @@ use crate::{
     },
     rest::{
         annmarie::{self, info},
+        bt::{get_languages, validate_language},
         fake_eval, wsi,
     },
     util::{
-        codeblock, exec_sync, extract_page_title, format_discord_timestamp, format_time,
-        generate_list, generate_table, get_memory_usage, parse_codeblock,
+        codeblock, ensure_same_guild, exec_sync, extract_page_title, format_discord_timestamp,
+        format_time, generate_list, generate_table, get_memory_usage, parse_codeblock,
     },
 };
 use crate::{
@@ -132,10 +133,19 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .build();
     pub static ref BT_CHANNEL_COMMAND: Command = CommandBuilder::new("btchannel")
+        .arg(Argument::Choice(&["add", "setlanguage", "remove", "languages"]))
+        .arg(Argument::Optional(Box::new(Argument::String)))
+        .arg(Argument::Optional(Box::new(Argument::String)))
         .availability(CommandAvailability::GuildOwner)
         .description("configures the bad translator feature in this channel")
-        .cooldown(Duration::from_secs(2))
+        .cooldown(Duration::from_secs(10))
         .category(CATEGORY_NAME)
+        .usage("[add|setlanguage|remove|languages] <[channel id]> <[language]>")
+        .example("add 123456789 en")
+        .example("add 123456789 ru")
+        .example("languages")
+        .example("setlanguage 123456789 fi")
+        .example("remove 123456789")
         .build();
     pub static ref COMMAND_COMMAND: Command = CommandBuilder::new("command")
         .alias("cmd")
@@ -691,29 +701,158 @@ pub async fn run_top_bt_command(context: Arc<Context>, _: Vec<ParsedArgument>) -
     Ok(())
 }
 
-pub async fn run_btchannel_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
-    let channel_id = context.message.channel_id;
+pub async fn run_btchannel_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+) -> CommandResult {
+    let mut args = args.iter();
+    let ty = args.next().map(force_as::choice).unwrap();
 
-    context
-        .http()
-        .create_webhook(channel_id, "Bad Translator")
-        .await
-        .map_err(|e| e.to_string())?;
+    // safe to unwrap - we can only use it in a guild
+    let guild_id = context.message.guild_id.unwrap().0;
 
-    context.assyst.database.add_bt_channel(channel_id.0)
-        .await
-        .map_err(|e| {
-            eprintln!("{:?}", e);
-            "Registering BT channel failed. This is likely a bug. Please contact one of the bot developers".to_string()
-        })?;
+    match ty {
+        "add" => {
+            let channel_id = args
+                .next()
+                .and_then(force_as::maybe_text)
+                .map(str::parse::<u64>)
+                .unwrap_or(Ok(context.message.channel_id.0))
+                .map_err(|e| e.to_string())?;
 
-    context.assyst.badtranslator.add_channel(channel_id.0).await;
+            ensure_same_guild(&context, channel_id, guild_id).await?;
 
-    context
-        .reply_with_text("ok")
-        .await
-        .map_err(|e| e.to_string())
-        .map(|_| ())
+            let language = args.next().and_then(force_as::maybe_text).unwrap_or("en");
+
+            let is_valid_language = validate_language(&context.assyst.reqwest_client, language)
+                .await
+                .map_err(|e| e.to_string())?;
+
+            if !is_valid_language {
+                return Err(format!(
+                    "This language does not exist or cannot be used as a target language. Run `{}btchannel languages` for a list of languages",
+                    context.prefix
+                ));
+            }
+
+            context
+                .http()
+                .create_webhook(channel_id.into(), "Bad Translator")
+                .await
+                .map_err(|e| e.to_string())?;
+
+            context.assyst.database.add_bt_channel(channel_id, language)
+                .await
+                .map_err(|e| {
+                    eprintln!("{:?}", e);
+                    "Registering BT channel failed. This is likely a bug. Please contact one of the bot developers".to_string()
+                })?;
+
+            context
+                .assyst
+                .badtranslator
+                .add_channel(channel_id, language)
+                .await;
+
+            context
+                .reply_with_text("BT Channel registered.")
+                .await
+                .map_err(|e| e.to_string())?;
+        }
+        "setlanguage" => {
+            let channel_id = args
+                .next()
+                .and_then(force_as::maybe_text)
+                .map(str::parse::<u64>)
+                .unwrap_or(Ok(context.message.channel_id.0))
+                .map_err(|e| e.to_string())?;
+
+            ensure_same_guild(&context, channel_id, guild_id).await?;
+
+            let language = args.next().and_then(force_as::maybe_text).unwrap_or("en");
+
+            let is_valid_language = validate_language(&context.assyst.reqwest_client, language)
+                .await
+                .map_err(|e| e.to_string())?;
+
+            if !is_valid_language {
+                return Err(format!(
+                    "This language does not exist or cannot be used as a target language. Run `{}btchannel languages` for a list of languages",
+                    context.prefix
+                ));
+            }
+
+            let did_update = context
+                .assyst
+                .database
+                .update_bt_channel_language(channel_id, language)
+                .await
+                .map_err(|e| e.to_string())?;
+
+            if !did_update {
+                return Err(String::from("Failed to update BT language. Make sure that the provided ID is a valid BT channel."));
+            }
+
+            context
+                .assyst
+                .badtranslator
+                .set_channel_language(channel_id, language)
+                .await;
+
+            context
+                .reply_with_text(&format!("BT Channel language set to `{}`", language))
+                .await
+                .map_err(|e| e.to_string())?;
+        }
+        "remove" => {
+            let channel_id = args
+                .next()
+                .and_then(force_as::maybe_text)
+                .map(str::parse::<u64>)
+                .ok_or_else(|| String::from("Please provide a channel ID."))?
+                .map_err(|e| e.to_string())?;
+
+            ensure_same_guild(&context, channel_id, guild_id).await?;
+
+            let did_delete = context
+                .assyst
+                .database
+                .delete_bt_channel(channel_id)
+                .await
+                .map_err(|e| e.to_string())?;
+
+            if !did_delete {
+                return Err(String::from(
+                    "Failed to delete BT channel. Is it registered in that channel?",
+                ));
+            }
+
+            context
+                .assyst
+                .badtranslator
+                .remove_bt_channel(channel_id)
+                .await;
+
+            context
+                .reply_with_text("BT channel successfully deleted.")
+                .await
+                .map_err(|e| e.to_string())?;
+        }
+        "languages" => {
+            let languages = get_languages(&context.assyst.reqwest_client)
+                .await
+                .map_err(|e| e.to_string())?;
+
+            let message = codeblock(&generate_list("Code", "Language", &languages), "hs");
+            context
+                .reply_with_text(&message)
+                .await
+                .map_err(|e| e.to_string())?;
+        }
+        _ => unreachable!(),
+    };
+
+    Ok(())
 }
 
 pub async fn run_chars_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {

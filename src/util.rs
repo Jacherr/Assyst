@@ -1,7 +1,8 @@
-use crate::{assyst::Assyst, consts, filetype};
+use crate::{assyst::Assyst, command::context::Context, consts, filetype};
 use bytes::Bytes;
 use futures_util::StreamExt;
 use regex::Captures;
+
 use std::{
     borrow::Cow,
     convert::TryInto,
@@ -11,7 +12,10 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 use twilight_http::{error::Error, Client};
-use twilight_model::id::{GuildId, UserId};
+use twilight_model::{
+    channel::Channel,
+    id::{GuildId, UserId},
+};
 
 #[macro_export]
 macro_rules! box_str {
@@ -74,6 +78,41 @@ pub fn generate_table(input: &[(&str, &str)]) -> String {
             )
         })
         .fold(String::new(), |a, b| a + &b)
+}
+
+pub async fn ensure_same_guild(
+    context: &Arc<Context>,
+    channel_id: u64,
+    guild_id: u64,
+) -> Result<(), String> {
+    let is = is_same_guild(context.http(), channel_id, guild_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !is {
+        return Err(String::from(
+            "The provided channel is not part of this guild.",
+        ));
+    } else {
+        Ok(())
+    }
+}
+
+pub async fn is_same_guild(
+    client: &Client,
+    channel_id: u64,
+    guild_id: u64,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    let real_guild_id = client
+        .channel(channel_id.into())
+        .await?
+        .and_then(|c| match c {
+            Channel::Guild(g) => g.guild_id(),
+            _ => None,
+        })
+        .map(|g| g.0);
+
+    Ok(real_guild_id == Some(guild_id))
 }
 
 /// Generates a list given a list of tuples containing strings
