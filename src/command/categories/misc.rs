@@ -203,12 +203,6 @@ lazy_static! {
         .cooldown(Duration::from_secs(1))
         .category(CATEGORY_NAME)
         .build();
-    pub static ref UPTIME_COMMAND: Command = CommandBuilder::new("uptime")
-        .availability(CommandAvailability::Private)
-        .description("Get the uptime of Assyst services")
-        .cooldown(Duration::from_secs(1))
-        .category(CATEGORY_NAME)
-        .build();
     pub static ref TOP_VOTERS_COMMAND: Command = CommandBuilder::new("topvoters")
         .alias("topvotes")
         .availability(CommandAvailability::Private)
@@ -414,12 +408,13 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
         .unwrap_or(0)
         .to_string();
 
-    let table = generate_table(&[
+    let stats_table = generate_table(&[
         ("Guilds", &guild_count),
         ("Memory", &memory),
         ("Commands", &commands),
         ("Avg Processing Time", &format!("{:.4}s", proc_time)),
-        ("Uptime", &context.assyst.uptime().format()),
+        ("Commands Ran", &total_command_calls),
+        ("Events Since Restart", &events.to_string()),
         ("BadTranslator Messages", &{
             let (total, guild) = context
                 .assyst
@@ -430,14 +425,34 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
 
             format!("Total: {}, Server: {}", total, guild)
         }),
-        ("Commands Ran", &total_command_calls),
-        ("Events Since Restart", &events.to_string()),
+    ]);
+
+    let assyst_uptime = context.assyst.uptime().format();
+
+    let annmarie_info = info(context.assyst.clone())
+        .await
+        .map_err(annmarie::format_err)?;
+    let annmarie_uptime = format_time(annmarie_info.uptime.floor() as u64 * 1000);
+
+    let wsi_info = wsi::stats(context.assyst.clone())
+        .await
+        .map_err(wsi::format_err)?;
+    let wsi_uptime = format_time(wsi_info.uptime_ms as u64);
+
+    let uptimes_table = generate_table(&[
+        ("Assyst", &assyst_uptime),
+        ("Annmarie", &annmarie_uptime),
+        ("WSI", &wsi_uptime),
     ]);
 
     context
         .reply(
             MessageBuilder::new()
-                .content(&codeblock(&table, "hs"))
+                .content(&format!(
+                    "**Stats:** {} **Uptimes:** {}",
+                    codeblock(&stats_table, "hs"),
+                    codeblock(&uptimes_table, "hs")
+                ))
                 .clone(),
         )
         .await
@@ -907,29 +922,6 @@ pub async fn run_cache_status_command(
             replies_size, ratelimits_size
         ))
         .await?;
-    Ok(())
-}
-
-pub async fn run_uptime_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
-    let assyst_uptime = context.assyst.uptime().format();
-
-    let annmarie_info = info(context.assyst.clone())
-        .await
-        .map_err(annmarie::format_err)?;
-    let annmarie_uptime = format_time(annmarie_info.uptime.floor() as u64 * 1000);
-
-    let wsi_info = wsi::stats(context.assyst.clone())
-        .await
-        .map_err(wsi::format_err)?;
-    let wsi_uptime = format_time(wsi_info.uptime_ms as u64);
-
-    let output = generate_table(&[
-        ("Assyst", &assyst_uptime),
-        ("Annmarie", &annmarie_uptime),
-        ("WSI", &wsi_uptime),
-    ]);
-
-    context.reply_with_text(&codeblock(&output, "yaml")).await?;
     Ok(())
 }
 
