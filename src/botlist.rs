@@ -1,9 +1,12 @@
 // TODO
 
 use crate::assyst::Assyst;
+use crate::util::to_static_str;
+use filters::*;
 use serde::Deserialize;
 use std::sync::Arc;
 use twilight_model::id::UserId;
+use warp::{serve, Filter};
 
 const VOTE_FREE_TIER_1_REQUESTS: i64 = 5;
 
@@ -83,7 +86,7 @@ pub async fn handle_vote(assyst: Arc<Assyst>, user_id: i64, service: &'static st
 
 mod filters {
     use super::handlers;
-    use crate::{assyst::Assyst, util::to_static_str};
+    use crate::assyst::Assyst;
     use std::sync::Arc;
     use warp::{Filter, Rejection, Reply};
 
@@ -103,13 +106,11 @@ mod filters {
 
     pub fn dbl(
         assyst: Arc<Assyst>,
+        auth: &'static str,
     ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
         warp::path(DISCORD_BOT_LIST_ENDPOINT)
             .and(warp::post())
-            .and(warp::header::exact(
-                "authorization",
-                to_static_str(&assyst.config.auth.bot_list_webhook),
-            ))
+            .and(warp::header::exact("authorization", auth))
             .and(warp::body::json())
             .and(warp::any().map(move || assyst.clone()))
             .and_then(handlers::dbl)
@@ -125,13 +126,11 @@ mod filters {
 
     pub fn topgg(
         assyst: Arc<Assyst>,
+        auth: &'static str,
     ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
         warp::path(TOP_GG_ENDPOINT)
             .and(warp::post())
-            .and(warp::header::exact(
-                "authorization",
-                to_static_str(&assyst.config.auth.bot_list_webhook),
-            ))
+            .and(warp::header::exact("authorization", auth))
             .and(warp::body::json())
             .and(warp::any().map(move || assyst.clone()))
             .and_then(handlers::topgg)
@@ -193,12 +192,11 @@ mod handlers {
 }
 
 pub fn run(assyst: Arc<Assyst>) {
-    use filters::*;
-    use warp::{serve, Filter};
+    let auth = to_static_str(&assyst.config.auth.bot_list_webhook);
 
     let filters = root()
-        .or(dbl(assyst.clone()))
-        .or(topgg(assyst.clone()))
+        .or(dbl(assyst.clone(), auth))
+        .or(topgg(assyst.clone(), auth))
         .or(dbl_redirect())
         .or(topgg_redirect());
 
