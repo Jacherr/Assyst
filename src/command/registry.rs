@@ -106,7 +106,6 @@ impl CommandRegistry {
     }
 
     pub fn register_commands(&mut self) {
-        // register_command!(self, UPTIME_COMMAND, run_uptime_command);
         // register_command!(self, _3D_ROTATE_COMMAND, run_3d_rotate_command);
         // register_command!(self, FLASH_COMMAND, run_flash_command);
         register_command!(self, AHSHIT_COMMAND, run_ahshit_command);
