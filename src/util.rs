@@ -1,8 +1,15 @@
-use crate::{assyst::Assyst, filetype};
+use crate::{assyst::Assyst, consts, filetype};
 use bytes::Bytes;
 use futures_util::StreamExt;
 use regex::Captures;
-use std::{borrow::Cow, convert::TryInto, num::ParseIntError, process::Command, sync::Arc, time::{SystemTime, UNIX_EPOCH}};
+use std::{
+    borrow::Cow,
+    convert::TryInto,
+    num::ParseIntError,
+    process::Command,
+    sync::Arc,
+    time::{SystemTime, UNIX_EPOCH},
+};
 use twilight_http::{error::Error, Client};
 use twilight_model::id::{GuildId, UserId};
 
@@ -26,10 +33,12 @@ pub mod regexes {
     }
 }
 
+/// Returns the file type given [`Bytes`]
 pub fn get_buffer_filetype(buffer: &Bytes) -> Option<&'static str> {
     Some(filetype::get_sig(&buffer.to_vec())?.as_str())
 }
 
+/// Returns the current timestamp in milliseconds
 pub fn get_current_millis() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -39,6 +48,7 @@ pub fn get_current_millis() -> u64 {
         .expect("Couldn't fit timestamp (u128) into i64")
 }
 
+/// Returns the longer string of the two given strings
 pub fn get_longer_str<'a>(a: &'a str, b: &'a str) -> &'a str {
     if a.len() > b.len() {
         a
@@ -47,6 +57,7 @@ pub fn get_longer_str<'a>(a: &'a str, b: &'a str) -> &'a str {
     }
 }
 
+/// Generates a table given a list of tuples containing strings
 pub fn generate_table(input: &[(&str, &str)]) -> String {
     let longest = input.iter().fold(input[0].0, |previous, (current, _)| {
         get_longer_str(previous, current)
@@ -65,6 +76,7 @@ pub fn generate_table(input: &[(&str, &str)]) -> String {
         .fold(String::new(), |a, b| a + &b)
 }
 
+/// Generates a list given a list of tuples containing strings
 pub fn generate_list<K: AsRef<str>, V: AsRef<str>>(
     key_name: &str,
     value_name: &str,
@@ -106,6 +118,7 @@ pub fn generate_list<K: AsRef<str>, V: AsRef<str>>(
     output
 }
 
+/// Wraps `code` in a Discord codeblock
 pub fn codeblock(code: &str, language: &str) -> String {
     let escaped_code = code.replace("`", "`\u{0200b}");
     format!(
@@ -117,6 +130,7 @@ pub fn codeblock(code: &str, language: &str) -> String {
 
 pub const CODEBLOCK_MD: &str = "```";
 
+/// Parses a codeblock
 pub fn parse_codeblock<'a>(text: &'a str, lang: &str) -> &'a str {
     if !text.starts_with(&format!("{}{}", CODEBLOCK_MD, lang))
         || !text.ends_with(CODEBLOCK_MD)
@@ -128,6 +142,9 @@ pub fn parse_codeblock<'a>(text: &'a str, lang: &str) -> &'a str {
     }
 }
 
+/// Attempts to extract memory usage
+///
+/// Note: this requires the process to run as a systemd service
 #[cfg(target_os = "linux")]
 pub fn get_memory_usage() -> Option<String> {
     let mut command = Command::new("systemctl");
@@ -146,6 +163,7 @@ pub fn get_memory_usage() -> Option<String> {
     None
 }
 
+/// Attempts to download the content of a url
 pub async fn download_content(
     client: &reqwest::Client,
     url: &str,
@@ -183,6 +201,7 @@ mod units {
     pub const DAY: u64 = HOUR * 24;
 }
 
+/// Pluralizes a string
 pub fn pluralize<'a>(s: &'a str, adder: &str, count: u64) -> Cow<'a, str> {
     if count == 1 {
         Cow::Borrowed(s)
@@ -191,17 +210,20 @@ pub fn pluralize<'a>(s: &'a str, adder: &str, count: u64) -> Cow<'a, str> {
     }
 }
 
+/// A wrapper around uptime
 pub struct Uptime(u64);
 impl Uptime {
     pub fn new(time: u64) -> Self {
         Self(time)
     }
 
+    /// Formats uptime
     pub fn format(&self) -> String {
         format_time(self.0)
     }
 }
 
+/// Converts a unit string (s, m, h, d) to milliseconds
 fn unit_to_ms(u: &str) -> u64 {
     match u {
         "s" => 1000,
@@ -212,6 +234,7 @@ fn unit_to_ms(u: &str) -> u64 {
     }
 }
 
+/// Parses a string to milliseconds
 pub fn parse_to_millis(input: &str) -> Result<u64, ParseIntError> {
     let matches = regexes::TIME_STRING.captures_iter(input);
 
@@ -234,6 +257,17 @@ pub fn sanitize_message_content(content: &str) -> String {
     content.replace("@", "@\u{200b}")
 }
 
+/// Attempts to return the timestamp as a Discord timestamp,
+/// and falls back to [`format_time`] if Discord were to render it as "Invalid Date"
+pub fn format_discord_timestamp(input: u64) -> String {
+    if input <= consts::MAX_TIMESTAMP {
+        format!("<t:{}:R>", input / 1000)
+    } else {
+        format_time(input)
+    }
+}
+
+/// Converts a timestamp to a humanly readable string
 pub fn format_time(input: u64) -> String {
     if input >= units::DAY {
         let amount = input / units::DAY;
@@ -250,10 +284,12 @@ pub fn format_time(input: u64) -> String {
     }
 }
 
+/// Normalizes custom emojis by replacing them with their names
 pub fn normalize_emojis<'a>(input: &'a str) -> Cow<'a, str> {
     regexes::CUSTOM_EMOJI.replace_all(input, |c: &Captures| c.get(1).unwrap().as_str().to_string())
 }
 
+/// Attempts to extract the page title
 pub fn extract_page_title(input: &str) -> Option<String> {
     let dom = tl::parse(input);
 
@@ -268,6 +304,7 @@ pub fn extract_page_title(input: &str) -> Option<String> {
     Some(tag.inner_text().into_owned())
 }
 
+/// Generates a message link
 pub fn message_link(guild_id: u64, channel_id: u64, message_id: u64) -> String {
     format!(
         "https://discord.com/channels/{}/{}/{}",
@@ -280,6 +317,7 @@ pub struct CommandOutput {
     pub stderr: String,
 }
 
+/// Executes a bash command
 pub fn exec_sync(command: &str) -> Result<CommandOutput, std::io::Error> {
     let mut cmd = Command::new("bash");
     cmd.args(&["-c", command]);
@@ -292,10 +330,12 @@ pub fn exec_sync(command: &str) -> Result<CommandOutput, std::io::Error> {
     })
 }
 
+/// Attempts to resolve the guild owner
 pub async fn get_guild_owner(http: &Client, guild_id: GuildId) -> Result<UserId, Error> {
     Ok(http.guild(guild_id).await?.unwrap().owner_id)
 }
 
+/// Converts number of bytes to a humanly readable string
 pub fn bytes_to_readable(bytes: usize) -> String {
     if bytes > 1000usize.pow(2) {
         format!("{:.2}MB", (bytes as f32 / 1000f32.powi(2)))
@@ -306,6 +346,7 @@ pub fn bytes_to_readable(bytes: usize) -> String {
     }
 }
 
+/// Promotes the lifetime of a string to a static string by leaking memory
 pub fn to_static_str(s: &Box<str>) -> &'static mut str {
     Box::leak(s.clone())
 }
@@ -319,7 +360,14 @@ pub async fn get_wsi_request_tier(assyst: Arc<Assyst>, user_id: UserId) -> usize
         return p.tier;
     }
 
-    let has_free_tier_1 = assyst.database.get_and_subtract_free_tier_1_request(user_id.0 as i64).await;
+    let has_free_tier_1 = assyst
+        .database
+        .get_and_subtract_free_tier_1_request(user_id.0 as i64)
+        .await;
 
-    if has_free_tier_1 { 1 } else { 0 }
+    if has_free_tier_1 {
+        1
+    } else {
+        0
+    }
 }

@@ -12,8 +12,8 @@ use crate::{
         fake_eval, wsi,
     },
     util::{
-        codeblock, exec_sync, extract_page_title, format_time, generate_list, generate_table,
-        get_memory_usage, parse_codeblock,
+        codeblock, exec_sync, extract_page_title, format_discord_timestamp, format_time,
+        generate_list, generate_table, get_memory_usage, parse_codeblock,
     },
 };
 use crate::{
@@ -519,9 +519,9 @@ pub async fn run_remind_command(context: Arc<Context>, args: Vec<ParsedArgument>
                 .iter()
                 .map(|reminder| {
                     format!(
-                        "[#{}] <t:{}:R>: `{}`\n",
+                        "[#{}] {}: `{}`\n",
                         reminder.id,
-                        reminder.timestamp / 1000,
+                        format_discord_timestamp(reminder.timestamp as u64),
                         reminder.message
                     )
                 })
