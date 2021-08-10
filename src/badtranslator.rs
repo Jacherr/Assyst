@@ -26,7 +26,30 @@ macro_rules! unwrap_or_eprintln {
     };
 }
 
-pub type ChannelCache = HashMap<Snowflake, Option<Webhook>>;
+#[derive(Debug, Clone)]
+pub struct BadTranslatorEntry {
+    pub webhook: Option<Webhook>,
+    pub language: Box<str>,
+}
+
+impl BadTranslatorEntry {
+    pub fn with_language(language: impl Into<Box<str>>) -> Self {
+        Self {
+            webhook: None,
+            language: language.into(),
+        }
+    }
+
+    pub fn zip(self) -> Option<(Webhook, Box<str>)> {
+        if let Some(webhook) = self.webhook {
+            Some((webhook, self.language))
+        } else {
+            None
+        }
+    }
+}
+
+pub type ChannelCache = HashMap<Snowflake, BadTranslatorEntry>;
 type Snowflake = u64;
 
 mod flags {
@@ -63,11 +86,16 @@ impl BadTranslator {
         Self::with_channels(HashMap::new())
     }
 
-    pub async fn add_channel(&self, id: Snowflake) {
+    pub async fn add_channel(&self, id: Snowflake, language: &str) {
         if !self.is_disabled().await {
             let mut lock = self.channels.write().await;
-            lock.insert(id, None);
+            lock.insert(id, BadTranslatorEntry::with_language(language));
         }
+    }
+
+    pub async fn set_channel_language(&self, id: u64, language: impl Into<Box<str>>) {
+        let mut lock = self.channels.write().await;
+        lock.entry(id).and_modify(|e| e.language = language.into());
     }
 
     pub fn with_channels(channels: ChannelCache) -> Self {
@@ -99,29 +127,40 @@ impl BadTranslator {
         (*self.flags.read().await & flags::DISABLED) == flags::DISABLED
     }
 
-    pub async fn get_or_fetch_webhook(
+    pub async fn get_or_fetch_entry(
         &self,
         assyst: &Arc<Assyst>,
         id: &ChannelId,
-    ) -> Option<Webhook> {
-        let cache = self.channels.read().await;
+    ) -> Option<(Webhook, Box<str>)> {
+        {
+            // This is its own scope so that the cache lock gets dropped early
+            let cache = self.channels.read().await;
 
-        if let Some(Some(value)) = cache.get(&id.0) {
-            return Some(value.clone());
+            // In the perfect case where we already have the webhook cached, we can just return early
+            if let Some(entry) = cache.get(&id.0).cloned() {
+                if let Some(entry) = entry.zip() {
+                    return Some(entry);
+                }
+            }
         }
-
-        // Drop early so we don't keep the read mutex locked for hundreds of ms
-        drop(cache);
 
         // TODO: maybe return Result?
         let webhooks = assyst.http.channel_webhooks(*id).await.ok()?;
 
-        let webhook = webhooks.get(0)?;
+        let webhook = webhooks.into_iter().next()?;
 
         let mut cache = self.channels.write().await;
-        cache.insert(id.0, Some(webhook.clone()));
+        let mut entry = cache
+            .get_mut(&id.0)
+            .expect("This can't fail, and if it does then that's a problem.");
 
-        Some(webhook.clone())
+        entry.webhook = Some(webhook.clone());
+
+        Some((webhook, entry.language.clone()))
+    }
+
+    pub async fn remove_bt_channel(&self, id: u64) {
+        self.channels.write().await.remove(&id);
     }
 
     pub async fn delete_bt_channel(&self, assyst: &Arc<Assyst>, id: &ChannelId) {
@@ -205,11 +244,17 @@ impl BadTranslator {
 
         let guild = message.guild_id.unwrap();
 
+        let (webhook, language) = match self.get_or_fetch_entry(assyst, &message.channel_id).await {
+            Some(webhook) => webhook,
+            None => return self.delete_bt_channel(assyst, &message.channel_id).await,
+        };
+
         let translation = match bt::bad_translate_debug(
             &assyst.reqwest_client,
             &content,
             message.author.id.0,
             guild.0,
+            &language,
         )
         .await
         {
@@ -237,11 +282,6 @@ impl BadTranslator {
             }
         }
 
-        let webhook = match self.get_or_fetch_webhook(assyst, &message.channel_id).await {
-            Some(webhook) => webhook,
-            None => return self.delete_bt_channel(assyst, &message.channel_id).await,
-        };
-
         let token = unwrap_or_eprintln!(webhook.token.as_ref(), "Failed to extract token");
 
         let translation = sanitize_message_content(&translation[0..min(translation.len(), 1999)]);
@@ -256,8 +296,7 @@ impl BadTranslator {
             .await;
 
         // Increase metrics counter for this guild
-        // BadTranslator is only available in guilds, so it's safe to unwrap
-        let guild_id = message.guild_id.unwrap().0;
+        let guild_id = guild.0;
         let _ = register_badtranslated_message_to_db(assyst.clone(), guild_id)
             .await
             .map_err(|e| {

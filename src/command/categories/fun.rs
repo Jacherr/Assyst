@@ -1,15 +1,12 @@
 use crate::{
     command::{
-        command::{
-            force_as, Argument, Command, CommandBuilder,
-            ParsedArgument,
-        },
+        command::{force_as, Argument, Command, CommandBuilder, ParsedArgument},
         context::Context,
         registry::CommandResult,
     },
     consts,
     rest::{self, bt::bad_translate, bt::translate_single},
-    util::codeblock,
+    util::{codeblock, normalize_emojis},
 };
 use lazy_static::lazy_static;
 use std::{sync::Arc, time::Duration};
@@ -78,7 +75,8 @@ lazy_static! {
 
 pub async fn run_bt_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
     let text = force_as::text(&args[0]);
-    let translated = bad_translate(&context.assyst.reqwest_client, text)
+    let text = normalize_emojis(text);
+    let translated = bad_translate(&context.assyst.reqwest_client, &text)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -131,7 +129,9 @@ pub async fn run_btdebug_command(
 }
 
 pub async fn run_money_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
-    context.reply_with_text("https://media.discordapp.net/stickers/874300577180418068.png").await?;
+    context
+        .reply_with_text("https://media.discordapp.net/stickers/874300577180418068.png")
+        .await?;
     Ok(())
 }
 
@@ -182,7 +182,8 @@ pub async fn run_ocrtr_command(context: Arc<Context>, args: Vec<ParsedArgument>)
 pub async fn run_rule34_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
     tokio::time::sleep(Duration::from_millis(1500)).await;
 
-    context.reply_err("450 Blocked By Windows Parental Controls")
+    context
+        .reply_err("450 Blocked By Windows Parental Controls")
         .await
         .map_err(|e| e.to_string())?;
     Ok(())

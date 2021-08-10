@@ -4,6 +4,10 @@ use serde::Deserialize;
 const API_BASE: &str = "https://bt.y21.workers.dev";
 const MAX_ATTEMPTS: u8 = 5;
 
+mod routes {
+    pub const LANGUAGES: &str = "/languages";
+}
+
 #[derive(Debug)]
 pub enum TranslateError {
     Reqwest(ReqwestError),
@@ -103,13 +107,14 @@ pub async fn bad_translate_debug(
     text: &str,
     user_id: u64,
     guild_id: u64,
+    target: &str,
 ) -> Result<TranslateResult, TranslateError> {
     let headers = vec![
         ("user", user_id.to_string()),
         ("guild", guild_id.to_string()),
     ];
 
-    translate(client, text, None, None, Some(&headers)).await
+    translate(client, text, Some(target), None, Some(&headers)).await
 }
 
 pub async fn translate_single(
@@ -118,4 +123,25 @@ pub async fn translate_single(
     target: &str,
 ) -> Result<TranslateResult, TranslateError> {
     translate(client, text, Some(target), Some(1), None).await
+}
+
+pub async fn get_languages(client: &Client) -> Result<Vec<(Box<str>, Box<str>)>, TranslateError> {
+    client
+        .get(format!("{}{}", API_BASE, routes::LANGUAGES))
+        .send()
+        .await
+        .map_err(TranslateError::Reqwest)?
+        .json()
+        .await
+        .map_err(TranslateError::Reqwest)
+}
+
+pub async fn validate_language(
+    client: &Client,
+    provided_language: &str,
+) -> Result<bool, TranslateError> {
+    let languages = get_languages(client).await?;
+    Ok(languages
+        .iter()
+        .any(|(language, _)| &**language == provided_language))
 }
