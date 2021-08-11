@@ -107,7 +107,8 @@ impl ResizeMethod {
     }
 
     pub fn to_string(&self) -> Result<String, serde_json::Error> {
-        serde_json::to_string(self)
+        let s = serde_json::to_string(self)?;
+        Ok(String::from(&s[1..s.len() - 1]))
     }
 }
 
@@ -452,12 +453,15 @@ pub async fn resize_scale(
     image: Bytes,
     user_id: UserId,
     scale: f32,
+    method: ResizeMethod,
 ) -> Result<Bytes, RequestError> {
+    let method = method.to_string().map_err(RequestError::Serde)?;
+
     request_bytes(
         assyst,
         routes::RESIZE,
         image,
-        &[("scale", &scale.to_string())],
+        &[("scale", &scale.to_string()), ("method", &method)],
         user_id,
     )
     .await
@@ -469,7 +473,10 @@ pub async fn resize_width_height(
     user_id: UserId,
     width: usize,
     height: usize,
+    method: ResizeMethod,
 ) -> Result<Bytes, RequestError> {
+    let method = method.to_string().map_err(RequestError::Serde)?;
+
     request_bytes(
         assyst,
         routes::RESIZE,
@@ -477,6 +484,7 @@ pub async fn resize_width_height(
         &[
             ("width", &width.to_string()),
             ("height", &height.to_string()),
+            ("method", &method),
         ],
         user_id,
     )
