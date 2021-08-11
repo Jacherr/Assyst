@@ -1253,6 +1253,7 @@ pub async fn run_resize_command(
                 context.author_id(),
                 width,
                 height,
+                method,
             )
             .await
             .map_err(wsi::format_err)?;
@@ -1261,9 +1262,15 @@ pub async fn run_resize_command(
                 .parse::<f32>()
                 .map_err(|_| "Invalid resolution.".to_owned())?;
 
-            result = wsi::resize_scale(context.assyst.clone(), image, context.author_id(), scale)
-                .await
-                .map_err(wsi::format_err)?;
+            result = wsi::resize_scale(
+                context.assyst.clone(),
+                image,
+                context.author_id(),
+                scale,
+                method,
+            )
+            .await
+            .map_err(wsi::format_err)?;
         }
     }
 
