@@ -87,10 +87,11 @@ pub struct ImageInfo {
 #[derive(Debug)]
 pub enum RequestError {
     Reqwest(Error),
+    Serde(serde_json::Error),
     Wsi(WsiError),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub enum ResizeMethod {
     Nearest,
     Gaussian,
@@ -105,11 +106,8 @@ impl ResizeMethod {
         }
     }
 
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Nearest => "nearest",
-            Self::Gaussian => "gaussian",
-        }
+    pub fn to_string(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string(self)
     }
 }
 
@@ -437,11 +435,13 @@ pub async fn resize(
     user_id: UserId,
     method: ResizeMethod,
 ) -> Result<Bytes, RequestError> {
+    let method = method.to_string().map_err(RequestError::Serde)?;
+
     request_bytes(
         assyst,
         routes::RESIZE,
         image,
-        &[("method", method.as_str())],
+        &[("method", &method)],
         user_id,
     )
     .await
@@ -653,5 +653,6 @@ pub fn format_err(err: RequestError) -> String {
     match err {
         RequestError::Reqwest(e) => e.to_string(),
         RequestError::Wsi(e) => e.message.to_string(),
+        RequestError::Serde(e) => e.to_string(),
     }
 }
