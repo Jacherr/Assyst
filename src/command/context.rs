@@ -16,10 +16,12 @@ use std::sync::Arc;
 
 use super::messagebuilder::MessageBuilder;
 
+#[derive(Clone)]
 pub struct Metrics {
     pub processing_time_start: Instant,
 }
 
+#[derive(Clone)]
 pub struct Context {
     pub assyst: Arc<Assyst>,
     pub message: Arc<Message>,

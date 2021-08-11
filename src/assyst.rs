@@ -1,7 +1,6 @@
 use crate::{
     badtranslator::BadTranslator,
     caching::{Ratelimits, Replies, Reply},
-    command::context::Metrics,
     command::{
         command::{
             Argument, Command, CommandAvailability, CommandParseError, CommandParseErrorType,
@@ -9,6 +8,10 @@ use crate::{
         },
         context::Context,
         registry::CommandRegistry,
+    },
+    command::{
+        command::{FlagKind, ParsedFlagKind},
+        context::Metrics,
     },
     config::Config,
     consts::{ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES, BOT_ID},
@@ -20,9 +23,11 @@ use crate::{
 };
 
 use bytes::Bytes;
+use regex::Captures;
 use reqwest::Client as ReqwestClient;
 use std::{
     borrow::{Borrow, Cow},
+    collections::HashMap,
     sync::Arc,
     time::Instant,
 };
@@ -35,24 +40,26 @@ use twilight_model::{
     id::UserId,
 };
 
-/// Takes an input string and prefix to parse and returns a tuple containing
-/// the command invocation (such as `help`) and any arguments to the command
-/// (such as `ping`).
-fn get_command_and_args(content: &str, prefix: &str) -> Option<(String, Vec<String>)> {
-    // if message doesnt start with prefix, or message is only the prefix, then ignore
-    return if !content.starts_with(&prefix) || content.len() == prefix.len() {
-        None
-    } else {
-        let raw = &content[prefix.len()..].trim_start();
-        let raw_replaced = raw.replace("\n", " \n");
-        let mut args = raw_replaced
+fn get_command(content: &str, prefix: &str) -> Option<String> {
+    get_raw_args(content, prefix, 0)
+        .map(|x| x.into_iter())
+        .and_then(|mut x| x.next())
+}
+
+fn get_raw_args(content: &str, prefix: &str, skip: usize) -> Option<Vec<String>> {
+    if !content.starts_with(&prefix) || content.len() == prefix.len() {
+        return None;
+    }
+
+    let raw = &content[prefix.len()..].trim();
+    let raw_replaced = raw.replace("\n", " \n");
+    Some(
+        raw_replaced
             .split(' ')
+            .skip(skip)
             .map(|x| String::from(x))
-            .collect::<Vec<String>>();
-        let cmd = args[0].clone();
-        args.remove(0);
-        Some((cmd, args))
-    };
+            .collect::<Vec<String>>(),
+    )
 }
 
 /// Returns `Some(prefix)` if the prefix is the mention of the bot, otherwise `None`
@@ -378,21 +385,39 @@ impl Assyst {
         context: &Arc<Context>,
         prefix: &str,
     ) -> Result<Option<ParsedCommand>, CommandParseError<'_>> {
-        let content = &context.message.content;
-
-        // extract the command name and arguments from the input message
-        let command_details =
-            get_command_and_args(&content, &prefix).unwrap_or(("".to_owned(), vec![]));
-        let args_refs = command_details.1.iter().map(|x| &x[..]).collect::<Vec<_>>();
+        // extract the command name
+        let command = get_command(&context.message.content, prefix).unwrap_or(String::new());
 
         // check if the command is actually valid
         let try_command = self
             .registry
-            .get_command_from_name_or_alias(&command_details.0.to_ascii_lowercase());
+            .get_command_from_name_or_alias(&command.to_ascii_lowercase());
+
         let command = match try_command {
             Some(c) => c,
             None => return Ok(None),
         };
+
+        // clone context and message so the flag parser can mutate the message content
+        // this is required because we don't want to have flags in the arguments
+        let mut context = Context::clone(&context);
+        let mut message = Message::clone(&context.message);
+
+        let flags = {
+            let (content, flags) = self.parse_flag(&message.content, command);
+            let content = String::from(content);
+            message.content = content;
+            context.message = Arc::new(message);
+            flags
+        };
+
+        // shadow old context variable
+        let context = Arc::new(context);
+
+        // get all other arguments from the fake context we've just created
+        let args = get_raw_args(&context.message.content, prefix, 1).unwrap_or(Vec::new());
+
+        let args_refs = args.iter().map(|x| x.as_str()).collect::<Vec<&str>>();
 
         // check relevant permissions for the command
         match command.availability {
@@ -464,11 +489,74 @@ impl Assyst {
             }
         }?;
 
-        let parsed_args = self.parse_arguments(context, &command, args_refs).await?;
+        let parsed_args = self.parse_arguments(&context, &command, args_refs).await?;
         Ok(Some(ParsedCommand {
             calling_name: &command.name,
             args: parsed_args,
+            flags,
         }))
+    }
+
+    fn parse_flag<'a, 'b>(
+        &self,
+        content: &'a str,
+        command: &'b Command,
+    ) -> (Cow<'a, str>, HashMap<&'b str, Option<ParsedFlagKind>>) {
+        let mut flags = HashMap::new();
+
+        let new_content = regexes::COMMAND_FLAG.replace_all(content, |captures: &Captures| {
+            // capture group @ index 2 is for flag values with surrounding quotes
+            let has_quotes = captures.get(2).is_some();
+
+            let mut iter = captures.iter().skip(1);
+
+            // unwraps are safe - regex wouldn't match if these were None
+            let name = iter.next().flatten().unwrap().as_str();
+            let value = iter
+                .next()
+                .unwrap()
+                .or_else(|| iter.next().flatten())
+                .map(|x| x.as_str());
+
+            let (name, kind) = match command.flags.get(name) {
+                Some(c) => c,
+                None => {
+                    return format!("-{} {}", name, {
+                        let value = value.unwrap_or("");
+                        if has_quotes {
+                            Cow::Owned(format!("\"{}\"", value))
+                        } else {
+                            Cow::Borrowed(value)
+                        }
+                    })
+                }
+            };
+
+            let parsed_value = match kind {
+                None => None,
+                Some(FlagKind::Text) => value.map(ToOwned::to_owned).map(ParsedFlagKind::Text),
+                Some(FlagKind::Boolean) => value
+                    .and_then(|x| x.parse::<bool>().ok())
+                    .map(ParsedFlagKind::Boolean),
+                Some(FlagKind::Number) => value
+                    .and_then(|x| x.parse::<u64>().ok())
+                    .map(ParsedFlagKind::Number),
+                Some(FlagKind::Decimal) => value
+                    .and_then(|x| x.parse::<f64>().ok())
+                    .map(ParsedFlagKind::Decimal),
+                Some(FlagKind::Choice(choices)) => value
+                    .and_then(|v| choices.iter().find(|&&x| x == v))
+                    .copied()
+                    .map(ToOwned::to_owned)
+                    .map(ParsedFlagKind::Text),
+            };
+
+            flags.insert(*name, parsed_value);
+
+            String::new()
+        });
+
+        (new_content, flags)
     }
 
     /// Parses arguments from a context and a set of predefined, expected 'argument types'.
@@ -916,14 +1004,14 @@ impl Assyst {
                 &url,
                 ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES,
             )
-                .await
-                .map_err(|e| {
-                    CommandParseError::with_reply(
-                        format!("failed to download lottie sticker: {}", e),
-                        None,
-                        CommandParseErrorType::MediaDownloadFail,
-                    )
-                })?;
+            .await
+            .map_err(|e| {
+                CommandParseError::with_reply(
+                    format!("failed to download lottie sticker: {}", e),
+                    None,
+                    CommandParseErrorType::MediaDownloadFail,
+                )
+            })?;
 
             let string_content = String::from_utf8_lossy(&content);
             let gif = convert_lottie_to_gif(context.assyst.clone(), &string_content.into_owned())
@@ -1113,7 +1201,7 @@ impl Assyst {
 
     async fn validate_message_sticker(
         &self,
-        _context: &Arc<Context>,    // too lazy to remove this from everywhere
+        _context: &Arc<Context>, // too lazy to remove this from everywhere
         message: &Message,
     ) -> Option<String> {
         let sticker = message.sticker_items.first()?;

@@ -1,7 +1,8 @@
 use crate::{
     command::{
         command::{
-            force_as, Argument, Command, CommandAvailability, CommandBuilder, ParsedArgument,
+            force_as, Argument, Command, CommandAvailability, CommandBuilder, FlagKind,
+            ParsedArgument, ParsedFlags,
         },
         context::Context,
         registry::CommandResult,
@@ -9,7 +10,7 @@ use crate::{
     consts::Y21,
     rest::{
         annmarie,
-        wsi::{self},
+        wsi::{self, ResizeMethod},
     },
     util::{bytes_to_readable, generate_list},
 };
@@ -425,6 +426,7 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .build();
     pub static ref RESIZE_COMMAND: Command = CommandBuilder::new("resize")
+        .flag("filter", Some(FlagKind::Choice(&["gaussian", "nearest"])))
         .arg(Argument::ImageBuffer)
         .arg(Argument::OptionalWithDefault(
             Box::new(Argument::String),
@@ -599,6 +601,7 @@ lazy_static! {
 pub async fn run_3d_rotate_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     context.reply_with_text("processing...").await?;
@@ -613,6 +616,7 @@ pub async fn run_3d_rotate_command(
 pub async fn run_ahshit_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     run_annmarie_noarg_command!(annmarie::ahshit, args, context)
 }
@@ -620,6 +624,7 @@ pub async fn run_ahshit_command(
 pub async fn run_annmarie_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let endpoint = force_as::text(&args[0]);
@@ -641,6 +646,7 @@ pub async fn run_annmarie_command(
 pub async fn run_aprilfools_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     run_annmarie_noarg_command!(annmarie::aprilfools, args, context)
 }
@@ -648,6 +654,7 @@ pub async fn run_aprilfools_command(
 pub async fn run_billboard_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     run_annmarie_noarg_command!(annmarie::billboard, args, context)
 }
@@ -655,6 +662,7 @@ pub async fn run_billboard_command(
 pub async fn run_blur_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let power = force_as::text(&args[0]);
@@ -670,6 +678,7 @@ pub async fn run_blur_command(
 pub async fn run_burntext_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let text = force_as::text(&args[0]);
     context.reply_with_text("processing...").await?;
@@ -683,6 +692,7 @@ pub async fn run_burntext_command(
 pub async fn run_caption_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let text = force_as::text(&args[0]);
@@ -698,6 +708,7 @@ pub async fn run_caption_command(
 pub async fn run_card_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     run_annmarie_noarg_command!(annmarie::card, args, context)
 }
@@ -705,6 +716,7 @@ pub async fn run_card_command(
 pub async fn run_circuitboard_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     run_annmarie_noarg_command!(annmarie::circuitboard, args, context)
 }
@@ -712,6 +724,7 @@ pub async fn run_circuitboard_command(
 pub async fn run_fisheye_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     run_annmarie_noarg_command!(annmarie::fisheye, args, context)
 }
@@ -719,6 +732,7 @@ pub async fn run_fisheye_command(
 pub async fn run_fix_transparency_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let wsi_fn = wsi::fix_transparency;
@@ -733,13 +747,12 @@ pub async fn run_fix_transparency_command(
 pub async fn run_flag_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     run_annmarie_noarg_command!(annmarie::flag, args, context)
 }
 
-/*pub async fn run_flash_command(
-    context: Arc<Context>,
-    mut args: Vec<ParsedArgument>,
+/*pub async fn run_flash_command(context: Arc<Context>, mut args: Vec<ParsedArgument>, _flags: ParsedFlags,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let wsi_fn = wsi::flash;
@@ -754,6 +767,7 @@ pub async fn run_flag_command(
 pub async fn run_flip_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let wsi_fn = wsi::flip;
@@ -768,6 +782,7 @@ pub async fn run_flip_command(
 pub async fn run_flop_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let wsi_fn = wsi::flop;
@@ -782,6 +797,7 @@ pub async fn run_flop_command(
 pub async fn run_f_shift_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     run_annmarie_noarg_command!(annmarie::f_shift, args, context)
 }
@@ -789,6 +805,7 @@ pub async fn run_f_shift_command(
 pub async fn run_fringe_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     run_annmarie_noarg_command!(annmarie::fringe, args, context)
 }
@@ -796,6 +813,7 @@ pub async fn run_fringe_command(
 pub async fn run_ghost_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let depth = force_as::text(&args[0]);
@@ -811,6 +829,7 @@ pub async fn run_ghost_command(
 pub async fn run_gif_loop_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let wsi_fn = wsi::gif_loop;
@@ -825,6 +844,7 @@ pub async fn run_gif_loop_command(
 pub async fn run_gif_magik_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let wsi_fn = wsi::gif_magik;
@@ -839,6 +859,7 @@ pub async fn run_gif_magik_command(
 pub async fn run_gif_scramble_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let wsi_fn = wsi::gif_scramble;
@@ -853,6 +874,7 @@ pub async fn run_gif_scramble_command(
 pub async fn run_gif_speed_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let delay = if args[0].is_nothing() {
@@ -872,6 +894,7 @@ pub async fn run_gif_speed_command(
 pub async fn run_globe_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     run_annmarie_noarg_command!(annmarie::globe, args, context)
 }
@@ -879,6 +902,7 @@ pub async fn run_globe_command(
 pub async fn run_grayscale_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let wsi_fn = wsi::grayscale;
@@ -893,6 +917,7 @@ pub async fn run_grayscale_command(
 pub async fn run_image_info_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     context.reply_with_text("processing...").await?;
@@ -939,6 +964,7 @@ pub async fn run_image_info_command(
 pub async fn run_imagemagick_eval_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let text = force_as::text(&args[0]);
@@ -954,6 +980,7 @@ pub async fn run_imagemagick_eval_command(
 pub async fn run_invert_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let wsi_fn = wsi::invert;
@@ -968,6 +995,7 @@ pub async fn run_invert_command(
 pub async fn run_jpeg_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let wsi_fn = wsi::jpeg;
@@ -982,6 +1010,7 @@ pub async fn run_jpeg_command(
 pub async fn run_magik_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let wsi_fn = wsi::magik;
@@ -996,6 +1025,7 @@ pub async fn run_magik_command(
 pub async fn run_meme_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let text = force_as::text(&args[0]);
@@ -1030,6 +1060,7 @@ pub async fn run_meme_command(
 pub async fn run_motivate_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let text = force_as::text(&args[0]);
@@ -1064,6 +1095,7 @@ pub async fn run_motivate_command(
 pub async fn run_neon_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let radius = force_as::text(&args[0]);
@@ -1079,6 +1111,7 @@ pub async fn run_neon_command(
 pub async fn run_ocr_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let arg = args.drain(0..1).next().unwrap();
     let image = force_as::text(&arg);
@@ -1095,6 +1128,7 @@ pub async fn run_ocr_command(
 pub async fn run_overlay_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let overlay = force_as::text(&args[0]);
@@ -1115,6 +1149,7 @@ pub async fn run_overlay_command(
 pub async fn run_paint_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     run_annmarie_noarg_command!(annmarie::paint, args, context)
 }
@@ -1122,6 +1157,7 @@ pub async fn run_paint_command(
 pub async fn run_pixelate_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let downscaled_height = if args[0].is_nothing() {
@@ -1146,6 +1182,7 @@ pub async fn run_pixelate_command(
 pub async fn run_printer_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let wsi_fn = wsi::printer;
@@ -1160,6 +1197,7 @@ pub async fn run_printer_command(
 pub async fn run_rainbow_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let wsi_fn = wsi::rainbow;
@@ -1174,14 +1212,23 @@ pub async fn run_rainbow_command(
 pub async fn run_resize_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    flags: ParsedFlags,
 ) -> CommandResult {
+    let method = flags
+        .get("filter")
+        .and_then(|x| x.as_ref())
+        .map(|x| x.as_text())
+        .as_deref()
+        .and_then(ResizeMethod::from_str)
+        .unwrap_or(ResizeMethod::Nearest);
+
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
 
     let result: Bytes;
     context.reply_with_text("processing...").await?;
 
     if args.get(0).is_none() {
-        result = wsi::resize(context.assyst.clone(), image, context.author_id())
+        result = wsi::resize(context.assyst.clone(), image, context.author_id(), method)
             .await
             .map_err(wsi::format_err)?;
     } else {
@@ -1228,6 +1275,7 @@ pub async fn run_resize_command(
 pub async fn run_reverse_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let wsi_fn = wsi::reverse;
@@ -1242,6 +1290,7 @@ pub async fn run_reverse_command(
 pub async fn run_rotate_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let degrees = force_as::text(&args[0]);
@@ -1257,6 +1306,7 @@ pub async fn run_rotate_command(
 pub async fn run_set_loop_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let looping = match force_as::choice(&args[0]) {
@@ -1276,6 +1326,7 @@ pub async fn run_set_loop_command(
 pub async fn run_sketch_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     run_annmarie_noarg_command!(annmarie::sketch, args, context)
 }
@@ -1283,6 +1334,7 @@ pub async fn run_sketch_command(
 pub async fn run_spin_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let wsi_fn = wsi::spin;
@@ -1297,6 +1349,7 @@ pub async fn run_spin_command(
 pub async fn run_spread_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let wsi_fn = wsi::spread;
@@ -1311,6 +1364,7 @@ pub async fn run_spread_command(
 pub async fn run_swirl_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let wsi_fn = wsi::swirl;
@@ -1325,6 +1379,7 @@ pub async fn run_swirl_command(
 pub async fn run_tehi_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let wsi_fn = wsi::tehi;
@@ -1339,6 +1394,7 @@ pub async fn run_tehi_command(
 pub async fn run_terraria_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     run_annmarie_noarg_command!(annmarie::terraria, args, context)
 }
@@ -1346,6 +1402,7 @@ pub async fn run_terraria_command(
 pub async fn run_wall_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let wsi_fn = wsi::wall;
@@ -1360,6 +1417,7 @@ pub async fn run_wall_command(
 pub async fn run_wave_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let wsi_fn = wsi::wave;
@@ -1374,6 +1432,7 @@ pub async fn run_wave_command(
 pub async fn run_wormhole_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let wsi_fn = wsi::wormhole;
@@ -1388,6 +1447,7 @@ pub async fn run_wormhole_command(
 pub async fn run_zoom_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let raw_image = force_as::image_buffer(args.drain(0..1).next().unwrap());
 
@@ -1404,6 +1464,7 @@ pub async fn run_zoom_command(
 pub async fn run_zoom_blur_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let image = force_as::image_buffer(args.drain(0..1).next().unwrap());
     let power = force_as::text(&args[0]);
@@ -1419,6 +1480,7 @@ pub async fn run_zoom_blur_command(
 pub async fn run_identify_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let url = force_as::text(&args[0]);
     let identify = rest::identify_image(&context.assyst.reqwest_client, url)
