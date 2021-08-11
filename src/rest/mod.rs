@@ -1,9 +1,11 @@
+use std::sync::Arc;
+
 use bytes::Bytes;
 use reqwest::{Client, Error};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use crate::consts;
+use crate::{assyst::Assyst, consts};
 
 pub mod annmarie;
 pub mod bt;
@@ -196,4 +198,16 @@ pub async fn post_bot_stats(
         .error_for_status()?;
 
     Ok(())
+}
+
+pub async fn convert_lottie_to_gif(assyst: Arc<Assyst>, lottie: &str) -> Result<Bytes, Error> {
+    Ok(assyst.reqwest_client
+        .post(&assyst.config.url.lottie_render.to_string())
+        .header("authorization", &assyst.config.auth.lottie_render.to_string())
+        .json(&json!(lottie))
+        .send()
+        .await?
+        .error_for_status()?
+        .bytes()
+        .await?)
 }

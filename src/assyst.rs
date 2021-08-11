@@ -1,23 +1,11 @@
-use crate::{
-    badtranslator::BadTranslator,
-    caching::{Ratelimits, Replies, Reply},
-    command::context::Metrics,
-    command::{
+use crate::{badtranslator::BadTranslator, caching::{Ratelimits, Replies, Reply}, command::context::Metrics, command::{
         command::{
             Argument, Command, CommandAvailability, CommandParseError, CommandParseErrorType,
             ParsedArgument, ParsedArgumentResult, ParsedCommand,
         },
         context::Context,
         registry::CommandRegistry,
-    },
-    config::Config,
-    consts::{ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES, BOT_ID},
-    database::Database,
-    logging::Logger,
-    metrics::GlobalMetrics,
-    rest::patreon::Patron,
-    util::{download_content, get_current_millis, get_guild_owner, regexes, Uptime},
-};
+    }, config::Config, consts::{ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES, BOT_ID}, database::Database, logging::Logger, metrics::GlobalMetrics, rest::{convert_lottie_to_gif, patreon::Patron, upload_to_filer}, util::{download_content, get_current_millis, get_guild_owner, regexes, Uptime}};
 
 use bytes::Bytes;
 use reqwest::Client as ReqwestClient;
@@ -29,7 +17,11 @@ use std::{
 use tokio::sync::RwLock;
 use twilight_gateway::Cluster;
 use twilight_http::Client as HttpClient;
-use twilight_model::{channel::{Message, message::sticker::StickerFormatType}, guild::Permissions, id::UserId};
+use twilight_model::{
+    channel::{message::sticker::StickerFormatType, Message},
+    guild::Permissions,
+    id::UserId,
+};
 
 /// Takes an input string and prefix to parse and returns a tuple containing
 /// the command invocation (such as `help`) and any arguments to the command
@@ -569,7 +561,7 @@ impl Assyst {
                 } else {
                     args[*index]
                 };
-                self.parse_image_argument(&context.message, argument_to_pass, arg)
+                self.parse_image_argument(context, &context.message, argument_to_pass, arg)
                     .await
             }
 
@@ -587,7 +579,7 @@ impl Assyst {
             }
 
             Argument::StringRemaining => {
-                // check if no extra args or if no referenced message  
+                // check if no extra args or if no referenced message
                 if args.len() <= *index && context.message.referenced_message.is_none() {
                     Err(CommandParseError::with_reply(
                         "This command expects a text argument that was not provided.".to_owned(),
@@ -598,7 +590,8 @@ impl Assyst {
                 } else if let Some(r) = &context.message.referenced_message {
                     if r.content.is_empty() {
                         Err(CommandParseError::with_reply(
-                            "This command expects a text argument that was not provided.".to_owned(),
+                            "This command expects a text argument that was not provided."
+                                .to_owned(),
                             Some(command),
                             CommandParseErrorType::MissingArgument,
                         ))
@@ -618,7 +611,14 @@ impl Assyst {
                 // we need this 'nonoptional' function because
                 // standalone rust doesn't support async recursion. sad!
                 let result = self
-                    .parse_argument_nonoptional(&context.message, command, args, &**a, index)
+                    .parse_argument_nonoptional(
+                        context,
+                        &context.message,
+                        command,
+                        args,
+                        &**a,
+                        index,
+                    )
                     .await;
                 match result {
                     Ok(p) => Ok(p),
@@ -636,7 +636,14 @@ impl Assyst {
 
             Argument::OptionalWithDefault(a, d) => {
                 let result = self
-                    .parse_argument_nonoptional(&context.message, command, args, &**a, index)
+                    .parse_argument_nonoptional(
+                        context,
+                        &context.message,
+                        command,
+                        args,
+                        &**a,
+                        index,
+                    )
                     .await;
                 match result {
                     Ok(p) => Ok(p),
@@ -656,7 +663,14 @@ impl Assyst {
 
             Argument::OptionalWithDefaultDynamic(arg, default) => {
                 let result = self
-                    .parse_argument_nonoptional(&context.message, command, args, &**arg, index)
+                    .parse_argument_nonoptional(
+                        context,
+                        &context.message,
+                        command,
+                        args,
+                        &**arg,
+                        index,
+                    )
                     .await;
 
                 match result {
@@ -681,6 +695,7 @@ impl Assyst {
     // async recursion without the use of a dependency.
     async fn parse_argument_nonoptional<'a>(
         &self,
+        context: &Arc<Context>,
         message: &Message,
         command: &'a Command,
         args: &Vec<&str>,
@@ -749,7 +764,7 @@ impl Assyst {
                 } else {
                     args[*index]
                 };
-                self.parse_image_argument(message, argument_to_pass, arg)
+                self.parse_image_argument(context, message, argument_to_pass, arg)
                     .await
             }
             Argument::String => {
@@ -783,6 +798,7 @@ impl Assyst {
     /// Parses an image from the command for use with image manipulation commands.
     async fn parse_image_argument<'a>(
         &self,
+        context: &Arc<Context>,
         message: &Message,
         argument: &str,
         return_as: &Argument,
@@ -802,7 +818,9 @@ impl Assyst {
             };
         };
         if try_url.is_none() {
-            try_url = self.validate_message_reply_attachment(message);
+            try_url = self
+                .validate_message_reply_attachment(context, message)
+                .await;
             if try_url.is_some() {
                 should_increment = false
             };
@@ -811,10 +829,12 @@ impl Assyst {
             try_url = self.validate_emoji_argument(argument).await;
         }
         if try_url.is_none() {
-            try_url = self.validate_message_sticker(message);
+            try_url = self.validate_message_sticker(context, message).await;
         }
         if try_url.is_none() {
-            try_url = self.validate_previous_message_attachment(message).await;
+            try_url = self
+                .validate_previous_message_attachment(context, message)
+                .await;
             if try_url.is_some() {
                 should_increment = false
             };
@@ -971,13 +991,17 @@ impl Assyst {
 
     /// If the command invocation is replying to the message, check if the message being replied
     /// to has an attachment
-    fn validate_message_reply_attachment(&self, message: &Message) -> Option<String> {
+    async fn validate_message_reply_attachment(
+        &self,
+        context: &Arc<Context>,
+        message: &Message,
+    ) -> Option<String> {
         let reply = message.referenced_message.as_ref()?;
         let attachment = self.validate_message_attachment(reply);
         if attachment.is_some() {
             return attachment;
         };
-        let sticker = self.validate_message_sticker(message);
+        let sticker = self.validate_message_sticker(context, message).await;
         if sticker.is_some() {
             return sticker;
         }
@@ -987,23 +1011,36 @@ impl Assyst {
 
     /// Load the last N messages in the channel where the command was invocated,
     /// and check if any of them have an attachment or embed
-    async fn validate_previous_message_attachment(&self, message: &Message) -> Option<String> {
+    async fn validate_previous_message_attachment(
+        &self,
+        context: &Arc<Context>,
+        message: &Message,
+    ) -> Option<String> {
         let messages = self.http.channel_messages(message.channel_id).await.ok()?;
-        let message_attachment_urls: Vec<Option<Cow<String>>> = messages
-            .iter()
-            .map(|message| {
-                if let Some(_) = message.embeds.first() {
-                    self.validate_message_embed(message)
-                } else if let Some(_) = message.sticker_items.first() {
-                    self.validate_message_sticker(message).and_then(|a| Some(Cow::Owned(a.clone())))
-                } else {
+
+        let mut message_attachment_urls: Vec<Option<Cow<String>>> = vec![];
+
+        for message in messages {
+            if let Some(_) = message.embeds.first() {
+                message_attachment_urls.push(
+                    self.validate_message_embed(&message)
+                        .and_then(|a| Some(Cow::Owned(a.to_string()))),
+                );
+            } else if let Some(_) = message.sticker_items.first() {
+                message_attachment_urls.push(
+                    self.validate_message_sticker(context, &message)
+                        .await
+                        .and_then(|a| Some(Cow::Owned(a.clone()))),
+                );
+            } else {
+                message_attachment_urls.push(
                     message
                         .attachments
                         .first()
-                        .and_then(|a| Some(Cow::Borrowed(&a.url)))
-                }
-            })
-            .collect();
+                        .and_then(|a| Some(Cow::Owned(a.url.clone()))),
+                );
+            }
+        }
 
         message_attachment_urls
             .iter()
@@ -1012,12 +1049,30 @@ impl Assyst {
             .and_then(|x| Some(x.to_string()))
     }
 
-    fn validate_message_sticker(&self, message: &Message) -> Option<String> {
+    async fn validate_message_sticker(
+        &self,
+        context: &Arc<Context>,
+        message: &Message,
+    ) -> Option<String> {
         let sticker = message.sticker_items.first()?;
         let r#type = sticker.format_type;
-        if r#type == StickerFormatType::Lottie { None }
-        else {
-            Some(format!("https://media.discordapp.net/stickers/{}.png", sticker.id))
+        if r#type == StickerFormatType::Lottie {
+            // we need to download it from discord and convert it to a gif first
+            context.reply_with_text("preparing sticker...").await.ok()?;
+            let url = format!("https://cdn.discordapp.com/stickers/{}.json", sticker.id);
+            let content = download_content(&context.assyst.reqwest_client, &url, ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES).await.ok()?;
+            let string_content = String::from_utf8_lossy(&content);
+            let gif = convert_lottie_to_gif(context.assyst.clone(), &string_content.into_owned()).await.ok()?;
+
+            // now we need to upload it to filer so that we have a url to work with
+            // since this is how the parser works... pretty inefficient but yeah stfu
+            let url = upload_to_filer(&context.assyst.reqwest_client, gif, "image/gif").await.ok()?;
+            Some(url)
+        } else {
+            Some(format!(
+                "https://cdn.discordapp.com/stickers/{}.png",
+                sticker.id
+            ))
         }
     }
 
