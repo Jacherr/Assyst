@@ -1,10 +1,10 @@
 use crate::assyst::Assyst;
+use crate::util::get_wsi_request_tier;
 use bytes::Bytes;
 use reqwest::Error;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{future::Future, pin::Pin, sync::Arc};
 use twilight_model::id::UserId;
-use crate::util::get_wsi_request_tier;
 
 pub type NoArgFunction = Box<
     dyn Fn(
@@ -88,6 +88,29 @@ pub struct ImageInfo {
 pub enum RequestError {
     Reqwest(Error),
     Wsi(WsiError),
+}
+
+#[derive(Debug)]
+pub enum ResizeMethod {
+    Nearest,
+    Gaussian,
+}
+
+impl ResizeMethod {
+    pub fn from_str(input: &str) -> Option<Self> {
+        match input {
+            "nearest" => Some(Self::Nearest),
+            "gaussian" => Some(Self::Gaussian),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Nearest => "nearest",
+            Self::Gaussian => "gaussian",
+        }
+    }
 }
 
 pub async fn request_bytes(
@@ -412,8 +435,16 @@ pub async fn resize(
     assyst: Arc<Assyst>,
     image: Bytes,
     user_id: UserId,
+    method: ResizeMethod,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::RESIZE, image, &[], user_id).await
+    request_bytes(
+        assyst,
+        routes::RESIZE,
+        image,
+        &[("method", method.as_str())],
+        user_id,
+    )
+    .await
 }
 
 pub async fn resize_scale(

@@ -1,7 +1,8 @@
 use crate::{
     command::{
         command::{
-            force_as, Argument, Command, CommandAvailability, CommandBuilder, ParsedArgument,
+            force_as, Argument, Command, CommandAvailability, CommandBuilder, FlagKind,
+            ParsedArgument, ParsedFlags,
         },
         context::Context,
         messagebuilder::MessageBuilder,
@@ -222,7 +223,11 @@ lazy_static! {
         .build();
 }
 
-pub async fn run_ping_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
+pub async fn run_ping_command(
+    context: Arc<Context>,
+    _: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
     let processing_time = context.metrics.processing_time_start.elapsed().as_micros();
     let start = Instant::now();
     let message = context
@@ -249,6 +254,7 @@ pub async fn run_ping_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> 
 pub async fn run_enlarge_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let url = force_as::text(&args[0]);
     context
@@ -258,7 +264,11 @@ pub async fn run_enlarge_command(
     Ok(())
 }
 
-pub async fn run_help_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
+pub async fn run_help_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
     if args[0].is_nothing() {
         let mut unique_command_names: Vec<&str> = Vec::new();
         let mut command_help_entries: Vec<String> = Vec::new();
@@ -361,7 +371,11 @@ pub async fn run_help_command(context: Arc<Context>, args: Vec<ParsedArgument>) 
     Ok(())
 }
 
-pub async fn run_invite_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
+pub async fn run_invite_command(
+    context: Arc<Context>,
+    _: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
     context
         .reply(MessageBuilder::new().content(USEFUL_LINKS_TEXT).clone())
         .await
@@ -369,7 +383,11 @@ pub async fn run_invite_command(context: Arc<Context>, _: Vec<ParsedArgument>) -
     Ok(())
 }
 
-pub async fn run_prefix_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
+pub async fn run_prefix_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
     let new_prefix = force_as::text(&args[0]);
     if new_prefix.len() > 14 {
         context
@@ -390,7 +408,11 @@ pub async fn run_prefix_command(context: Arc<Context>, args: Vec<ParsedArgument>
     Ok(())
 }
 
-pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
+pub async fn run_stats_command(
+    context: Arc<Context>,
+    _: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
     let app = crate::rest::maryjane::get_application(
         context.assyst.clone(),
         context.assyst.config.bot_id,
@@ -471,7 +493,11 @@ pub async fn run_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
     Ok(())
 }
 
-pub async fn run_wsi_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
+pub async fn run_wsi_stats_command(
+    context: Arc<Context>,
+    _: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
     let response = wsi::stats(context.assyst.clone())
         .await
         .map_err(wsi::format_err)?;
@@ -488,7 +514,11 @@ pub async fn run_wsi_stats_command(context: Arc<Context>, _: Vec<ParsedArgument>
         .map(|_| ())
 }
 
-pub async fn run_rust_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
+pub async fn run_rust_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
     let ty = force_as::choice(&args[0]);
     let channel = force_as::choice(&args[1]);
     let code = parse_codeblock(force_as::text(&args[2]), "2rs");
@@ -512,7 +542,11 @@ pub async fn run_rust_command(context: Arc<Context>, args: Vec<ParsedArgument>) 
     Ok(())
 }
 
-pub async fn run_remind_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
+pub async fn run_remind_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
     let time = force_as::text(&args[0]);
 
     match time {
@@ -616,6 +650,7 @@ pub async fn run_remind_command(context: Arc<Context>, args: Vec<ParsedArgument>
 pub async fn run_top_commands_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     if args[0].is_nothing() {
         let top_commands = context
@@ -673,7 +708,11 @@ pub async fn run_top_commands_command(
     Ok(())
 }
 
-pub async fn run_top_bt_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
+pub async fn run_top_bt_command(
+    context: Arc<Context>,
+    _: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
     let top_bt = context
         .assyst
         .database
@@ -704,6 +743,7 @@ pub async fn run_top_bt_command(context: Arc<Context>, _: Vec<ParsedArgument>) -
 pub async fn run_btchannel_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let mut args = args.iter();
     let ty = args.next().map(force_as::choice).unwrap();
@@ -855,7 +895,11 @@ pub async fn run_btchannel_command(
     Ok(())
 }
 
-pub async fn run_chars_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
+pub async fn run_chars_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
     let arg = force_as::text(&args[0]);
 
     let chars = arg.chars().take(10);
@@ -882,6 +926,7 @@ pub async fn run_chars_command(context: Arc<Context>, args: Vec<ParsedArgument>)
 pub async fn run_translate_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let lang = force_as::text(&args[0]);
     let text = force_as::text(&args[1]);
@@ -901,6 +946,7 @@ pub async fn run_translate_command(
 pub async fn run_fake_eval_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let code = force_as::text(&args[0]);
 
@@ -917,7 +963,11 @@ pub async fn run_fake_eval_command(
         .await
         .map(|_| ())
 }
-pub async fn run_exec_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
+pub async fn run_exec_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
     let command = force_as::text(&args[0]);
 
     let result = exec_sync(command).map_err(|e| e.to_string())?;
@@ -938,6 +988,7 @@ pub async fn run_exec_command(context: Arc<Context>, args: Vec<ParsedArgument>) 
 pub async fn run_command_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let command = force_as::text(&args[0]);
 
@@ -997,6 +1048,7 @@ pub async fn run_command_command(
 pub async fn run_wsi_restart_command(
     context: Arc<Context>,
     _: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     wsi::restart(context.assyst.clone())
         .await
@@ -1010,6 +1062,7 @@ pub async fn run_wsi_restart_command(
 pub async fn run_patron_status_command(
     context: Arc<Context>,
     _: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let lock = context.assyst.patrons.read().await;
     let user = lock.iter().find(|i| i.user_id == context.message.author.id);
@@ -1052,6 +1105,7 @@ pub async fn run_patron_status_command(
 pub async fn run_cache_status_command(
     context: Arc<Context>,
     _: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let replies_size = context.assyst.replies.read().await.size();
     let ratelimits_size = context.assyst.command_ratelimits.read().await.size();
@@ -1067,6 +1121,7 @@ pub async fn run_cache_status_command(
 pub async fn run_top_voters_command(
     context: Arc<Context>,
     _: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let top_voters = context.assyst.database.get_voters().await;
 

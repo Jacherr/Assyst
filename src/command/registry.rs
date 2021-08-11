@@ -1,4 +1,4 @@
-use super::command::{Command, ParsedArgument, ParsedCommand};
+use super::command::{Command, ParsedArgument, ParsedCommand, ParsedFlags};
 use super::{
     categories::{fun::*, image::*, misc::*},
     command::CommandAvailability,
@@ -15,7 +15,7 @@ use tokio::{
 pub type CommandResult = Result<(), String>;
 pub type CommandResultOuter = Pin<Box<dyn Future<Output = CommandResult> + Send>>;
 pub type CommandRun =
-    Box<dyn Fn(Arc<Context>, Vec<ParsedArgument>) -> CommandResultOuter + Send + Sync>;
+    Box<dyn Fn(Arc<Context>, Vec<ParsedArgument>, ParsedFlags) -> CommandResultOuter + Send + Sync>;
 
 macro_rules! register_command {
     ($self:expr, $command:expr, $run_fn:expr) => {{
@@ -25,7 +25,7 @@ macro_rules! register_command {
         }
 
         $self.commands.insert(&$command.name, &*$command);
-        $self.command_runs.insert(&$command.name, Box::new(move |context, args| Box::pin($run_fn(context, args))));
+        $self.command_runs.insert(&$command.name, Box::new(move |context, args, flags| Box::pin($run_fn(context, args, flags))));
     }}
 }
 
@@ -70,7 +70,7 @@ impl CommandRegistry {
         // get the appropriate handler function
         // we already validated the command exists, so unwrapping here is safe
         let command_run = self.command_runs.get(parsed_command.calling_name).unwrap();
-        let result = command_run(context, parsed_command.args).await;
+        let result = command_run(context, parsed_command.args, parsed_command.flags).await;
         let mut lock = command_processed.lock().await;
         *lock = true;
 

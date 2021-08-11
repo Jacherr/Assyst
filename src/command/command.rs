@@ -1,8 +1,64 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{borrow::Cow, collections::HashMap, sync::Arc, time::Duration};
 
 use bytes::Bytes;
 
 use super::context::Context;
+
+#[derive(Debug)]
+pub enum FlagKind {
+    Text,
+    Number,
+    Decimal,
+    Boolean,
+    Choice(&'static [&'static str]),
+}
+
+#[derive(Debug)]
+pub enum ParsedFlagKind {
+    Text(String),
+    Number(u64),
+    Decimal(f64),
+    Boolean(bool),
+}
+
+impl ParsedFlagKind {
+    pub fn as_text(&self) -> Cow<'_, str> {
+        match self {
+            Self::Text(t) => Cow::Borrowed(t),
+            Self::Number(n) => Cow::Owned(n.to_string()),
+            Self::Decimal(n) => Cow::Owned(n.to_string()),
+            Self::Boolean(b) => Cow::Owned(b.to_string()),
+        }
+    }
+
+    pub fn as_number(&self) -> Option<u64> {
+        match self {
+            Self::Number(n) => Some(*n),
+            Self::Decimal(n) => Some(*n as u64),
+            _ => None,
+        }
+    }
+
+    pub fn as_decimal(&self) -> Option<f64> {
+        match self {
+            Self::Number(n) => Some(*n as f64),
+            Self::Decimal(n) => Some(*n),
+            _ => None,
+        }
+    }
+
+    pub fn as_boolean(&self) -> Option<bool> {
+        match self {
+            Self::Boolean(b) => Some(*b),
+            _ => None,
+        }
+    }
+}
+
+pub type Flag = (&'static str, Option<FlagKind>);
+pub type ParsedFlag = Option<ParsedFlagKind>;
+pub type RawFlags = HashMap<&'static str, Flag>;
+pub type ParsedFlags = HashMap<&'static str, ParsedFlag>;
 
 #[derive(Debug)]
 pub enum Argument {
@@ -102,6 +158,7 @@ pub struct CommandMetadata {
 pub struct ParsedCommand {
     pub args: Vec<ParsedArgument>,
     pub calling_name: &'static str,
+    pub flags: ParsedFlags,
 }
 
 pub struct ParsedArgumentResult {
@@ -136,8 +193,8 @@ impl ParsedArgumentResult {
 pub struct Command {
     pub aliases: Vec<&'static str>,
     pub args: Vec<Argument>,
+    pub flags: RawFlags,
     pub availability: CommandAvailability,
-    pub flags: CommandFlags,
     pub metadata: CommandMetadata,
     pub name: &'static str,
     pub cooldown_seconds: usize,
@@ -148,7 +205,7 @@ pub struct CommandBuilder {
     aliases: Vec<&'static str>,
     args: Vec<Argument>,
     availability: Option<CommandAvailability>,
-    flags: CommandFlags,
+    flags: RawFlags,
     metadata: CommandMetadata,
     name: &'static str,
     cooldown_seconds: Option<usize>,
@@ -207,8 +264,8 @@ impl CommandBuilder {
         self
     }
 
-    pub fn flag(mut self, key: &'static str, r#type: FlagInnerType) -> Self {
-        self.flags.insert(key, r#type);
+    pub fn flag(mut self, key: &'static str, ty: Option<FlagKind>) -> Self {
+        self.flags.insert(key, (key, ty));
         self
     }
 
@@ -284,16 +341,3 @@ pub mod force_as {
         }
     }
 }
-
-#[derive(Debug)]
-pub enum FlagInnerType {
-    Boolean,
-    String,
-    Integer,
-    Decimal,
-    Choice(&'static [&'static str]),
-}
-
-pub type CommandFlags = HashMap<&'static str, FlagInnerType>;
-
-pub type ParsedFlags = HashMap<&'static str, Option<&'static str>>;

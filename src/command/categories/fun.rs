@@ -1,6 +1,6 @@
 use crate::{
     command::{
-        command::{force_as, Argument, Command, CommandBuilder, ParsedArgument},
+        command::{force_as, Argument, Command, CommandBuilder, ParsedArgument, ParsedFlags},
         context::Context,
         registry::CommandResult,
     },
@@ -73,7 +73,11 @@ lazy_static! {
         .build();
 }
 
-pub async fn run_bt_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
+pub async fn run_bt_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
     let text = force_as::text(&args[0]);
     let text = normalize_emojis(text);
     let translated = bad_translate(&context.assyst.reqwest_client, &text)
@@ -88,6 +92,7 @@ pub async fn run_bt_command(context: Arc<Context>, args: Vec<ParsedArgument>) ->
 pub async fn run_btdebug_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let text = force_as::text(&args[0]);
     let translated = bad_translate(&context.assyst.reqwest_client, text)
@@ -128,7 +133,11 @@ pub async fn run_btdebug_command(
     Ok(())
 }
 
-pub async fn run_money_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
+pub async fn run_money_command(
+    context: Arc<Context>,
+    _: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
     context
         .reply_with_text("https://media.discordapp.net/stickers/874300577180418068.png")
         .await?;
@@ -138,6 +147,7 @@ pub async fn run_money_command(context: Arc<Context>, _: Vec<ParsedArgument>) ->
 pub async fn run_ocrbt_command(
     context: Arc<Context>,
     mut args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let arg = args.drain(0..1).next().unwrap();
     let image = force_as::text(&arg);
@@ -158,7 +168,11 @@ pub async fn run_ocrbt_command(
     Ok(())
 }
 
-pub async fn run_ocrtr_command(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
+pub async fn run_ocrtr_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
     let lang = force_as::text(&args[0]);
     let image = force_as::text(&args[1]);
 
@@ -179,7 +193,11 @@ pub async fn run_ocrtr_command(context: Arc<Context>, args: Vec<ParsedArgument>)
     Ok(())
 }
 
-pub async fn run_rule34_command(context: Arc<Context>, _: Vec<ParsedArgument>) -> CommandResult {
+pub async fn run_rule34_command(
+    context: Arc<Context>,
+    _: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
     tokio::time::sleep(Duration::from_millis(1500)).await;
 
     context
