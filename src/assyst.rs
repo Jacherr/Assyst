@@ -1,11 +1,23 @@
-use crate::{badtranslator::BadTranslator, caching::{Ratelimits, Replies, Reply}, command::context::Metrics, command::{
+use crate::{
+    badtranslator::BadTranslator,
+    caching::{Ratelimits, Replies, Reply},
+    command::context::Metrics,
+    command::{
         command::{
             Argument, Command, CommandAvailability, CommandParseError, CommandParseErrorType,
             ParsedArgument, ParsedArgumentResult, ParsedCommand,
         },
         context::Context,
         registry::CommandRegistry,
-    }, config::Config, consts::{ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES, BOT_ID}, database::Database, logging::Logger, metrics::GlobalMetrics, rest::{convert_lottie_to_gif, patreon::Patron, upload_to_filer}, util::{download_content, get_current_millis, get_guild_owner, regexes, Uptime}};
+    },
+    config::Config,
+    consts::{ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES, BOT_ID},
+    database::Database,
+    logging::Logger,
+    metrics::GlobalMetrics,
+    rest::{convert_lottie_to_gif, patreon::Patron, upload_to_filer},
+    util::{download_content, get_current_millis, get_guild_owner, regexes, Uptime},
+};
 
 use bytes::Bytes;
 use reqwest::Client as ReqwestClient;
@@ -887,6 +899,56 @@ impl Assyst {
             url = gif_url.to_owned();
         };
 
+        if url.ends_with(".json") && url.starts_with("https://cdn.discordapp.com/stickers/") {
+            // we need to download it from discord and convert it to a gif first
+            context
+                .reply_with_text("preparing sticker...")
+                .await
+                .map_err(|_| {
+                    CommandParseError::without_reply(
+                        "failed to send message".to_owned(),
+                        CommandParseErrorType::Other,
+                    )
+                })?;
+
+            let content: Vec<u8> = download_content(
+                &context.assyst.reqwest_client,
+                &url,
+                ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES,
+            )
+                .await
+                .map_err(|e| {
+                    CommandParseError::with_reply(
+                        format!("failed to download lottie sticker: {}", e),
+                        None,
+                        CommandParseErrorType::MediaDownloadFail,
+                    )
+                })?;
+
+            let string_content = String::from_utf8_lossy(&content);
+            let gif = convert_lottie_to_gif(context.assyst.clone(), &string_content.into_owned())
+                .await
+                .map_err(|e| {
+                    CommandParseError::with_reply(
+                        format!("failed to process lottie sticker: {}", e.to_string()),
+                        None,
+                        CommandParseErrorType::MediaDownloadFail,
+                    )
+                })?;
+
+            // now we need to upload it to filer so that we have a url to work with
+            // since this is how the parser works... pretty inefficient but yeah stfu
+            url = upload_to_filer(&context.assyst.reqwest_client, gif, "image/gif")
+                .await
+                .map_err(|e| {
+                    CommandParseError::with_reply(
+                        format!("failed to upload sticker: {}", e.to_string()),
+                        None,
+                        CommandParseErrorType::MediaDownloadFail,
+                    )
+                })?;
+        }
+
         match return_as {
             Argument::ImageBuffer => {
                 let result = download_content(
@@ -1051,23 +1113,16 @@ impl Assyst {
 
     async fn validate_message_sticker(
         &self,
-        context: &Arc<Context>,
+        _context: &Arc<Context>,    // too lazy to remove this from everywhere
         message: &Message,
     ) -> Option<String> {
         let sticker = message.sticker_items.first()?;
         let r#type = sticker.format_type;
         if r#type == StickerFormatType::Lottie {
-            // we need to download it from discord and convert it to a gif first
-            context.reply_with_text("preparing sticker...").await.ok()?;
-            let url = format!("https://cdn.discordapp.com/stickers/{}.json", sticker.id);
-            let content = download_content(&context.assyst.reqwest_client, &url, ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES).await.ok()?;
-            let string_content = String::from_utf8_lossy(&content);
-            let gif = convert_lottie_to_gif(context.assyst.clone(), &string_content.into_owned()).await.ok()?;
-
-            // now we need to upload it to filer so that we have a url to work with
-            // since this is how the parser works... pretty inefficient but yeah stfu
-            let url = upload_to_filer(&context.assyst.reqwest_client, gif, "image/gif").await.ok()?;
-            Some(url)
+            Some(format!(
+                "https://cdn.discordapp.com/stickers/{}.json",
+                sticker.id
+            ))
         } else {
             Some(format!(
                 "https://cdn.discordapp.com/stickers/{}.png",
