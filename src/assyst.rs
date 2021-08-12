@@ -696,6 +696,10 @@ impl Assyst {
                             Some(command),
                             CommandParseErrorType::MissingArgument,
                         ))
+                    } else if !(args.len() <= *index) {
+                        Ok(ParsedArgumentResult::r#break(ParsedArgument::Text(
+                            args[*index..].join(" "),
+                        )))
                     } else {
                         Ok(ParsedArgumentResult::r#break(ParsedArgument::Text(
                             r.content.clone(),
