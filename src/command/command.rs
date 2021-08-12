@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap, sync::Arc, time::Duration};
+use std::{borrow::Cow, collections::HashMap, error::Error, fmt::{Display, Error as FmtError, Formatter}, sync::Arc, time::Duration};
 
 use bytes::Bytes;
 
@@ -348,5 +348,27 @@ pub mod force_as {
             ParsedArgument::Choice(data) => data,
             _ => panic!("expected choice, got {:?}", argument),
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct CommandError {
+    text: String
+}
+impl CommandError {
+    pub fn new(text: &str) -> Self {
+        CommandError { text: text.to_owned() }
+    }
+
+    pub fn new_boxed(text: &str) -> Box<Self> {
+        Box::new(CommandError { text: text.to_owned() })
+    }
+}
+impl Error for CommandError {
+
+}
+impl Display for CommandError {
+    fn fmt(&self, formatter: &mut Formatter) -> Result<(), FmtError> {
+        write!(formatter, "Command Error: {}", self.text)
     }
 }

@@ -4,6 +4,7 @@ use super::{
     command::CommandAvailability,
 };
 use crate::command::context::Context;
+use std::error::Error;
 use std::future::Future;
 use std::sync::Arc;
 use std::{collections::HashMap, pin::Pin};
@@ -12,7 +13,7 @@ use tokio::{
     time::{sleep, Duration},
 };
 
-pub type CommandResult = Result<(), String>;
+pub type CommandResult = Result<(), Box<dyn Error + Send + Sync>>;
 pub type CommandResultOuter = Pin<Box<dyn Future<Output = CommandResult> + Send>>;
 pub type CommandRun =
     Box<dyn Fn(Arc<Context>, Vec<ParsedArgument>, ParsedFlags) -> CommandResultOuter + Send + Sync>;
@@ -46,7 +47,7 @@ impl CommandRegistry {
         &self,
         parsed_command: ParsedCommand,
         context: Arc<Context>,
-    ) -> Result<(), String> {
+    ) -> CommandResult {
         let command_processed = Arc::new(Mutex::new(false));
 
         let command_processed_c = command_processed.clone();

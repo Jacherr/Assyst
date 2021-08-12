@@ -349,8 +349,9 @@ impl Assyst {
 
         reply.lock().await.in_use = false;
         if let Err(err) = command_result {
+            let err_dsc = err.to_string().replace("\\n", "\n");
             context
-                .reply_err(&err.replace("\\n", "\n"))
+                .reply_err(&err_dsc)
                 .await
                 .map_err(|e| e.to_string())?;
         };
