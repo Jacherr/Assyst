@@ -1016,9 +1016,9 @@ impl Assyst {
             let string_content = String::from_utf8_lossy(&content);
             let gif = convert_lottie_to_gif(context.assyst.clone(), &string_content.into_owned())
                 .await
-                .map_err(|e| {
+                .map_err(|_| {
                     CommandParseError::with_reply(
-                        format!("failed to process lottie sticker: {}", e.to_string()),
+                        "failed to process lottie sticker".to_owned(),
                         None,
                         CommandParseErrorType::MediaDownloadFail,
                     )
@@ -1151,7 +1151,7 @@ impl Assyst {
         if attachment.is_some() {
             return attachment;
         };
-        let sticker = self.validate_message_sticker(context, message).await;
+        let sticker = self.validate_message_sticker(context, reply).await;
         if sticker.is_some() {
             return sticker;
         }
