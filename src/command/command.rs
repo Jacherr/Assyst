@@ -73,7 +73,7 @@ pub enum Argument {
     OptionalWithDefault(Box<Argument>, &'static str),
     OptionalWithDefaultDynamic(Box<Argument>, fn(Arc<Context>) -> ParsedArgument),
 }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum ParsedArgument {
     Text(String),
     Binary(Bytes),
@@ -83,6 +83,15 @@ pub enum ParsedArgument {
 impl ParsedArgument {
     pub fn is_nothing(&self) -> bool {
         *self == ParsedArgument::Nothing
+    }
+    pub fn as_text(&self) -> &str {
+        force_as::text(self)
+    }
+    pub fn as_bytes(self) -> Bytes {
+        force_as::image_buffer(self)
+    }
+    pub fn as_choice(&self) -> &str {
+        force_as::choice(self)
     }
 }
 
