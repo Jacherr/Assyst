@@ -1,5 +1,4 @@
-use crate::{
-    command::{
+use crate::{command::{
         command::{
             force_as, Argument, Command, CommandAvailability, CommandBuilder, FlagKind,
             ParsedArgument, ParsedFlags,
@@ -7,17 +6,7 @@ use crate::{
         context::Context,
         messagebuilder::MessageBuilder,
         registry::CommandResult,
-    },
-    rest::{
-        annmarie::{self, info},
-        bt::{get_languages, validate_language},
-        fake_eval, wsi,
-    },
-    util::{
-        codeblock, ensure_same_guild, exec_sync, extract_page_title, format_discord_timestamp,
-        format_time, generate_list, generate_table, get_memory_usage, parse_codeblock,
-    },
-};
+    }, rest::{annmarie::{self, info}, bt::{get_languages, validate_language}, fake_eval, wsi::{self, ResizeMethod}}, util::{codeblock, ensure_same_guild, exec_sync, extract_page_title, format_discord_timestamp, format_time, generate_list, generate_table, get_buffer_filetype, get_memory_usage, parse_codeblock}};
 use crate::{
     consts::Y21,
     database::Reminder,
@@ -47,7 +36,7 @@ lazy_static! {
     pub static ref ENLARGE_COMMAND: Command = CommandBuilder::new("enlarge")
         .alias("e")
         .public()
-        .arg(Argument::ImageUrl)
+        .arg(Argument::ImageBuffer)
         .description("get url of an avatar or emoji")
         .usage("[image]")
         .example(Y21) // you
@@ -256,11 +245,23 @@ pub async fn run_enlarge_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    let url = force_as::text(&args[0]);
-    context
-        .reply(MessageBuilder::new().content(url).clone())
-        .await
-        .map_err(|e| e.to_string())?;
+    let image = args[0].clone().as_bytes();
+
+    context.reply_with_text("processing...").await?;
+
+    let result = wsi::resize_scale(
+        context.assyst.clone(),
+        image,
+        context.author_id(),
+        2.0,
+        ResizeMethod::Gaussian
+    )
+    .await
+    .map_err(wsi::format_err)?;
+
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+
     Ok(())
 }
 
