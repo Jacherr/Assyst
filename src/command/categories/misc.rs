@@ -1,12 +1,4 @@
-use crate::{command::{
-        command::{
-            force_as, Argument, Command, CommandAvailability, CommandBuilder, FlagKind,
-            ParsedArgument, ParsedFlags,
-        },
-        context::Context,
-        messagebuilder::MessageBuilder,
-        registry::CommandResult,
-    }, rest::{annmarie::{self, info}, bt::{get_languages, validate_language}, fake_eval, wsi::{self, ResizeMethod}}, util::{codeblock, ensure_same_guild, exec_sync, extract_page_title, format_discord_timestamp, format_time, generate_list, generate_table, get_buffer_filetype, get_memory_usage, parse_codeblock}};
+use crate::{command::{command::{Argument, Command, CommandAvailability, CommandBuilder, CommandError, ParsedArgument, ParsedFlags, force_as}, context::Context, messagebuilder::MessageBuilder, registry::CommandResult}, rest::{annmarie::{self, info}, bt::{get_languages, validate_language}, fake_eval, wsi::{self, ResizeMethod}}, util::{codeblock, ensure_same_guild, exec_sync, extract_page_title, format_discord_timestamp, format_time, generate_list, generate_table, get_buffer_filetype, get_memory_usage, parse_codeblock}};
 use crate::{
     consts::Y21,
     database::Reminder,
@@ -479,17 +471,14 @@ pub async fn run_stats_command(
     ]);
 
     context
-        .reply(
-            MessageBuilder::new()
-                .content(&format!(
-                    "**Stats:** {} **Uptimes:** {}",
-                    codeblock(&stats_table, "hs"),
-                    codeblock(&uptimes_table, "hs")
-                ))
-                .clone(),
+        .reply_with_text(
+            &format!(
+                "**Stats:** {} **Uptimes:** {}",
+                codeblock(&stats_table, "hs"),
+                codeblock(&uptimes_table, "hs")
+            )
         )
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
 
     Ok(())
 }
@@ -510,9 +499,9 @@ pub async fn run_wsi_stats_command(
 
     context
         .reply_with_text(&output)
-        .await
-        .map_err(|e| e.to_string())
-        .map(|_| ())
+        .await?;
+
+    Ok(())
 }
 
 pub async fn run_rust_command(
@@ -537,8 +526,7 @@ pub async fn run_rust_command(
 
     context
         .reply(MessageBuilder::new().content(&codeblock(formatted, "rs")))
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
 
     Ok(())
 }
@@ -602,25 +590,25 @@ pub async fn run_remind_command(
                 return Ok(());
             }
 
-            return Err("Failed to delete reminder, either because the ID is wrong or the reminder is not yours.".to_owned());
+            return Err(CommandError::new_boxed("Failed to delete reminder, either because the ID is wrong or the reminder is not yours."));
         }
         _ => {}
     };
 
     let comment = match args.get(1) {
         Some(ParsedArgument::Text(arg)) => arg,
-        _ => return Err("No comment provided".to_owned()),
+        _ => return Err(CommandError::new_boxed("No comment provided")),
     };
 
     let time = parse_to_millis(time).map_err(|e| e.to_string())? as u64;
 
     if time == 0 {
-        return Err("An invalid time was provided".to_owned());
+        return Err(CommandError::new_boxed("An invalid time was provided"));
     }
 
     let guild_id = match context.message.guild_id {
         Some(id) => id.0,
-        None => return Err("This command can only be run in a server".to_owned()),
+        None => return Err(CommandError::new_boxed("This command can only be run in a server")),
     };
 
     let ftime = format_time(time);
@@ -643,9 +631,9 @@ pub async fn run_remind_command(
 
     context
         .reply_with_text(&format!("Reminder set for {} from now", ftime))
-        .await
-        .map_err(|e| e.to_string())
-        .and_then(|_| Ok(()))
+        .await?;
+    
+    Ok(())
 }
 
 pub async fn run_top_commands_command(
@@ -703,7 +691,7 @@ pub async fn run_top_commands_command(
                 .await
                 .map_err(|e| e.to_string())?;
         } else {
-            return Err("No command with this name or alias exists.".to_owned());
+            return Err(CommandError::new_boxed("No command with this name or alias exists."));
         }
     }
     Ok(())
@@ -770,10 +758,10 @@ pub async fn run_btchannel_command(
                 .map_err(|e| e.to_string())?;
 
             if !is_valid_language {
-                return Err(format!(
+                return Err(CommandError::new_boxed(&format!(
                     "This language does not exist or cannot be used as a target language. Run `{}btchannel languages` for a list of languages",
                     context.prefix
-                ));
+                )));
             }
 
             context
@@ -786,7 +774,7 @@ pub async fn run_btchannel_command(
                 .await
                 .map_err(|e| {
                     eprintln!("{:?}", e);
-                    "Registering BT channel failed. This is likely a bug. Please contact one of the bot developers".to_string()
+                    CommandError::new_boxed("Registering BT channel failed. This is likely a bug. Please contact one of the bot developers")
                 })?;
 
             context
@@ -797,8 +785,7 @@ pub async fn run_btchannel_command(
 
             context
                 .reply_with_text("BT Channel registered.")
-                .await
-                .map_err(|e| e.to_string())?;
+                .await?
         }
         "setlanguage" => {
             let channel_id = args
@@ -817,10 +804,10 @@ pub async fn run_btchannel_command(
                 .map_err(|e| e.to_string())?;
 
             if !is_valid_language {
-                return Err(format!(
+                return Err(CommandError::new_boxed(&format!(
                     "This language does not exist or cannot be used as a target language. Run `{}btchannel languages` for a list of languages",
                     context.prefix
-                ));
+                )));
             }
 
             let did_update = context
@@ -831,7 +818,7 @@ pub async fn run_btchannel_command(
                 .map_err(|e| e.to_string())?;
 
             if !did_update {
-                return Err(String::from("Failed to update BT language. Make sure that the provided ID is a valid BT channel."));
+                return Err(CommandError::new_boxed("Failed to update BT language. Make sure that the provided ID is a valid BT channel."));
             }
 
             context
@@ -842,8 +829,7 @@ pub async fn run_btchannel_command(
 
             context
                 .reply_with_text(&format!("BT Channel language set to `{}`", language))
-                .await
-                .map_err(|e| e.to_string())?;
+                .await?
         }
         "remove" => {
             let channel_id = args
@@ -863,7 +849,7 @@ pub async fn run_btchannel_command(
                 .map_err(|e| e.to_string())?;
 
             if !did_delete {
-                return Err(String::from(
+                return Err(CommandError::new_boxed(
                     "Failed to delete BT channel. Is it registered in that channel?",
                 ));
             }
@@ -876,8 +862,7 @@ pub async fn run_btchannel_command(
 
             context
                 .reply_with_text("BT channel successfully deleted.")
-                .await
-                .map_err(|e| e.to_string())?;
+                .await?
         }
         "languages" => {
             let languages = get_languages(&context.assyst.reqwest_client)
@@ -887,8 +872,7 @@ pub async fn run_btchannel_command(
             let message = codeblock(&generate_list("Code", "Language", &languages), "hs");
             context
                 .reply_with_text(&message)
-                .await
-                .map_err(|e| e.to_string())?;
+                .await?
         }
         _ => unreachable!(),
     };
@@ -919,9 +903,9 @@ pub async fn run_chars_command(
 
     context
         .reply_with_text(&output)
-        .await
-        .map_err(|e| e.to_string())
-        .map(|_| ())
+        .await?;
+    
+    Ok(())
 }
 
 pub async fn run_translate_command(
@@ -938,8 +922,7 @@ pub async fn run_translate_command(
 
     context
         .reply_with_text(&translation.result.text)
-        .await
-        .unwrap();
+        .await?;
 
     Ok(())
 }
@@ -961,8 +944,9 @@ pub async fn run_fake_eval_command(
 
     context
         .reply_with_text(&codeblock(&response.message, "js"))
-        .await
-        .map(|_| ())
+        .await?;
+    
+    Ok(())
 }
 pub async fn run_exec_command(
     context: Arc<Context>,
@@ -981,7 +965,7 @@ pub async fn run_exec_command(
         output = format!("{}`stderr`: ```{}```", output, result.stderr);
     }
 
-    context.reply_with_text(&output).await.unwrap();
+    context.reply_with_text(&output).await?;
 
     Ok(())
 }
@@ -1039,7 +1023,7 @@ pub async fn run_command_command(
             };
         }
         None => {
-            return Err("No command with this name or alias exists.".to_owned());
+            return Err(CommandError::new_boxed("No command with this name or alias exists."));
         }
     };
 
@@ -1160,7 +1144,7 @@ pub async fn run_top_voters_command(
 
     context
         .reply_with_text(&response)
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
+        
     Ok(())
 }

@@ -53,7 +53,7 @@ impl Context {
     pub async fn reply(
         &self,
         message_builder: MessageBuilder,
-    ) -> Result<Arc<Message>, Box<dyn Error>> {
+    ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
         let mut reply_lock = self.reply.lock().await;
         if !reply_lock.has_replied() {
             let result = self.create_new_message(message_builder).await?;
@@ -80,7 +80,7 @@ impl Context {
         &self,
         format: &str,
         buffer: Bytes,
-    ) -> Result<Arc<Message>, String> {
+    ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
         let builder = MessageBuilder::new();
         if buffer.len() > consts::WORKING_FILESIZE_LIMIT_BYTES {
             let url = crate::rest::upload_to_filer(
@@ -88,30 +88,29 @@ impl Context {
                 buffer,
                 &format!("image/{}", format),
             )
-            .await
-            .map_err(|e| e.to_string())?;
+            .await?;
             let builder = builder.content(&url);
-            self.reply(builder).await.map_err(|e| e.to_string())
+            self.reply(builder).await
         } else {
             let builder = builder.attachment(&format!("attachment.{}", format), buffer.to_vec());
-            self.reply(builder).await.map_err(|e| e.to_string())
+            self.reply(builder).await
         }
     }
 
-    pub async fn reply_with_text(&self, text: &str) -> Result<Arc<Message>, String> {
+    pub async fn reply_with_text(&self, text: &str) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
         let checked_text = if text.len() == 0 {
             "[Empty Response]"
         } else {
             text
         };
         let builder = MessageBuilder::new().content(checked_text);
-        self.reply(builder).await.map_err(|e| e.to_string())
+        self.reply(builder).await
     }
 
     async fn create_new_message(
         &self,
         message_builder: MessageBuilder,
-    ) -> Result<Arc<Message>, Box<dyn Error>> {
+    ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
         let mut create_message = self
             .assyst
             .http
@@ -140,7 +139,7 @@ impl Context {
         &self,
         message_id: MessageId,
         message_builder: MessageBuilder,
-    ) -> Result<Arc<Message>, Box<dyn Error>> {
+    ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
         let mut update_message = self
             .assyst
             .http
@@ -163,7 +162,7 @@ impl Context {
         Ok(result)
     }
 
-    pub async fn reply_err(&self, content: &str) -> Result<Arc<Message>, Box<dyn Error>> {
+    pub async fn reply_err(&self, content: &str) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
         self.reply(
             MessageBuilder::new()
                 .content(&format!(":warning: `{}`", content.replace("`", "'")))
