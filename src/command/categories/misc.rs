@@ -1,4 +1,4 @@
-use crate::{command::{command::{Argument, Command, CommandAvailability, CommandBuilder, CommandError, ParsedArgument, ParsedFlags, force_as}, context::Context, messagebuilder::MessageBuilder, registry::CommandResult}, rest::{annmarie::{self, info}, bt::{get_languages, validate_language}, fake_eval, wsi::{self, ResizeMethod}}, util::{codeblock, ensure_same_guild, exec_sync, extract_page_title, format_discord_timestamp, format_time, generate_list, generate_table, get_buffer_filetype, get_memory_usage, parse_codeblock}};
+use crate::{command::{command::{Argument, Command, CommandAvailability, CommandBuilder, CommandError, ParsedArgument, ParsedFlags}, context::Context, messagebuilder::MessageBuilder, registry::CommandResult}, rest::{annmarie::{self, info}, bt::{get_languages, validate_language}, fake_eval, wsi::{self, ResizeMethod}}, util::{codeblock, ensure_same_guild, exec_sync, extract_page_title, format_discord_timestamp, format_time, generate_list, generate_table, get_buffer_filetype, get_memory_usage, parse_codeblock}};
 use crate::{
     consts::Y21,
     database::Reminder,
@@ -301,7 +301,7 @@ pub async fn run_help_command(
             .await
             .map_err(|e| e.to_string())?;
     } else {
-        let command_name = force_as::text(&args[0]);
+        let command_name = args[0].as_text();
         let command = context
             .assyst
             .registry
@@ -381,7 +381,7 @@ pub async fn run_prefix_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    let new_prefix = force_as::text(&args[0]);
+    let new_prefix = args[0].as_text();
     if new_prefix.len() > 14 {
         context
             .reply_err("Prefixes cannot be longer than 14 characters")
@@ -509,9 +509,9 @@ pub async fn run_rust_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    let ty = force_as::choice(&args[0]);
-    let channel = force_as::choice(&args[1]);
-    let code = parse_codeblock(force_as::text(&args[2]), "2rs");
+    let ty = args[0].as_choice();
+    let channel = args[1].as_text();
+    let code = parse_codeblock(args[2].as_text(), "2rs");
 
     let result = match ty {
         "run" => rust::run_binary(&context.assyst.reqwest_client, code, channel).await,
@@ -536,7 +536,7 @@ pub async fn run_remind_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    let time = force_as::text(&args[0]);
+    let time = args[0].as_text();
 
     match time {
         "list" => {
@@ -571,7 +571,7 @@ pub async fn run_remind_command(
         }
         "remove" | "delete" => {
             let user_id = context.message.author.id.0;
-            let reminder_id = force_as::text(&args[1])
+            let reminder_id = args[1].as_text()
                 .parse::<i32>()
                 .map_err(|e| e.to_string())?;
 
@@ -667,7 +667,7 @@ pub async fn run_top_commands_command(
             .await
             .map_err(|e| e.to_string())?;
     } else {
-        let command_name = force_as::text(&args[0]);
+        let command_name = args[0].as_text();
 
         let command = context
             .assyst
@@ -735,7 +735,7 @@ pub async fn run_btchannel_command(
     _flags: ParsedFlags,
 ) -> CommandResult {
     let mut args = args.iter();
-    let ty = args.next().map(force_as::choice).unwrap();
+    let ty = args.next().map(|a| a.as_choice()).unwrap();
 
     // safe to unwrap - we can only use it in a guild
     let guild_id = context.message.guild_id.unwrap().0;
@@ -744,14 +744,14 @@ pub async fn run_btchannel_command(
         "add" => {
             let channel_id = args
                 .next()
-                .and_then(force_as::maybe_text)
+                .and_then(|a| a.maybe_text())
                 .map(str::parse::<u64>)
                 .unwrap_or(Ok(context.message.channel_id.0))
                 .map_err(|e| e.to_string())?;
 
             ensure_same_guild(&context, channel_id, guild_id).await?;
 
-            let language = args.next().and_then(force_as::maybe_text).unwrap_or("en");
+            let language = args.next().and_then(|a| a.maybe_text()).unwrap_or("en");
 
             let is_valid_language = validate_language(&context.assyst.reqwest_client, language)
                 .await
@@ -790,14 +790,14 @@ pub async fn run_btchannel_command(
         "setlanguage" => {
             let channel_id = args
                 .next()
-                .and_then(force_as::maybe_text)
+                .and_then(|a| a.maybe_text())
                 .map(str::parse::<u64>)
                 .unwrap_or(Ok(context.message.channel_id.0))
                 .map_err(|e| e.to_string())?;
 
             ensure_same_guild(&context, channel_id, guild_id).await?;
 
-            let language = args.next().and_then(force_as::maybe_text).unwrap_or("en");
+            let language = args.next().and_then(|a| a.maybe_text()).unwrap_or("en");
 
             let is_valid_language = validate_language(&context.assyst.reqwest_client, language)
                 .await
@@ -834,7 +834,7 @@ pub async fn run_btchannel_command(
         "remove" => {
             let channel_id = args
                 .next()
-                .and_then(force_as::maybe_text)
+                .and_then(|a| a.maybe_text())
                 .map(str::parse::<u64>)
                 .ok_or_else(|| String::from("Please provide a channel ID."))?
                 .map_err(|e| e.to_string())?;
@@ -885,7 +885,7 @@ pub async fn run_chars_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    let arg = force_as::text(&args[0]);
+    let arg = args[0].as_text();
 
     let chars = arg.chars().take(10);
 
@@ -913,8 +913,8 @@ pub async fn run_translate_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    let lang = force_as::text(&args[0]);
-    let text = force_as::text(&args[1]);
+    let lang = args[0].as_text();
+    let text = args[1].as_text();
 
     let translation = translate_single(&context.assyst.reqwest_client, text, lang)
         .await
@@ -932,7 +932,7 @@ pub async fn run_fake_eval_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    let code = force_as::text(&args[0]);
+    let code = args[0].as_text();
 
     let mut response = fake_eval(&context.assyst.reqwest_client, code)
         .await
@@ -953,7 +953,7 @@ pub async fn run_exec_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    let command = force_as::text(&args[0]);
+    let command = args[0].as_text();
 
     let result = exec_sync(command).map_err(|e| e.to_string())?;
 
@@ -975,7 +975,7 @@ pub async fn run_command_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    let command = force_as::text(&args[0]);
+    let command = args[0].as_text();
 
     let found_command = context
         .assyst

@@ -85,13 +85,28 @@ impl ParsedArgument {
         *self == ParsedArgument::Nothing
     }
     pub fn as_text(&self) -> &str {
-        force_as::text(self)
+        match self {
+            ParsedArgument::Text(t) => t,
+            otherwise => panic!("expected text argument, got {:?}", otherwise)
+        }
     }
-    pub fn as_bytes(self) -> Bytes {
-        force_as::image_buffer(self)
+    pub fn maybe_text(&self) -> Option<&str> {
+        match self {
+            ParsedArgument::Text(t) => Some(t),
+            otherwise => None
+        }
+    }
+    pub fn as_bytes(&self) -> Bytes {
+        match self {
+            ParsedArgument::Binary(t) => t.clone(),
+            otherwise => panic!("expected buffer argument, got {:?}", otherwise)
+        }
     }
     pub fn as_choice(&self) -> &str {
-        force_as::choice(self)
+        match self {
+            ParsedArgument::Choice(t) => *t,
+            otherwise => panic!("expected choice argument, got {:?}", otherwise)
+        }
     }
 }
 
@@ -313,40 +328,6 @@ impl CommandBuilder {
             availability,
             category,
             cooldown_seconds: cooldown,
-        }
-    }
-}
-
-pub mod force_as {
-    use bytes::Bytes;
-
-    use super::ParsedArgument;
-
-    pub fn image_buffer(argument: ParsedArgument) -> Bytes {
-        match argument {
-            ParsedArgument::Binary(data) => data,
-            _ => panic!("expected buffer argument"),
-        }
-    }
-
-    pub fn text(argument: &ParsedArgument) -> &str {
-        match argument {
-            ParsedArgument::Text(data) => data,
-            _ => panic!("expected text argument"),
-        }
-    }
-
-    pub fn maybe_text(argument: &ParsedArgument) -> Option<&str> {
-        match argument {
-            ParsedArgument::Text(data) => Some(data),
-            _ => None,
-        }
-    }
-
-    pub fn choice(argument: &ParsedArgument) -> &'static str {
-        match argument {
-            ParsedArgument::Choice(data) => data,
-            _ => panic!("expected choice, got {:?}", argument),
         }
     }
 }

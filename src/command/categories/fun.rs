@@ -1,6 +1,6 @@
 use crate::{
     command::{
-        command::{force_as, Argument, Command, CommandBuilder, ParsedArgument, ParsedFlags},
+        command::{Argument, Command, CommandBuilder, ParsedArgument, ParsedFlags},
         context::Context,
         registry::CommandResult,
     },
@@ -78,7 +78,7 @@ pub async fn run_bt_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    let text = force_as::text(&args[0]);
+    let text = args[0].as_text();
     let text = normalize_emojis(text);
     let translated = bad_translate(&context.assyst.reqwest_client, &text)
         .await
@@ -94,7 +94,7 @@ pub async fn run_btdebug_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    let text = force_as::text(&args[0]);
+    let text = args[0].as_text();
     let translated = bad_translate(&context.assyst.reqwest_client, text)
         .await
         .map_err(|e| e.to_string())?;
@@ -146,11 +146,10 @@ pub async fn run_money_command(
 
 pub async fn run_ocrbt_command(
     context: Arc<Context>,
-    mut args: Vec<ParsedArgument>,
+    args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    let arg = args.drain(0..1).next().unwrap();
-    let image = force_as::text(&arg);
+    let image = args[0].as_text();
     let result = rest::ocr_image(&context.assyst.reqwest_client, image)
         .await
         .map_err(|e| e.to_string())?;
@@ -173,8 +172,8 @@ pub async fn run_ocrtr_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    let lang = force_as::text(&args[0]);
-    let image = force_as::text(&args[1]);
+    let lang = args[0].as_text();
+    let image = args[1].as_text();
 
     let result = rest::ocr_image(&context.assyst.reqwest_client, image)
         .await
