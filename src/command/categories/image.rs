@@ -873,7 +873,7 @@ pub async fn run_gif_scramble_command(
 
 pub async fn run_gif_speed_command(
     context: Arc<Context>,
-    mut args: Vec<ParsedArgument>,
+    args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
     let image = args[0].as_bytes();
@@ -1156,11 +1156,7 @@ pub async fn run_pixelate_command(
     _flags: ParsedFlags,
 ) -> CommandResult {
     let image = args[0].as_bytes();
-    let downscaled_height = if args[0].is_nothing() {
-        None
-    } else {
-        Some(args[0].as_text())
-    };
+    let downscaled_height = args[1].maybe_text();
     context.reply_with_text("processing...").await?;
     let result = wsi::pixelate(
         context.assyst.clone(),
@@ -1223,12 +1219,12 @@ pub async fn run_resize_command(
     let result: Bytes;
     context.reply_with_text("processing...").await?;
 
-    if args.get(0).is_none() {
+    if args.get(1).is_none() {
         result = wsi::resize(context.assyst.clone(), image, context.author_id(), method)
             .await
             .map_err(wsi::format_err)?;
     } else {
-        let text = args[0].as_text();
+        let text = args[1].as_text();
         if text.contains("x") {
             let split = text.split("x").collect::<Vec<&str>>();
             let width = split
