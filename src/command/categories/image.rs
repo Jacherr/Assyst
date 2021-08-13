@@ -1,8 +1,8 @@
 use crate::{
     command::{
         command::{
-            Argument, Command, CommandAvailability, CommandBuilder, FlagKind,
-            ParsedArgument, ParsedFlags,
+            Argument, Command, CommandAvailability, CommandBuilder, FlagKind, ParsedArgument,
+            ParsedFlags,
         },
         context::Context,
         registry::CommandResult,
@@ -873,15 +873,12 @@ pub async fn run_gif_scramble_command(
 
 pub async fn run_gif_speed_command(
     context: Arc<Context>,
-    args: Vec<ParsedArgument>,
+    mut args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    let image = args[0].as_bytes();
-    let delay = if args[0].is_nothing() {
-        None
-    } else {
-        Some(args[0].as_text())
-    };
+    let image = args.remove(0).into_bytes();
+    let delay = args[1].maybe_text();
+
     context.reply_with_text("processing...").await?;
     let result = wsi::gif_speed(context.assyst.clone(), image, context.author_id(), delay)
         .await
