@@ -1,4 +1,11 @@
-use std::{borrow::Cow, collections::HashMap, error::Error, fmt::{Display, Error as FmtError, Formatter}, sync::Arc, time::Duration};
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    error::Error,
+    fmt::{Display, Error as FmtError, Formatter},
+    sync::Arc,
+    time::Duration,
+};
 
 use bytes::Bytes;
 
@@ -87,25 +94,31 @@ impl ParsedArgument {
     pub fn as_text(&self) -> &str {
         match self {
             ParsedArgument::Text(t) => t,
-            otherwise => panic!("expected text argument, got {:?}", otherwise)
+            otherwise => panic!("expected text argument, got {:?}", otherwise),
         }
     }
     pub fn maybe_text(&self) -> Option<&str> {
         match self {
             ParsedArgument::Text(t) => Some(t),
-            otherwise => None
+            _ => None,
+        }
+    }
+    pub fn into_bytes(self) -> Bytes {
+        match self {
+            ParsedArgument::Binary(t) => t,
+            otherwise => panic!("expected buffer argument, got {:?}", otherwise),
         }
     }
     pub fn as_bytes(&self) -> Bytes {
         match self {
             ParsedArgument::Binary(t) => t.clone(),
-            otherwise => panic!("expected buffer argument, got {:?}", otherwise)
+            otherwise => panic!("expected buffer argument, got {:?}", otherwise),
         }
     }
     pub fn as_choice(&self) -> &str {
         match self {
             ParsedArgument::Choice(t) => *t,
-            otherwise => panic!("expected choice argument, got {:?}", otherwise)
+            otherwise => panic!("expected choice argument, got {:?}", otherwise),
         }
     }
 }
@@ -334,20 +347,25 @@ impl CommandBuilder {
 
 #[derive(Debug)]
 pub struct CommandError {
-    text: String
+    text: String,
 }
+
 impl CommandError {
     pub fn new(text: &str) -> Self {
-        CommandError { text: text.to_owned() }
+        CommandError {
+            text: text.to_owned(),
+        }
     }
 
     pub fn new_boxed(text: &str) -> Box<Self> {
-        Box::new(CommandError { text: text.to_owned() })
+        Box::new(CommandError {
+            text: text.to_owned(),
+        })
     }
 }
-impl Error for CommandError {
 
-}
+impl Error for CommandError {}
+
 impl Display for CommandError {
     fn fmt(&self, formatter: &mut Formatter) -> Result<(), FmtError> {
         write!(formatter, "Command Error: {}", self.text)
