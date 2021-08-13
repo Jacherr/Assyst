@@ -876,7 +876,7 @@ pub async fn run_gif_speed_command(
     mut args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    let image = args.remove(0).into_bytes();
+    let image = args[0].as_bytes();
     let delay = args[1].maybe_text();
 
     context.reply_with_text("processing...").await?;
