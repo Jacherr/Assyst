@@ -14,6 +14,7 @@ use std::{
 use twilight_http::{error::Error, Client};
 use twilight_model::{
     channel::Channel,
+    guild::Permissions,
     id::{GuildId, UserId},
 };
 
@@ -373,6 +374,47 @@ pub fn exec_sync(command: &str) -> Result<CommandOutput, std::io::Error> {
 /// Attempts to resolve the guild owner
 pub async fn get_guild_owner(http: &Client, guild_id: GuildId) -> Result<UserId, Error> {
     Ok(http.guild(guild_id).await?.unwrap().owner_id)
+}
+
+pub async fn is_guild_manager(
+    http: &Client,
+    guild_id: GuildId,
+    user_id: UserId,
+) -> Result<bool, Error> {
+    // guild owner *or* manage server *or* admin
+    // get owner
+    let owner = get_guild_owner(http, guild_id).await?;
+
+    // figure out permissions of the user through bitwise operations
+    let member = http.guild_member(guild_id, user_id).await?.unwrap();
+
+    let roles = http.roles(guild_id).await?;
+
+    let member_roles = roles
+        .iter()
+        .filter(|r| member.roles.contains(&r.id))
+        .collect::<Vec<_>>();
+
+    let member_permissions = member_roles.iter().fold(0, |a, r| a | r.permissions.bits());
+    let member_is_manager = member_permissions & Permissions::ADMINISTRATOR.bits()
+        == Permissions::ADMINISTRATOR.bits()
+        || member_permissions & Permissions::MANAGE_GUILD.bits()
+            == Permissions::MANAGE_GUILD.bits();
+
+    Ok(owner == user_id || member_is_manager)
+}
+
+pub async fn ensure_guild_manager(
+    context: &Arc<Context>,
+    guild_id: impl Into<GuildId>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let user_id = context.message.author.id;
+
+    if is_guild_manager(context.http(), guild_id.into(), user_id).await? {
+        Ok(())
+    } else {
+        Err("You need manage server permissions to run this command".into())
+    }
 }
 
 /// Converts number of bytes to a humanly readable string

@@ -19,7 +19,9 @@ use crate::{
     logging::Logger,
     metrics::GlobalMetrics,
     rest::{convert_lottie_to_gif, patreon::Patron, upload_to_filer},
-    util::{download_content, get_current_millis, get_guild_owner, regexes, Uptime},
+    util::{
+        download_content, get_current_millis, get_guild_owner, is_guild_manager, regexes, Uptime,
+    },
 };
 
 use bytes::Bytes;
@@ -440,45 +442,21 @@ impl Assyst {
                 }
             }
             CommandAvailability::GuildOwner => {
-                // guild owner *or* manage server *or* admin
-                // get owner
-                let owner = get_guild_owner(&self.http, context.message.guild_id.unwrap())
-                    .await
-                    .map_err(|_| CommandParseError::permission_validator_failed())?;
+                let is_manager = is_guild_manager(
+                    &self.http,
+                    context.message.guild_id.unwrap(),
+                    context.message.author.id,
+                )
+                .await
+                .map_err(|_| CommandParseError::permission_validator_failed())?;
 
-                // figure out permissions of the user through bitwise operations
-                let member = self
-                    .http
-                    .guild_member(context.message.guild_id.unwrap(), context.message.author.id)
-                    .await
-                    .map_err(|_| CommandParseError::permission_validator_failed())?
-                    .unwrap();
+                let is_bot_admin = self
+                    .config
+                    .user
+                    .admins
+                    .contains(&context.message.author.id.0);
 
-                let roles = self
-                    .http
-                    .roles(context.message.guild_id.unwrap())
-                    .await
-                    .map_err(|_| CommandParseError::permission_validator_failed())?;
-
-                let member_roles = roles
-                    .iter()
-                    .filter(|r| member.roles.contains(&r.id))
-                    .collect::<Vec<_>>();
-                let member_permissions =
-                    member_roles.iter().fold(0, |a, r| a | r.permissions.bits());
-                let member_is_manager = member_permissions & Permissions::ADMINISTRATOR.bits()
-                    == Permissions::ADMINISTRATOR.bits()
-                    || member_permissions & Permissions::MANAGE_GUILD.bits()
-                        == Permissions::MANAGE_GUILD.bits();
-
-                if owner == context.message.author.id
-                    || self
-                        .config
-                        .user
-                        .admins
-                        .contains(&context.message.author.id.0)
-                    || member_is_manager
-                {
+                if is_manager || is_bot_admin {
                     Ok(())
                 } else {
                     Err(CommandParseError::with_reply(

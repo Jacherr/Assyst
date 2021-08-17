@@ -189,5 +189,6 @@ impl CommandRegistry {
         register_command!(self, ZOOM_BLUR_COMMAND, run_zoom_blur_command);
         register_command!(self, ZOOM_COMMAND, run_zoom_command);
         register_command!(self, IDENTIFY_COMMAND, run_identify_command);
+        register_command!(self, COLOR_COMMAND, run_color_command)
     }
 }

@@ -1,12 +1,12 @@
 use crate::{
     command::{
-        command::{Argument, Command, CommandBuilder, ParsedArgument, ParsedFlags},
+        command::{Argument, Command, CommandBuilder, CommandError, ParsedArgument, ParsedFlags},
         context::Context,
         registry::CommandResult,
     },
-    consts,
+    consts::{self, DEFAULT_COLORS},
     rest::{self, bt::bad_translate, bt::translate_single},
-    util::{codeblock, normalize_emojis},
+    util::{codeblock, ensure_guild_manager, normalize_emojis},
 };
 use lazy_static::lazy_static;
 use std::{sync::Arc, time::Duration};
@@ -69,6 +69,22 @@ lazy_static! {
         .example("anime")
         .usage("[query]")
         .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref COLOR_COMMAND: Command = CommandBuilder::new("color")
+        .public()
+        .description("color role functionality")
+        .arg(Argument::Optional(Box::new(Argument::String)))
+        .arg(Argument::Optional(Box::new(Argument::String)))
+        .arg(Argument::Optional(Box::new(Argument::String)))
+        .example("add")
+        .example("add <color name> <color code>")
+        .example("add <color name> <color code>")
+        .example("remove <color name>")
+        .example("<color name>")
+        .example("")
+        .usage("red")
+        .cooldown(Duration::from_secs(10))
         .category(CATEGORY_NAME)
         .build();
 }
@@ -203,5 +219,186 @@ pub async fn run_rule34_command(
         .reply_err("450 Blocked By Windows Parental Controls")
         .await
         .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub async fn run_color_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _: ParsedFlags,
+) -> CommandResult {
+    let guild_id = context
+        .message
+        .guild_id
+        .map(|x| x.0)
+        .ok_or_else(|| CommandError::new_boxed("This command can only be used in servers"))?;
+
+    let mut args = args.iter();
+    let ty = args.next().and_then(ParsedArgument::maybe_text);
+
+    match ty {
+        Some("add") => {
+            ensure_guild_manager(&context, guild_id).await?;
+
+            let maybe_name = args.next().and_then(ParsedArgument::maybe_text);
+
+            if let Some(name) = maybe_name {
+                let color = args
+                    .next()
+                    .and_then(ParsedArgument::maybe_text)
+                    .map(|x| x.strip_prefix("#").unwrap_or(x))
+                    .map(|x| u32::from_str_radix(x, 16))
+                    .ok_or_else(|| CommandError::new_boxed("No color code provided"))??;
+
+                let role = context
+                    .assyst
+                    .http
+                    .create_role(guild_id.into())
+                    .name(name)
+                    .color(color)
+                    .await?;
+
+                context
+                    .assyst
+                    .database
+                    .add_color_role(role.id.0 as i64, name, guild_id as i64)
+                    .await?;
+
+                context
+                    .reply_with_text("Successfully added color role")
+                    .await?;
+            } else {
+                let guild_roles = context.assyst.http.roles(guild_id.into()).await?;
+
+                let mut roles = Vec::new();
+
+                for (name, color) in DEFAULT_COLORS.iter() {
+                    let has_color_role = guild_roles.iter().any(|x| x.name.eq(name));
+
+                    if !has_color_role {
+                        let role = context
+                            .assyst
+                            .http
+                            .create_role(guild_id.into())
+                            .name(*name)
+                            .color(*color)
+                            .await?;
+
+                        roles.push((String::from(*name), role.id.0 as i64));
+                    }
+                }
+
+                for role in guild_roles {
+                    let is_color_role = DEFAULT_COLORS.iter().any(|(name, _)| role.name.eq(name));
+
+                    if is_color_role {
+                        roles.push((role.name, role.id.0 as i64));
+                    }
+                }
+
+                let new_roles = roles.len();
+
+                context
+                    .assyst
+                    .database
+                    .bulk_add_color_roles(guild_id as i64, roles)
+                    .await?;
+
+                context
+                    .reply_with_text(&format!(
+                        "Successfully created {} new color roles",
+                        new_roles
+                    ))
+                    .await?;
+            }
+        }
+        Some("remove") => {
+            ensure_guild_manager(&context, guild_id).await?;
+
+            let name = args
+                .next()
+                .and_then(ParsedArgument::maybe_text)
+                .ok_or_else(|| CommandError::new_boxed("No color name provided."))?;
+
+            let role = context
+                .assyst
+                .database
+                .remove_color_role(guild_id as i64, name)
+                .await?
+                .ok_or_else(|| CommandError::new_boxed("Color role does not exist"))?;
+
+            context
+                .assyst
+                .http
+                .delete_role(guild_id.into(), (role.role_id as u64).into())
+                .await?;
+
+            context.reply_with_text("Color role removed.").await?;
+        }
+        Some(name) => {
+            let roles = context
+                .assyst
+                .database
+                .get_color_roles(guild_id as i64)
+                .await?;
+
+            let role = roles
+                .iter()
+                .find(|x| x.name.eq(name))
+                .ok_or_else(|| CommandError::new_boxed("Color role does not exist"))?;
+
+            let user_id = context.message.author.id;
+
+            let user_roles = context
+                .assyst
+                .http
+                .guild_member(guild_id.into(), user_id)
+                .await?
+                .map(|x| x.roles)
+                .expect("Can't happen");
+
+            let mut roles_without_colors = user_roles
+                .iter()
+                .filter(|r| roles.iter().all(|x| x.role_id as u64 != r.0))
+                .copied()
+                .collect::<Vec<_>>();
+            roles_without_colors.push((role.role_id as u64).into());
+
+            context
+                .assyst
+                .http
+                .update_guild_member(guild_id.into(), user_id)
+                .roles(roles_without_colors)
+                .await?;
+
+            context
+                .reply_with_text(&format!("Gave you the color role {}", name))
+                .await?;
+        }
+        None => {
+            let mut content = String::from("Available colors:");
+
+            let color_roles = context
+                .assyst
+                .database
+                .get_color_roles(guild_id as i64)
+                .await?;
+
+            let colors = color_roles
+                .into_iter()
+                .map(|x| x.name)
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            content.push_str(&codeblock(&colors, ""));
+            content.push_str(&format!(
+                "Use {}color <color name> to set a color",
+                context.prefix
+            ));
+
+            context.reply_with_text(&content).await?;
+        }
+    };
+
     Ok(())
 }
