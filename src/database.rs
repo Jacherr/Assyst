@@ -41,6 +41,13 @@ pub struct Reminder {
     pub message: String,
 }
 
+#[derive(sqlx::FromRow, Debug)]
+pub struct ColorRole {
+    pub role_id: i64,
+    pub name: String,
+    pub guild_id: i64,
+}
+
 impl From<DatabaseReminder> for Reminder {
     fn from(r: DatabaseReminder) -> Self {
         Reminder {
@@ -542,5 +549,91 @@ impl Database {
             .unwrap();
 
         return result;
+    }
+
+    pub async fn get_color_roles(&self, guild_id: i64) -> Result<Vec<ColorRole>, sqlx::Error> {
+        let query = r#"SELECT * FROM colors WHERE guild_id = $1"#;
+
+        sqlx::query_as(query)
+            .bind(guild_id)
+            .fetch_all(&self.pool)
+            .await
+    }
+
+    pub async fn add_color_role(
+        &self,
+        role_id: i64,
+        name: &str,
+        guild_id: i64,
+    ) -> Result<(), sqlx::Error> {
+        let query = r#"INSERT INTO colors VALUES ($1, $2, $3)"#;
+
+        sqlx::query(query)
+            .bind(role_id)
+            .bind(name)
+            .bind(guild_id)
+            .execute(&self.pool)
+            .await
+            .map(|_| ())
+    }
+
+    pub async fn bulk_add_color_roles(
+        &self,
+        guild_id: i64,
+        colors: Vec<(String, i64)>,
+    ) -> Result<(), sqlx::Error> {
+        let query = r#"INSERT INTO colors VALUES ($1, $2, $3) ON CONFLICT DO NOTHING"#;
+        let mut tx = self.pool.begin().await?;
+
+        for (name, id) in colors {
+            sqlx::query(query)
+                .bind(id)
+                .bind(&name)
+                .bind(guild_id)
+                .execute(&mut tx)
+                .await?;
+        }
+
+        tx.commit().await
+    }
+
+    pub async fn remove_color_role(
+        &self,
+        guild_id: i64,
+        name: &str,
+    ) -> Result<Option<ColorRole>, sqlx::Error> {
+        let query = r#"DELETE FROM colors WHERE guild_id = $1 AND name = $2 RETURNING *"#;
+
+        let result = sqlx::query_as(query)
+            .bind(guild_id)
+            .bind(name)
+            .fetch_one(&self.pool)
+            .await;
+
+        match result {
+            Ok(v) => Ok(Some(v)),
+            Err(sqlx::Error::RowNotFound) => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub async fn get_color_role(
+        &self,
+        guild_id: i64,
+        name: &str,
+    ) -> Result<Option<ColorRole>, sqlx::Error> {
+        let query = r#"SELECT * FROM colors WHERE guild_id = $1 AND name = $2"#;
+
+        let result = sqlx::query_as(query)
+            .bind(guild_id)
+            .bind(name)
+            .fetch_one(&self.pool)
+            .await;
+
+        match result {
+            Ok(v) => Ok(Some(v)),
+            Err(sqlx::Error::RowNotFound) => Ok(None),
+            Err(e) => Err(e),
+        }
     }
 }
