@@ -72,6 +72,7 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .build();
     pub static ref COLOR_COMMAND: Command = CommandBuilder::new("color")
+        .alias("colors")
         .public()
         .description("color role functionality")
         .arg(Argument::Optional(Box::new(Argument::String)))
