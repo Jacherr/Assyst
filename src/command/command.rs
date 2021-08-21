@@ -351,16 +351,12 @@ pub struct CommandError {
 }
 
 impl CommandError {
-    pub fn new(text: &str) -> Self {
-        CommandError {
-            text: text.to_owned(),
-        }
+    pub fn new(text: impl Into<String>) -> Self {
+        CommandError { text: text.into() }
     }
 
-    pub fn new_boxed(text: &str) -> Box<Self> {
-        Box::new(CommandError {
-            text: text.to_owned(),
-        })
+    pub fn new_boxed(text: impl Into<String>) -> Box<Self> {
+        Box::new(CommandError { text: text.into() })
     }
 }
 

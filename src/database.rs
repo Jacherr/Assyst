@@ -469,11 +469,14 @@ impl Database {
         Ok(())
     }
 
-    pub async fn get_and_subtract_free_tier_1_request(&self, user_id: i64) -> bool {
-        let result = self.get_user_free_tier1_requests(user_id).await;
+    pub async fn get_and_subtract_free_tier_1_request(
+        &self,
+        user_id: i64,
+    ) -> Result<bool, sqlx::Error> {
+        let result = self.get_user_free_tier1_requests(user_id).await?;
 
         if result == 0 {
-            false
+            Ok(false)
         } else {
             let new_count = result - 1;
 
@@ -485,24 +488,23 @@ impl Database {
                 self.add_free_tier_1_requests(user_id, -1).await.unwrap();
             }
 
-            true
+            Ok(true)
         }
     }
 
-    pub async fn get_user_free_tier1_requests(&self, user_id: i64) -> i32 {
+    pub async fn get_user_free_tier1_requests(&self, user_id: i64) -> Result<i32, sqlx::Error> {
         let fetch_query = "select * from free_tier1_requests where user_id = $1";
 
         let result: Vec<FreeTier1Requests> = sqlx::query_as::<_, FreeTier1Requests>(fetch_query)
             .bind(user_id)
             .fetch_all(&self.pool)
-            .await
-            .unwrap();
+            .await?;
 
-        if result.is_empty() {
+        Ok(if result.is_empty() {
             0
         } else {
             result[0].count
-        }
+        })
     }
 
     pub async fn delete_user_from_free_tier_1_requests(

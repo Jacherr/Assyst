@@ -1,4 +1,25 @@
-use crate::{command::{command::{Argument, Command, CommandAvailability, CommandBuilder, CommandError, ParsedArgument, ParsedFlags}, context::Context, messagebuilder::MessageBuilder, registry::CommandResult}, rest::{annmarie::{self, info}, bt::{get_languages, validate_language}, fake_eval, wsi::{self, ResizeMethod}}, util::{codeblock, ensure_same_guild, exec_sync, extract_page_title, format_discord_timestamp, format_time, generate_list, generate_table, get_buffer_filetype, get_memory_usage, parse_codeblock}};
+use crate::{
+    command::{
+        command::{
+            Argument, Command, CommandAvailability, CommandBuilder, CommandError, ParsedArgument,
+            ParsedFlags,
+        },
+        context::Context,
+        messagebuilder::MessageBuilder,
+        registry::CommandResult,
+    },
+    rest::{
+        annmarie::{self, info},
+        bt::{get_languages, validate_language},
+        fake_eval,
+        wsi::{self, ResizeMethod},
+    },
+    util::{
+        codeblock, ensure_same_guild, exec_sync, extract_page_title, format_discord_timestamp,
+        format_time, generate_list, generate_table, get_buffer_filetype, get_memory_usage,
+        parse_codeblock,
+    },
+};
 use crate::{
     consts::Y21,
     database::Reminder,
@@ -246,7 +267,7 @@ pub async fn run_enlarge_command(
         image,
         context.author_id(),
         2.0,
-        ResizeMethod::Gaussian
+        ResizeMethod::Gaussian,
     )
     .await
     .map_err(wsi::format_err)?;
@@ -471,13 +492,11 @@ pub async fn run_stats_command(
     ]);
 
     context
-        .reply_with_text(
-            &format!(
-                "**Stats:** {} **Uptimes:** {}",
-                codeblock(&stats_table, "hs"),
-                codeblock(&uptimes_table, "hs")
-            )
-        )
+        .reply_with_text(&format!(
+            "**Stats:** {} **Uptimes:** {}",
+            codeblock(&stats_table, "hs"),
+            codeblock(&uptimes_table, "hs")
+        ))
         .await?;
 
     Ok(())
@@ -497,9 +516,7 @@ pub async fn run_wsi_stats_command(
         response.current_requests, response.total_workers
     );
 
-    context
-        .reply_with_text(&output)
-        .await?;
+    context.reply_with_text(&output).await?;
 
     Ok(())
 }
@@ -571,7 +588,8 @@ pub async fn run_remind_command(
         }
         "remove" | "delete" => {
             let user_id = context.message.author.id.0;
-            let reminder_id = args[1].as_text()
+            let reminder_id = args[1]
+                .as_text()
                 .parse::<i32>()
                 .map_err(|e| e.to_string())?;
 
@@ -608,7 +626,11 @@ pub async fn run_remind_command(
 
     let guild_id = match context.message.guild_id {
         Some(id) => id.0,
-        None => return Err(CommandError::new_boxed("This command can only be run in a server")),
+        None => {
+            return Err(CommandError::new_boxed(
+                "This command can only be run in a server",
+            ))
+        }
     };
 
     let ftime = format_time(time);
@@ -632,7 +654,7 @@ pub async fn run_remind_command(
     context
         .reply_with_text(&format!("Reminder set for {} from now", ftime))
         .await?;
-    
+
     Ok(())
 }
 
@@ -691,7 +713,9 @@ pub async fn run_top_commands_command(
                 .await
                 .map_err(|e| e.to_string())?;
         } else {
-            return Err(CommandError::new_boxed("No command with this name or alias exists."));
+            return Err(CommandError::new_boxed(
+                "No command with this name or alias exists.",
+            ));
         }
     }
     Ok(())
@@ -783,9 +807,7 @@ pub async fn run_btchannel_command(
                 .add_channel(channel_id, language)
                 .await;
 
-            context
-                .reply_with_text("BT Channel registered.")
-                .await?
+            context.reply_with_text("BT Channel registered.").await?
         }
         "setlanguage" => {
             let channel_id = args
@@ -870,9 +892,7 @@ pub async fn run_btchannel_command(
                 .map_err(|e| e.to_string())?;
 
             let message = codeblock(&generate_list("Code", "Language", &languages), "hs");
-            context
-                .reply_with_text(&message)
-                .await?
+            context.reply_with_text(&message).await?
         }
         _ => unreachable!(),
     };
@@ -901,10 +921,8 @@ pub async fn run_chars_command(
         output.push_str(&format!("`{}` — **{}** ({})\n", ch, title, url));
     }
 
-    context
-        .reply_with_text(&output)
-        .await?;
-    
+    context.reply_with_text(&output).await?;
+
     Ok(())
 }
 
@@ -920,9 +938,7 @@ pub async fn run_translate_command(
         .await
         .map_err(|e| e.to_string())?;
 
-    context
-        .reply_with_text(&translation.result.text)
-        .await?;
+    context.reply_with_text(&translation.result.text).await?;
 
     Ok(())
 }
@@ -945,7 +961,7 @@ pub async fn run_fake_eval_command(
     context
         .reply_with_text(&codeblock(&response.message, "js"))
         .await?;
-    
+
     Ok(())
 }
 pub async fn run_exec_command(
@@ -1023,7 +1039,9 @@ pub async fn run_command_command(
             };
         }
         None => {
-            return Err(CommandError::new_boxed("No command with this name or alias exists."));
+            return Err(CommandError::new_boxed(
+                "No command with this name or alias exists.",
+            ));
         }
     };
 
@@ -1069,7 +1087,7 @@ pub async fn run_patron_status_command(
         .assyst
         .database
         .get_user_free_tier1_requests(context.author_id().0 as i64)
-        .await;
+        .await?;
 
     if user_free_requests == 0 {
         free_requests_text = String::from("You don't have any free elevated voting image command invocations. You can vote at <https://vote.jacher.io/topgg> and <https://vote.jacher.io/dbl>.")
@@ -1142,9 +1160,7 @@ pub async fn run_top_voters_command(
         codeblock(&table, "hs")
     );
 
-    context
-        .reply_with_text(&response)
-        .await?;
-        
+    context.reply_with_text(&response).await?;
+
     Ok(())
 }

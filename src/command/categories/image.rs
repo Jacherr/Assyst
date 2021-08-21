@@ -1,8 +1,8 @@
 use crate::{
     command::{
         command::{
-            Argument, Command, CommandAvailability, CommandBuilder, FlagKind, ParsedArgument,
-            ParsedFlags,
+            Argument, Command, CommandAvailability, CommandBuilder, CommandError, FlagKind,
+            ParsedArgument, ParsedFlags,
         },
         context::Context,
         registry::CommandResult,
@@ -12,7 +12,7 @@ use crate::{
         annmarie,
         wsi::{self, ResizeMethod},
     },
-    util::{bytes_to_readable, generate_list},
+    util::{bytes_to_readable, generate_list, get_wsi_request_tier},
 };
 use crate::{
     rest,
@@ -578,24 +578,34 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
-        pub static ref APRIL_FOOLS_COMMAND: Command = CommandBuilder::new("aprilfools")
-            .arg(Argument::ImageBuffer)
-            .public()
-            .description("april fools")
-            .example(Y21)
-            .usage("[image]")
-            .cooldown(Duration::from_secs(4))
-            .category(CATEGORY_NAME)
-            .build();
-        pub static ref IDENTIFY_COMMAND: Command = CommandBuilder::new("identify")
-            .arg(Argument::ImageUrl)
-            .public()
-            .description("identify an image")
-            .example("https://media.discordapp.net/attachments/827679274852286475/870284473877544980/20210729_153930.jpg")
-            .usage("[url]")
-            .cooldown(Duration::from_secs(1))
-            .category(CATEGORY_NAME)
-            .build();
+    pub static ref APRIL_FOOLS_COMMAND: Command = CommandBuilder::new("aprilfools")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("april fools")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref IDENTIFY_COMMAND: Command = CommandBuilder::new("identify")
+        .arg(Argument::ImageUrl)
+        .public()
+        .description("identify an image")
+        .example("https://media.discordapp.net/attachments/827679274852286475/870284473877544980/20210729_153930.jpg")
+        .usage("[url]")
+        .cooldown(Duration::from_secs(1))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref QUOTE_COMMAND: Command = CommandBuilder::new("quote")
+        .arg(Argument::StringRemaining)
+        .flag("white", Some(FlagKind::Text))
+        .public()
+        .description("quote a message")
+        .example("878642522136670228")
+        .usage("[message id]")
+        .cooldown(Duration::from_secs(1))
+        .category(CATEGORY_NAME)
+        .build();
 }
 
 pub async fn run_3d_rotate_command(
@@ -619,6 +629,59 @@ pub async fn run_ahshit_command(
     _flags: ParsedFlags,
 ) -> CommandResult {
     run_annmarie_noarg_command!(annmarie::ahshit, args, context)
+}
+
+pub async fn run_quote_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    flags: ParsedFlags,
+) -> CommandResult {
+    context.reply_with_text("processing...").await?;
+    let white = flags.contains_key("white");
+    let guild_id = context
+        .message
+        .guild_id
+        .ok_or_else(|| CommandError::new_boxed("This command only works in guilds"))?;
+
+    let args = args[0].as_text();
+    let raw_ids = args.split(" ");
+    let mut messages = Vec::new();
+
+    let tier = get_wsi_request_tier(&context.assyst, context.message.author.id).await?;
+    let max_ids = match tier {
+        0 => 1,
+        1 => 5,
+        2 | _ => 10,
+    };
+
+    for id in raw_ids.take(max_ids) {
+        let id = id
+            .parse::<u64>()
+            .map_err(|_| CommandError::new_boxed(format!("`{}` is not a valid ID", id)))?;
+
+        let message = context
+            .http()
+            .message(context.message.channel_id, id.into())
+            .await
+            .map_err(|_| CommandError::new_boxed(format!("Failed to fetch `{}`", id)))?
+            .ok_or_else(|| CommandError::new_boxed("Message not found"))?;
+
+        messages.push(message);
+    }
+
+    let guild = context
+        .http()
+        .guild(guild_id)
+        .await?
+        .ok_or_else(|| CommandError::new_boxed("Failed to fetch guild"))?;
+
+    let bytes = annmarie::quote(&context.assyst, &messages, guild, white)
+        .await
+        .map_err(annmarie::format_err)?;
+
+    context.reply_with_image("png", bytes).await?;
+
+    Ok(())
 }
 
 pub async fn run_annmarie_command(

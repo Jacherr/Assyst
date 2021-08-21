@@ -435,21 +435,21 @@ pub fn to_static_str(s: &Box<str>) -> &'static mut str {
 
 /// This function will remove a free voter request if the user has any
 /// and are not a patron!
-pub async fn get_wsi_request_tier(assyst: Arc<Assyst>, user_id: UserId) -> usize {
+pub async fn get_wsi_request_tier(assyst: &Assyst, user_id: UserId) -> Result<usize, sqlx::Error> {
     let patrons = assyst.patrons.read().await;
     let patron = patrons.iter().find(|i| i.user_id == user_id);
     if let Some(p) = patron {
-        return p.tier;
+        return Ok(p.tier);
     }
 
     let has_free_tier_1 = assyst
         .database
         .get_and_subtract_free_tier_1_request(user_id.0 as i64)
-        .await;
+        .await?;
 
     if has_free_tier_1 {
-        1
+        Ok(1)
     } else {
-        0
+        Ok(0)
     }
 }
