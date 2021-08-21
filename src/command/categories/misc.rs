@@ -527,8 +527,8 @@ pub async fn run_rust_command(
     _flags: ParsedFlags,
 ) -> CommandResult {
     let ty = args[0].as_choice();
-    let channel = args[1].as_text();
-    let code = parse_codeblock(args[2].as_text(), "2rs");
+    let channel = args[1].as_choice();
+    let code = parse_codeblock(args[2].as_text(), "rs");
 
     let result = match ty {
         "run" => rust::run_binary(&context.assyst.reqwest_client, code, channel).await,

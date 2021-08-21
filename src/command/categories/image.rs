@@ -1371,7 +1371,7 @@ pub async fn run_set_loop_command(
     _flags: ParsedFlags,
 ) -> CommandResult {
     let image = args[0].as_bytes();
-    let looping = match args[0].as_choice() {
+    let looping = match args[1].as_choice() {
         "on" => true,
         "off" => false,
         _ => unreachable!(),
@@ -1544,7 +1544,7 @@ pub async fn run_identify_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    let url = args[1].as_text();
+    let url = args[0].as_text();
     let identify = rest::identify_image(&context.assyst.reqwest_client, url)
         .await
         .map_err(|e| e.to_string())?;
