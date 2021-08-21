@@ -89,6 +89,7 @@ pub enum RequestError {
     Reqwest(Error),
     Serde(serde_json::Error),
     Wsi(WsiError),
+    Sqlx(sqlx::Error),
 }
 
 #[derive(Debug, Serialize)]
@@ -119,7 +120,9 @@ pub async fn request_bytes(
     query: &[(&str, &str)],
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    let premium_level = get_wsi_request_tier(assyst.clone(), user_id).await;
+    let premium_level = get_wsi_request_tier(&assyst, user_id)
+        .await
+        .map_err(RequestError::Sqlx)?;
 
     let result = assyst
         .reqwest_client
@@ -662,5 +665,6 @@ pub fn format_err(err: RequestError) -> String {
         RequestError::Reqwest(e) => e.to_string(),
         RequestError::Wsi(e) => e.message.to_string(),
         RequestError::Serde(e) => e.to_string(),
+        RequestError::Sqlx(e) => e.to_string(),
     }
 }

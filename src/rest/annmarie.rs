@@ -1,10 +1,10 @@
 use crate::{assyst::Assyst, rest::wsi::preprocess};
 use bytes::Bytes;
 use futures::Future;
-use reqwest::StatusCode;
-use serde::Deserialize;
+use reqwest::{RequestBuilder, StatusCode};
+use serde::{Deserialize, Serialize};
 use std::{pin::Pin, sync::Arc};
-use twilight_model::id::UserId;
+use twilight_model::{channel::Message, guild::Guild, id::UserId};
 
 pub type NoArgFunction = Box<
     dyn Fn(
@@ -31,6 +31,7 @@ mod routes {
     pub const SKETCH: &str = "/sketch";
     pub const TERRARIA: &str = "/terraria";
     pub const ZOOM_BLUR: &str = "/zoom-blur";
+    pub const QUOTE: &str = "/discord";
 }
 
 #[derive(Deserialize, Debug)]
@@ -43,6 +44,13 @@ pub struct AnnmarieInfo {
     pub uptime: f64,
 }
 
+#[derive(Serialize, Debug)]
+pub struct AnnmarieQuote<'a> {
+    messages: &'a [Message],
+    guild: Guild,
+    white: bool,
+}
+
 #[derive(Debug)]
 pub enum RequestError {
     Reqwest(String),
@@ -51,26 +59,14 @@ pub enum RequestError {
     Wsi(crate::rest::wsi::RequestError),
 }
 
-pub async fn request_bytes(
-    assyst: Arc<Assyst>,
-    route: &str,
-    image: Bytes,
-    query: &[(&str, &str)],
-    user_id: UserId,
-) -> Result<Bytes, RequestError> {
-    let new_image = preprocess(assyst.clone(), image, user_id)
-        .await
-        .map_err(|e| RequestError::Wsi(e))?;
-
-    let result = assyst
-        .reqwest_client
-        .post(&format!("{}{}", assyst.config.url.annmarie, route))
+/// Takes a partially built request, attaches the Authorization header
+/// and sends the request, returning any errors
+pub async fn finish_request(assyst: &Assyst, req: RequestBuilder) -> Result<Bytes, RequestError> {
+    let result = req
         .header(
             reqwest::header::AUTHORIZATION,
             assyst.config.auth.annmarie.as_ref(),
         )
-        .query(query)
-        .body(new_image)
         .send()
         .await
         .map_err(|_| RequestError::Reqwest("A network error occurred".to_owned()))?;
@@ -89,6 +85,44 @@ pub async fn request_bytes(
             .map_err(|e| RequestError::Reqwest(e.to_string()))?;
         Ok(bytes)
     };
+}
+
+pub async fn request_bytes(
+    assyst: Arc<Assyst>,
+    route: &str,
+    image: Bytes,
+    query: &[(&str, &str)],
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    let new_image = preprocess(assyst.clone(), image, user_id)
+        .await
+        .map_err(|e| RequestError::Wsi(e))?;
+
+    let req = assyst
+        .reqwest_client
+        .post(&format!("{}{}", assyst.config.url.annmarie, route))
+        .query(query)
+        .body(new_image);
+
+    finish_request(&assyst, req).await
+}
+
+pub async fn quote(
+    assyst: &Assyst,
+    messages: &[Message],
+    guild: Guild,
+    white: bool,
+) -> Result<Bytes, RequestError> {
+    let req = assyst
+        .reqwest_client
+        .post(&format!("{}{}", assyst.config.url.annmarie, routes::QUOTE))
+        .json(&AnnmarieQuote {
+            messages,
+            guild,
+            white,
+        });
+
+    finish_request(&assyst, req).await
 }
 
 pub async fn ahshit(
