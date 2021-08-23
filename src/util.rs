@@ -210,7 +210,12 @@ pub async fn download_content(
     url: &str,
     limit_bytes: usize,
 ) -> Result<Vec<u8>, String> {
-    let request = client.get(url).send().await.map_err(|e| e.to_string())?;
+    let request = client
+        .get(url)
+        .header(reqwest::header::USER_AGENT, "Assyst Content Downloader")
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
 
     let status = request.status();
     if status != reqwest::StatusCode::OK {
