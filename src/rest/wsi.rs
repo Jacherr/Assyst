@@ -1,6 +1,7 @@
 use crate::assyst::Assyst;
 use crate::util::get_wsi_request_tier;
 use bytes::Bytes;
+use rand::Rng;
 use reqwest::Error;
 use serde::{Deserialize, Serialize};
 use std::{future::Future, pin::Pin, sync::Arc};
@@ -16,7 +17,7 @@ pub type NoArgFunction = Box<
         + Sync,
 >;
 
-mod routes {
+pub mod routes {
     pub const _3D_ROTATE: &str = "/3d_rotate";
     pub const BLUR: &str = "/blur";
     pub const CAPTION: &str = "/caption";
@@ -58,6 +59,10 @@ mod routes {
     pub const WAVE: &str = "/wave";
     pub const WORMHOLE: &str = "/wormhole";
     pub const ZOOM: &str = "/zoom";
+
+    pub const RANDOMIZABLE_ROUTES: &[&str] = &[
+        FLIP, FLOP, GIF_MAGIK, GRAYSCALE, INVERT, JPEG, MAGIK, RAINBOW, REVERSE, SPIN, SWIRL, TEHI,
+    ];
 }
 
 #[derive(Deserialize)]
@@ -111,6 +116,19 @@ impl ResizeMethod {
         let s = serde_json::to_string(self)?;
         Ok(String::from(&s[1..s.len() - 1]))
     }
+}
+
+pub async fn randomize(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<(&'static str, Bytes), RequestError> {
+    let index = rand::thread_rng().gen_range(0..routes::RANDOMIZABLE_ROUTES.len());
+    let route = routes::RANDOMIZABLE_ROUTES[index];
+
+    let bytes = request_bytes(assyst, route, image, &[], user_id).await?;
+
+    Ok((route, bytes))
 }
 
 pub async fn request_bytes(
