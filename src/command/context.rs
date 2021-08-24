@@ -81,7 +81,26 @@ impl Context {
         format: &str,
         buffer: Bytes,
     ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
-        let builder = MessageBuilder::new();
+        self.reply_with_image_and_text(format, buffer, None).await
+    }
+
+    pub async fn reply_with_image_and_text(
+        &self,
+        format: &str,
+        buffer: Bytes,
+        text: Option<&str>,
+    ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
+        let mut builder = MessageBuilder::new();
+
+        if let Some(text) = text {
+            let text = if text.len() == 0 {
+                "[Empty Response]"
+            } else {
+                text
+            };
+            builder = builder.content(text);
+        }
+
         if buffer.len() > consts::WORKING_FILESIZE_LIMIT_BYTES {
             let url = crate::rest::upload_to_filer(
                 &self.assyst.reqwest_client,
@@ -97,7 +116,10 @@ impl Context {
         }
     }
 
-    pub async fn reply_with_text(&self, text: &str) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
+    pub async fn reply_with_text(
+        &self,
+        text: &str,
+    ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
         let checked_text = if text.len() == 0 {
             "[Empty Response]"
         } else {
@@ -162,7 +184,10 @@ impl Context {
         Ok(result)
     }
 
-    pub async fn reply_err(&self, content: &str) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
+    pub async fn reply_err(
+        &self,
+        content: &str,
+    ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
         self.reply(
             MessageBuilder::new()
                 .content(&format!(":warning: `{}`", content.replace("`", "'")))

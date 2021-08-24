@@ -10,9 +10,9 @@ edition = "2018"
 twilight-gateway = "0.5.0"
 twilight-http = "0.5.0"
 twilight-model = "0.5.0"
-tokio = { version="1.0", features=["full"] }
+tokio = { version = "1.0", features = ["full"] }
 futures = "0.3.12"
-sqlx = { version="0.5.1", features=["postgres", "runtime-tokio-rustls"] }
+sqlx = { version = "0.5.1", features = ["postgres", "runtime-tokio-rustls"] }
 serde = "1.0.123"
 serde_json = "1.0"
 toml = "0.5.8"
@@ -20,10 +20,11 @@ dotenv = "0.15.0"
 async-trait = "0.1.42"
 lazy_static = "1.4.0"
 regex = "1.4.3"
-reqwest = { version="0.11.0", features=["json", "stream"] }
+reqwest = { version = "0.11.0", features = ["json", "stream"] }
 bytes = "1.0.1"
 futures-util = "0.3.12"
-tl = { git="https://github.com/y21/tl", branch="next" }
+tl = { git = "https://github.com/y21/tl", branch = "next" }
 twilight-embed-builder = "0.5.0"
 warp = "0.3.0"
 emoji = "0.2.1"
+rand = "0.8"

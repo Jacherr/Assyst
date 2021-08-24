@@ -606,6 +606,15 @@ lazy_static! {
         .cooldown(Duration::from_secs(1))
         .category(CATEGORY_NAME)
         .build();
+    pub static ref RANDOMIZE_COMMAND: Command = CommandBuilder::new("randomize")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("sends a provided image through multiple filters")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(5))
+        .category(CATEGORY_NAME)
+        .build();
 }
 
 pub async fn run_3d_rotate_command(
@@ -682,6 +691,54 @@ pub async fn run_quote_command(
     context.reply_with_image("png", bytes).await?;
 
     Ok(())
+}
+
+pub async fn run_randomize_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    let mut image = Some(args[0].as_bytes());
+    let mut filters = Vec::new();
+
+    for _ in 0..3 {
+        let old_image = image.take().unwrap();
+
+        if rand::random() {
+            let (route, bytes) =
+                wsi::randomize(Arc::clone(&context.assyst), old_image, context.author_id())
+                    .await
+                    .map_err(wsi::format_err)?;
+
+            image = Some(bytes);
+            filters.push(route.strip_prefix("/").unwrap_or(route));
+        } else {
+            let (route, bytes) =
+                annmarie::randomize(Arc::clone(&context.assyst), old_image, context.author_id())
+                    .await
+                    .map_err(annmarie::format_err)?;
+
+            image = Some(bytes);
+            filters.push(route.strip_prefix("/").unwrap_or(route));
+        }
+    }
+
+    let image = image.unwrap();
+
+    let filters = filters
+        .into_iter()
+        .map(|filter| format!("`{}`", filter))
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    let content = format!("filters used: {}", filters);
+
+    let format = get_buffer_filetype(&image).unwrap_or("png");
+
+    context
+        .reply_with_image_and_text(format, image, Some(&content))
+        .await
+        .map(|_| ())
 }
 
 pub async fn run_annmarie_command(

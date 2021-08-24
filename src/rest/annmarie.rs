@@ -1,6 +1,7 @@
 use crate::{assyst::Assyst, rest::wsi::preprocess};
 use bytes::Bytes;
 use futures::Future;
+use rand::Rng;
 use reqwest::{RequestBuilder, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::{pin::Pin, sync::Arc};
@@ -16,7 +17,7 @@ pub type NoArgFunction = Box<
         + Sync,
 >;
 
-mod routes {
+pub mod routes {
     pub const AHSHIT: &str = "/ahshit";
     pub const APRILFOOLS: &str = "/april-fools";
     pub const CARD: &str = "/card";
@@ -32,6 +33,8 @@ mod routes {
     pub const TERRARIA: &str = "/terraria";
     pub const ZOOM_BLUR: &str = "/zoom-blur";
     pub const QUOTE: &str = "/discord";
+
+    pub const RANDOMIZABLE_ROUTES: &[&str] = &[CARD, FISHEYE, F_SHIFT, GLOBE, PAINT];
 }
 
 #[derive(Deserialize, Debug)]
@@ -105,6 +108,19 @@ pub async fn request_bytes(
         .body(new_image);
 
     finish_request(&assyst, req).await
+}
+
+pub async fn randomize(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<(&'static str, Bytes), RequestError> {
+    let index = rand::thread_rng().gen_range(0..routes::RANDOMIZABLE_ROUTES.len());
+    let route = routes::RANDOMIZABLE_ROUTES[index];
+
+    let bytes = request_bytes(assyst, route, image, &[], user_id).await?;
+
+    Ok((route, bytes))
 }
 
 pub async fn quote(
