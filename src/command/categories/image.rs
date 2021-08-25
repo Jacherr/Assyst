@@ -1,4 +1,5 @@
 use crate::{
+    assyst::Assyst,
     command::{
         command::{
             Argument, Command, CommandAvailability, CommandBuilder, CommandError, FlagKind,
@@ -22,6 +23,7 @@ use bytes::Bytes;
 use lazy_static::lazy_static;
 use std::time::Duration;
 use std::{borrow::Cow, sync::Arc};
+use twilight_model::id::UserId;
 
 macro_rules! run_annmarie_noarg_command {
     ($fn:expr, $args:expr, $context:expr) => {{
@@ -607,6 +609,7 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .build();
     pub static ref RANDOMIZE_COMMAND: Command = CommandBuilder::new("randomize")
+        .alias("badcommand")
         .arg(Argument::ImageBuffer)
         .public()
         .description("sends a provided image through multiple filters")
@@ -698,29 +701,50 @@ pub async fn run_randomize_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
+    async fn inner_randomize(
+        assyst: Arc<Assyst>,
+        image: Bytes,
+        user_id: UserId,
+    ) -> (
+        &'static str,
+        Result<Bytes, Box<dyn std::error::Error + Send + Sync>>,
+    ) {
+        if rand::random() {
+            let (route, bytes) = wsi::randomize(assyst, image, user_id).await;
+            let filter = route.strip_prefix("/").unwrap_or(route);
+
+            match bytes {
+                Ok(bytes) => (filter, Ok(bytes)),
+                Err(e) => (filter, Err(wsi::format_err(e).into())),
+            }
+        } else {
+            let (route, bytes) = annmarie::randomize(assyst, image, user_id).await;
+            let filter = route.strip_prefix("/").unwrap_or(route);
+
+            match bytes {
+                Ok(bytes) => (filter, Ok(bytes)),
+                Err(e) => (filter, Err(annmarie::format_err(e).into())),
+            }
+        }
+    }
+
     let mut image = Some(args[0].as_bytes());
     let mut filters = Vec::new();
+    let mut maybe_error = None;
 
     for _ in 0..3 {
         let old_image = image.take().unwrap();
 
-        if rand::random() {
-            let (route, bytes) =
-                wsi::randomize(Arc::clone(&context.assyst), old_image, context.author_id())
-                    .await
-                    .map_err(wsi::format_err)?;
-
-            image = Some(bytes);
-            filters.push(route.strip_prefix("/").unwrap_or(route));
-        } else {
-            let (route, bytes) =
-                annmarie::randomize(Arc::clone(&context.assyst), old_image, context.author_id())
-                    .await
-                    .map_err(annmarie::format_err)?;
-
-            image = Some(bytes);
-            filters.push(route.strip_prefix("/").unwrap_or(route));
-        }
+        match inner_randomize(Arc::clone(&context.assyst), old_image, context.author_id()).await {
+            (filter, Ok(bytes)) => {
+                filters.push(filter);
+                image = Some(bytes);
+            }
+            (filter, Err(e)) => {
+                maybe_error = Some((filter, e));
+                break;
+            }
+        };
     }
 
     let image = image.unwrap();
@@ -731,7 +755,14 @@ pub async fn run_randomize_command(
         .collect::<Vec<_>>()
         .join(", ");
 
-    let content = format!("filters used: {}", filters);
+    let mut content = format!("filters used: {}", filters);
+
+    if let Some((filter, error)) = maybe_error {
+        content += &format!(
+            "\n\n:warning: An error occured while running filter `{}`: {}",
+            filter, error
+        );
+    }
 
     let format = get_buffer_filetype(&image).unwrap_or("png");
 
