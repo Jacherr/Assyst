@@ -99,7 +99,7 @@ pub async fn request_bytes(
 ) -> Result<Bytes, RequestError> {
     let new_image = preprocess(assyst.clone(), image, user_id)
         .await
-        .map_err(|e| RequestError::Wsi(e))?;
+        .map_err(RequestError::Wsi)?;
 
     let req = assyst
         .reqwest_client
@@ -321,7 +321,7 @@ pub async fn zoom_blur(
 
 pub fn format_err(err: RequestError) -> String {
     match err {
-        RequestError::Reqwest(e) => e,
+        RequestError::Reqwest(_) => String::from("A network error occurred"),
         RequestError::Annmarie(e, _) => e.message.to_string(),
         RequestError::InvalidStatus(e) => e.to_string(),
         RequestError::Wsi(e) => crate::rest::wsi::format_err(e),
