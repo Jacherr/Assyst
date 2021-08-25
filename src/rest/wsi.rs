@@ -122,13 +122,16 @@ pub async fn randomize(
     assyst: Arc<Assyst>,
     image: Bytes,
     user_id: UserId,
-) -> Result<(&'static str, Bytes), RequestError> {
+) -> (&'static str, Result<Bytes, RequestError>) {
     let index = rand::thread_rng().gen_range(0..routes::RANDOMIZABLE_ROUTES.len());
     let route = routes::RANDOMIZABLE_ROUTES[index];
 
-    let bytes = request_bytes(assyst, route, image, &[], user_id).await?;
+    let bytes = request_bytes(assyst, route, image, &[], user_id).await;
 
-    Ok((route, bytes))
+    match bytes {
+        Ok(bytes) => (route, Ok(bytes)),
+        Err(e) => (route, Err(e)),
+    }
 }
 
 pub async fn request_bytes(
