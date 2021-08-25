@@ -735,13 +735,20 @@ pub async fn run_randomize_command(
     for _ in 0..3 {
         let old_image = image.take().unwrap();
 
-        match inner_randomize(Arc::clone(&context.assyst), old_image, context.author_id()).await {
+        match inner_randomize(
+            Arc::clone(&context.assyst),
+            old_image.clone(),
+            context.author_id(),
+        )
+        .await
+        {
             (filter, Ok(bytes)) => {
                 filters.push(filter);
                 image = Some(bytes);
             }
             (filter, Err(e)) => {
                 maybe_error = Some((filter, e));
+                image = Some(old_image);
                 break;
             }
         };
