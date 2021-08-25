@@ -683,7 +683,7 @@ pub async fn zoom(
 
 pub fn format_err(err: RequestError) -> String {
     match err {
-        RequestError::Reqwest(e) => e.to_string(),
+        RequestError::Reqwest(_) => String::from("A network error occurred"),
         RequestError::Wsi(e) => e.message.to_string(),
         RequestError::Serde(e) => e.to_string(),
         RequestError::Sqlx(e) => e.to_string(),
