@@ -18,6 +18,7 @@ mod tasks;
 mod util;
 
 use assyst::Assyst;
+use botlist::run as botlist_run;
 use dotenv::dotenv;
 use futures::stream::StreamExt;
 use handler::handle_event;
@@ -29,7 +30,6 @@ use twilight_model::gateway::{
     presence::{Activity, ActivityType, Status},
     Intents,
 };
-use botlist::run as botlist_run;
 
 #[tokio::main]
 async fn main() {
@@ -78,6 +78,20 @@ async fn main() {
 
     // Bot list webhooks
     botlist_run(assyst.clone());
+
+    {
+        let handle = tokio::runtime::Handle::current();
+        let assyst = Arc::clone(&assyst);
+
+        std::panic::set_hook(Box::new(move |info| {
+            println!("{}", info);
+
+            let assyst = assyst.clone();
+            let msg = format!("a thread has panicked: {}", info);
+
+            handle.spawn(async move { assyst.logger.panic(&assyst, &msg).await });
+        }));
+    }
 
     while let Some((_, event)) = events.next().await {
         assyst.metrics.write().await.processing.add_event();

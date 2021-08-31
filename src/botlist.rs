@@ -38,7 +38,7 @@ pub async fn handle_vote(assyst: Arc<Assyst>, user_id: i64, service: &'static st
         assyst
             .logger
             .fatal(
-                assyst.clone(),
+                &assyst,
                 &format!(
                     "failed to give free tier 1 requests to voter, reason: {}",
                     e.to_string()
@@ -80,7 +80,7 @@ pub async fn handle_vote(assyst: Arc<Assyst>, user_id: i64, service: &'static st
             }
         }
 
-        assyst.logger.log_vote(assyst.clone(), &message).await;
+        assyst.logger.log_vote(&assyst, &message).await;
     }
 }
 
