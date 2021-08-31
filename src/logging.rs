@@ -1,12 +1,25 @@
 use crate::consts::MESSAGE_CHARACTER_LIMIT;
 use crate::Assyst;
 use std::error::Error;
-use std::sync::Arc;
 use twilight_embed_builder::EmbedBuilder;
 use twilight_model::id::WebhookId;
 pub struct Logger {}
 impl Logger {
-    pub async fn fatal(&self, assyst: Arc<Assyst>, message: &str) {
+    pub async fn panic(&self, assyst: &Assyst, message: &str) {
+        let url: &str = assyst.config.logs.fatal.as_ref();
+        if url.is_empty() {
+            println!("really bad error: {}", message);
+            return;
+        }
+
+        let content = format!("<@&{}>", assyst.config.logs.panic_notify_role);
+
+        let _ = self
+            .exec_webhook_with(assyst, Some(&content), url, message, 0xFF0000)
+            .await;
+    }
+
+    pub async fn fatal(&self, assyst: &Assyst, message: &str) {
         let url: &str = assyst.config.logs.fatal.as_ref();
         if url.is_empty() {
             println!("really bad error: {}", message);
@@ -16,11 +29,11 @@ impl Logger {
         let er = format!("**really bad error**: {}", message);
 
         let _ = self
-            .exec_webhook_with(assyst.clone(), url, &er, 0xFF0000)
+            .exec_webhook_with(assyst, None, url, &er, 0xFF0000)
             .await;
     }
 
-    pub async fn info(&self, assyst: Arc<Assyst>, message: &str) {
+    pub async fn info(&self, assyst: &Assyst, message: &str) {
         let url: &str = assyst.config.logs.info.as_ref();
         if url.is_empty() {
             println!("info: {}", message);
@@ -30,11 +43,11 @@ impl Logger {
         let message = format!("**info**: {}", message);
 
         let _ = self
-            .exec_webhook_with(assyst.clone(), url, &message, 0x00D0FF)
+            .exec_webhook_with(assyst, None, url, &message, 0x00D0FF)
             .await;
     }
 
-    pub async fn log_vote(&self, assyst: Arc<Assyst>, message: &str) {
+    pub async fn log_vote(&self, assyst: &Assyst, message: &str) {
         let url: &str = assyst.config.logs.vote.as_ref();
         if url.is_empty() {
             println!("vote: {}", message);
@@ -44,13 +57,14 @@ impl Logger {
         let message = format!("**User Voted**: {}", message);
 
         let _ = self
-            .exec_webhook_with(assyst.clone(), url, &message, 0xFFFFFF)
+            .exec_webhook_with(assyst, None, url, &message, 0xFFFFFF)
             .await;
     }
 
     async fn exec_webhook_with(
         &self,
-        assyst: Arc<Assyst>,
+        assyst: &Assyst,
+        content: Option<&str>,
         url: &str,
         message: &str,
         color: u32,
@@ -72,12 +86,16 @@ impl Logger {
             .color(color)
             .build()?;
 
-        assyst
+        let mut builder = assyst
             .http
             .execute_webhook(WebhookId::from(id.parse::<u64>().unwrap()), *token)
-            .embeds(vec![embed])
-            .await?;
+            .embeds(vec![embed]);
 
+        if let Some(content) = content {
+            builder = builder.content(content);
+        }
+
+        builder.await?;
         Ok(())
     }
 }

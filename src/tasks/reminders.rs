@@ -67,7 +67,7 @@ pub fn init_reminder_loop(assyst: Arc<Assyst>) {
                             assyst
                                 .logger
                                 .fatal(
-                                    assyst.clone(),
+                                    &assyst,
                                     &format!("Processing reminder queue failed: {:?}", e),
                                 )
                                 .await;
@@ -76,10 +76,7 @@ pub fn init_reminder_loop(assyst: Arc<Assyst>) {
                     Err(e) => {
                         assyst
                             .logger
-                            .fatal(
-                                assyst.clone(),
-                                &format!("Fetching reminders failed: {:?}", e),
-                            )
+                            .fatal(&assyst, &format!("Fetching reminders failed: {:?}", e))
                             .await;
                     }
                 }

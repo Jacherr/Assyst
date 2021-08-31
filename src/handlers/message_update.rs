@@ -13,10 +13,7 @@ pub async fn handle(assyst: Arc<Assyst>, message: Box<MessageUpdate>) -> () {
             if let Err(e) = assyst.handle_command(c).await {
                 assyst
                     .logger
-                    .fatal(
-                        assyst.clone(),
-                        &format!("Command execution failed: {:?}", e),
-                    )
+                    .fatal(&assyst, &format!("Command execution failed: {:?}", e))
                     .await;
             }
         }
