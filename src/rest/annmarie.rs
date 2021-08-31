@@ -21,6 +21,8 @@ pub mod routes {
     pub const AHSHIT: &str = "/ahshit";
     pub const APRILFOOLS: &str = "/april-fools";
     pub const CARD: &str = "/card";
+    pub const DRIP: &str = "/drip";
+    pub const FEMURBREAKER: &str = "/femurbreaker";
     pub const FISHEYE: &str = "/fisheye";
     pub const FRINGE: &str = "/fringe";
     pub const F_SHIFT: &str = "/fshift";
@@ -29,7 +31,9 @@ pub mod routes {
     pub const MAKESWEET: &str = "/makesweet";
     pub const NEON: &str = "/neon";
     pub const PAINT: &str = "/paint";
+    pub const SIREN: &str = "/siren";
     pub const SKETCH: &str = "/sketch";
+    pub const SWEDEN: &str = "/sweden";
     pub const TERRARIA: &str = "/terraria";
     pub const ZOOM_BLUR: &str = "/zoom-blur";
     pub const QUOTE: &str = "/discord";
@@ -198,6 +202,14 @@ pub async fn circuitboard(
     .await
 }
 
+pub async fn drip(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::DRIP, image, &[], user_id).await
+}
+
 pub async fn fisheye(
     assyst: Arc<Assyst>,
     image: Bytes,
@@ -219,6 +231,14 @@ pub async fn flag(
         user_id,
     )
     .await
+}
+
+pub async fn femurbreaker(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::FEMURBREAKER, image, &[], user_id).await
 }
 
 pub async fn fringe(
@@ -287,12 +307,28 @@ pub async fn paint(
     request_bytes(assyst, routes::PAINT, image, &[], user_id).await
 }
 
+pub async fn siren(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::SIREN, image, &[], user_id).await
+}
+
 pub async fn sketch(
     assyst: Arc<Assyst>,
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::SKETCH, image, &[], user_id).await
+}
+
+pub async fn sweden(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::SWEDEN, image, &[], user_id).await
 }
 
 pub async fn terraria(

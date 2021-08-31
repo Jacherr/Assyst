@@ -133,6 +133,15 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
+    pub static ref DRIP_COMMAND: Command = CommandBuilder::new("drip")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("among us drip music over image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref FISHEYE_COMMAND: Command = CommandBuilder::new("fisheye")
         .arg(Argument::ImageBuffer)
         .alias("fish")
@@ -195,6 +204,15 @@ lazy_static! {
         .alias("fshift")
         .public()
         .description("frameshift an image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref FEMURBREAKER_COMMAND: Command = CommandBuilder::new("femurbreaker")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("femurbreaker over image")
         .example(Y21)
         .usage("[image]")
         .cooldown(Duration::from_secs(4))
@@ -476,6 +494,15 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
+    pub static ref SIREN_COMMAND: Command = CommandBuilder::new("siren")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("siren over image")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref SKETCH_COMMAND: Command = CommandBuilder::new("sketch")
         .arg(Argument::ImageBuffer)
         .public()
@@ -516,6 +543,16 @@ lazy_static! {
         .arg(Argument::ImageBuffer)
         .public()
         .description("tehi")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref SWEDEN_COMMAND: Command = CommandBuilder::new("sweden")
+        .alias("minecraft")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("minecraft music over image")
         .example(Y21)
         .usage("[image]")
         .cooldown(Duration::from_secs(4))
@@ -879,6 +916,14 @@ pub async fn run_circuitboard_command(
     run_annmarie_noarg_command!(annmarie::circuitboard, args, context)
 }
 
+pub async fn run_drip_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    run_annmarie_noarg_command!(annmarie::drip, args, context)
+}
+
 pub async fn run_fisheye_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
@@ -958,6 +1003,14 @@ pub async fn run_f_shift_command(
     _flags: ParsedFlags,
 ) -> CommandResult {
     run_annmarie_noarg_command!(annmarie::f_shift, args, context)
+}
+
+pub async fn run_femurbreaker_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    run_annmarie_noarg_command!(annmarie::femurbreaker, args, context)
 }
 
 pub async fn run_fringe_command(
@@ -1480,6 +1533,14 @@ pub async fn run_set_loop_command(
     Ok(())
 }
 
+pub async fn run_siren_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    run_annmarie_noarg_command!(annmarie::siren, args, context)
+}
+
 pub async fn run_sketch_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
@@ -1546,6 +1607,14 @@ pub async fn run_tehi_command(
         Box::new(move |assyst, bytes, user_id| Box::pin(wsi_fn(assyst, bytes, user_id))),
     )
     .await
+}
+
+pub async fn run_sweden_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    run_annmarie_noarg_command!(annmarie::sweden, args, context)
 }
 
 pub async fn run_terraria_command(

@@ -124,9 +124,11 @@ impl CommandRegistry {
         register_command!(self, CHARS_COMMAND, run_chars_command);
         register_command!(self, CIRCUITBOARD_COMMAND, run_circuitboard_command);
         register_command!(self, COMMAND_COMMAND, run_command_command);
+        register_command!(self, DRIP_COMMAND, run_drip_command);
         register_command!(self, ENLARGE_COMMAND, run_enlarge_command);
         register_command!(self, EXEC_COMMAND, run_exec_command);
         register_command!(self, F_SHIFT_COMMAND, run_f_shift_command);
+        register_command!(self, FEMURBREAKER_COMMAND, run_femurbreaker_command);
         register_command!(self, FAKE_EVAL_COMMAND, run_fake_eval_command);
         register_command!(self, FISHEYE_COMMAND, run_fisheye_command);
         register_command!(self, FIX_TRANSPARENCY_COMMAND, run_fix_transparency_command);
@@ -170,10 +172,12 @@ impl CommandRegistry {
         register_command!(self, RULE34_COMMAND, run_rule34_command);
         register_command!(self, RUST_COMMAND, run_rust_command);
         register_command!(self, SET_LOOP_COMMAND, run_set_loop_command);
+        register_command!(self, SIREN_COMMAND, run_siren_command);
         register_command!(self, SKETCH_COMMAND, run_sketch_command);
         register_command!(self, SPIN_COMMAND, run_spin_command);
         register_command!(self, SPREAD_COMMAND, run_spread_command);
         register_command!(self, STATS_COMMAND, run_stats_command);
+        register_command!(self, SWEDEN_COMMAND, run_sweden_command);
         register_command!(self, SWIRL_COMMAND, run_swirl_command);
         register_command!(self, TEHI_COMMAND, run_tehi_command);
         register_command!(self, TERRARIA_COMMAND, run_terraria_command);
