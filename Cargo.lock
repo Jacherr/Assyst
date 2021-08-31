@@ -45,6 +45,7 @@ dependencies = [
  "futures",
  "futures-util",
  "lazy_static",
+ "rand 0.8.4",
  "regex",
  "reqwest",
  "serde",
