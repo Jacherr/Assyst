@@ -59,7 +59,7 @@ async fn main() {
 
     // spawn as many shards as discord recommends
     let scheme = ShardScheme::Auto;
-    let (cluster, mut events) = Cluster::builder(&token, Intents::GUILD_MESSAGES)
+    let (cluster, mut events) = Cluster::builder(&token, Intents::GUILD_MESSAGES | Intents::GUILDS)
         .shard_scheme(scheme)
         .http_client(assyst.http.clone())
         .presence(presence)

@@ -13,7 +13,34 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
         Event::MessageUpdate(message) => {
             message_update::handle(assyst, message).await;
         }
+        Event::GuildCreate(guild) => {
+            if !assyst.guild_in_list(guild.id.0).await {
+                assyst
+                    .logger
+                    .info(
+                        assyst.clone(),
+                        &format!(
+                            "Added to guild: {} ({}) ({} members)",
+                            guild.name,
+                            guild.id,
+                            guild.member_count.unwrap_or(0)
+                        ),
+                    )
+                    .await;
+            }
+        }
+        Event::GuildDelete(guild) => {
+            if !assyst.guild_in_list(guild.id.0).await {
+                assyst
+                    .logger
+                    .info(assyst.clone(), &format!("Removed from guild: {}", guild.id))
+                    .await;
+            }
+        }
         Event::Ready(r) => {
+            for guild in &r.guilds {
+                assyst.add_guild_to_list(guild.id.0).await;
+            }
             assyst
                 .logger
                 .info(

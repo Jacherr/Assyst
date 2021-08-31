@@ -27,18 +27,12 @@ use crate::{
 use bytes::Bytes;
 use regex::Captures;
 use reqwest::Client as ReqwestClient;
-use std::{
-    borrow::{Borrow, Cow},
-    collections::HashMap,
-    sync::Arc,
-    time::Instant,
-};
-use tokio::sync::RwLock;
+use std::{borrow::{Borrow, Cow}, collections::{HashMap, HashSet}, sync::Arc, time::Instant};
+use tokio::sync::{RwLock, Mutex};
 use twilight_gateway::Cluster;
 use twilight_http::Client as HttpClient;
 use twilight_model::{
     channel::{message::sticker::StickerFormatType, Message},
-    guild::Permissions,
     id::UserId,
 };
 
@@ -110,6 +104,7 @@ fn message_mention_prefix(content: &str) -> Option<String> {
 ///
 /// apina
 pub struct Assyst {
+    guilds: Mutex<HashSet<u64>>,
     pub badtranslator: BadTranslator,
     pub cluster: Option<Cluster>,
     pub command_ratelimits: RwLock<Ratelimits>,
@@ -139,6 +134,7 @@ impl Assyst {
         let config = Config::new();
         let database = Database::new(2, config.database.to_url()).await.unwrap();
         let mut assyst = Assyst {
+            guilds: Mutex::new(HashSet::new()),
             badtranslator: BadTranslator::new(),
             cluster: None,
             command_ratelimits: RwLock::new(Ratelimits::new()),
@@ -158,6 +154,16 @@ impl Assyst {
         };
         assyst.registry.register_commands();
         assyst
+    }
+
+    /// Add a guild to cached guild list
+    pub async fn add_guild_to_list(&self, guild: u64) {
+        self.guilds.lock().await.insert(guild);
+    }
+
+    /// Checks if guild is in cached guild list
+    pub async fn guild_in_list(&self, guild: u64) -> bool {
+        self.guilds.lock().await.contains(&guild)
     }
 
     /// Set the cluster instance that this instance of Assyst receives its events from.
@@ -357,13 +363,6 @@ impl Assyst {
                 .await
                 .map_err(|e| e.to_string())?;
         };
-
-        self.logger
-            .info(
-                self.clone(),
-                &format!("Command successfully executed: {}", command_instance.name),
-            )
-            .await;
 
         self.metrics
             .write()

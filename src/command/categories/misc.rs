@@ -47,6 +47,7 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .build();
     pub static ref ENLARGE_COMMAND: Command = CommandBuilder::new("enlarge")
+        .flag("url", None)
         .alias("e")
         .public()
         .arg(Argument::ImageBuffer)
@@ -256,24 +257,29 @@ pub async fn run_ping_command(
 pub async fn run_enlarge_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
-    _flags: ParsedFlags,
+    flags: ParsedFlags,
 ) -> CommandResult {
     let image = args[0].clone().as_bytes();
+    let url = flags.contains_key("url");
 
-    context.reply_with_text("processing...").await?;
+    if !url {
+        context.reply_with_text("processing...").await?;
 
-    let result = wsi::resize_scale(
-        context.assyst.clone(),
-        image,
-        context.author_id(),
-        2.0,
-        ResizeMethod::Gaussian,
-    )
-    .await
-    .map_err(wsi::format_err)?;
-
-    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
-    context.reply_with_image(format, result).await?;
+        let result = wsi::resize_scale(
+            context.assyst.clone(),
+            image,
+            context.author_id(),
+            1.5,
+            ResizeMethod::Nearest,
+        )
+        .await
+        .map_err(wsi::format_err)?;
+        let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+        context.reply_with_image(format, result).await?;
+    } else {
+        let format = get_buffer_filetype(&image).unwrap_or_else(|| "png");
+        context.reply_with_image(format, image).await?;
+    }
 
     Ok(())
 }
@@ -958,9 +964,22 @@ pub async fn run_fake_eval_command(
         response.message = "The answer to life, the universe, and everything".to_owned()
     };
 
+    let codeblocked_input = codeblock(code, "js");
+    let codeblocked_output = codeblock(&response.message, "js");
+
+    context.reply_with_text(&codeblocked_output).await?;
+
     context
-        .reply_with_text(&codeblock(&response.message, "js"))
-        .await?;
+        .assyst
+        .logger
+        .info(
+            context.assyst.clone(),
+            &format!(
+                "User Evaled: {} Output: {}",
+                codeblocked_input, codeblocked_output
+            ),
+        )
+        .await;
 
     Ok(())
 }
