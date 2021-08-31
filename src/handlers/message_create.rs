@@ -12,7 +12,7 @@ pub async fn handle(assyst: Arc<Assyst>, message: Box<MessageCreate>) {
                 assyst
                     .logger
                     .fatal(
-                        assyst.clone(),
+                        &assyst,
                         &format!(
                             "Fetching BadTranslator channels failed, disabling feature... {:?}",
                             e
@@ -37,10 +37,7 @@ pub async fn handle(assyst: Arc<Assyst>, message: Box<MessageCreate>) {
     if let Err(e) = assyst.handle_command(message.0).await {
         assyst
             .logger
-            .fatal(
-                assyst.clone(),
-                &format!("Command execution failed: {:?}", e),
-            )
+            .fatal(&assyst, &format!("Command execution failed: {:?}", e))
             .await;
     }
 }

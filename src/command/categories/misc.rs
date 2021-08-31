@@ -973,7 +973,7 @@ pub async fn run_fake_eval_command(
         .assyst
         .logger
         .info(
-            context.assyst.clone(),
+            &context.assyst,
             &format!(
                 "User Evaled: {} Output: {}",
                 codeblocked_input, codeblocked_output
