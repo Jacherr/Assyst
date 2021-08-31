@@ -18,7 +18,7 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
                 assyst
                     .logger
                     .info(
-                        assyst.clone(),
+                        &assyst,
                         &format!(
                             "Added to guild: {} ({}) ({} members)",
                             guild.name,
@@ -33,7 +33,7 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
             if !assyst.guild_in_list(guild.id.0).await {
                 assyst
                     .logger
-                    .info(assyst.clone(), &format!("Removed from guild: {}", guild.id))
+                    .info(&assyst, &format!("Removed from guild: {}", guild.id))
                     .await;
             }
         }
@@ -44,7 +44,7 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
             assyst
                 .logger
                 .info(
-                    assyst.clone(),
+                    &assyst,
                     &format!(
                         "Shard {}: READY in {} guilds",
                         r.shard.unwrap_or_default()[0],
@@ -56,14 +56,14 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
         Event::ShardConnected(d) => {
             assyst
                 .logger
-                .info(assyst.clone(), &format!("Shard {}: CONNECTED", d.shard_id))
+                .info(&assyst, &format!("Shard {}: CONNECTED", d.shard_id))
                 .await;
         }
         Event::ShardDisconnected(d) => {
             assyst
                 .logger
                 .info(
-                    assyst.clone(),
+                    &assyst,
                     &format!(
                         "Shard {}: DISCONNECTED, {:?}",
                         d.shard_id,
@@ -75,10 +75,7 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
         Event::ShardReconnecting(r) => {
             assyst
                 .logger
-                .info(
-                    assyst.clone(),
-                    &format!("Shard {}: RECONNECTING", r.shard_id),
-                )
+                .info(&assyst, &format!("Shard {}: RECONNECTING", r.shard_id))
                 .await;
         }
         _ => {}
