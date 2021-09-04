@@ -286,14 +286,16 @@ impl BadTranslator {
 
         let translation = sanitize_message_content(&translation[0..min(translation.len(), 1999)]);
 
-        // Again, this might be a permission problem, so we ignore it if it fails
-        let _ = assyst
+        if let Err(e) = assyst
             .http
             .execute_webhook(webhook.id, token)
             .content(translation)
             .username(&message.author.name)
             .avatar_url(get_avatar_url(&message.author))
-            .await;
+            .await
+        {
+            eprintln!("Executing webhook failed: {:?}", e);
+        }
 
         // Increase metrics counter for this guild
         let guild_id = guild.0;
