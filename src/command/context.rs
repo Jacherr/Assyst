@@ -81,7 +81,8 @@ impl Context {
         format: &str,
         buffer: Bytes,
     ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
-        self.reply_with_image_and_text(&format!("image/{}", format), buffer, None).await
+        self.reply_with_image_and_text(&format!("image/{}", format), buffer, None)
+            .await
     }
 
     pub async fn reply_with_file(
@@ -89,6 +90,7 @@ impl Context {
         mime: &str,
         buffer: Bytes,
     ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
+        let mime = mime.split('/').nth(1).unwrap();
         self.reply_with_image_and_text(mime, buffer, None).await
     }
 
@@ -110,12 +112,8 @@ impl Context {
         }
 
         if buffer.len() > consts::WORKING_FILESIZE_LIMIT_BYTES {
-            let url = crate::rest::upload_to_filer(
-                &self.assyst.reqwest_client,
-                buffer,
-                format,
-            )
-            .await?;
+            let url =
+                crate::rest::upload_to_filer(&self.assyst.reqwest_client, buffer, format).await?;
             let builder = builder.content(&url);
             self.reply(builder).await
         } else {
