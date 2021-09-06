@@ -196,5 +196,6 @@ impl CommandRegistry {
         register_command!(self, COLOR_COMMAND, run_color_command);
         register_command!(self, QUOTE_COMMAND, run_quote_command);
         register_command!(self, RANDOMIZE_COMMAND, run_randomize_command);
+        register_command!(self, TOWAV_COMMAND, run_towav_command);
     }
 }

@@ -8,6 +8,7 @@ use crate::{
     rest::{self, bt::bad_translate, bt::translate_single},
     util::{codeblock, ensure_guild_manager, normalize_emojis},
 };
+use bytes::Bytes;
 use lazy_static::lazy_static;
 use std::{sync::Arc, time::Duration};
 
@@ -86,6 +87,16 @@ lazy_static! {
         .example("")
         .usage("red")
         .cooldown(Duration::from_secs(10))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref TOWAV_COMMAND: Command = CommandBuilder::new("towav")
+        .alias("wavify")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("wavify a file")
+        .example("[file]")
+        .usage("[file]")
+        .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
 }
@@ -400,6 +411,58 @@ pub async fn run_color_command(
             context.reply_with_text(&content).await?;
         }
     };
+
+    Ok(())
+}
+
+pub async fn run_towav_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    let file = args[0].as_bytes().to_vec();
+
+    fn conv(num: usize) -> Vec<u8> {
+        [
+            (num & 255) as u8,
+            ((num >> 8) & 255) as u8,
+            ((num >> 16) & 255) as u8,
+            ((num >> 24) & 255) as u8,
+        ].to_vec()
+    }
+    
+    const RIFF: &[u8] = "RIFF".as_bytes();
+    let chunk_size = conv(file.len() + 36);
+    const WAVE: &[u8] = "WAVE".as_bytes();
+    const FMT_: &[u8] = "fmt ".as_bytes();
+    const SUBCHUNK1_SIZE: &[u8] = &[0x10, 0, 0, 0];
+    const AUDIO_FORMAT: &[u8] = &[0x1, 0];
+    const NUM_CHANNELS: &[u8] = &[0x2, 0];
+    const SAMPLE_RATE: &[u8] = &[0x22, 0x56, 0, 0];
+    const BYTE_RATE: &[u8] = &[0x88, 0x58, 0x01, 0x00];
+    const BLOCK_ALIGN: &[u8] = &[0x04, 0];
+    const BITS_PER_SAMPLE: &[u8] = &[0x10, 0];
+    const DATA: &[u8] = "data".as_bytes();
+    let subchunk2_size = conv(file.len());
+
+    let output = Bytes::from([
+        RIFF,
+        &chunk_size,
+        WAVE,
+        FMT_,
+        SUBCHUNK1_SIZE,
+        AUDIO_FORMAT,
+        NUM_CHANNELS,
+        SAMPLE_RATE,
+        BYTE_RATE,
+        BLOCK_ALIGN,
+        BITS_PER_SAMPLE,
+        DATA,
+        &subchunk2_size,
+        &file
+    ].concat());
+
+    context.reply_with_file("audio/wav", output).await?;
 
     Ok(())
 }

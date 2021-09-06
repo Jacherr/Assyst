@@ -811,7 +811,7 @@ pub async fn run_randomize_command(
     let format = get_buffer_filetype(&image).unwrap_or("png");
 
     context
-        .reply_with_image_and_text(format, image, Some(&content))
+        .reply_with_image_and_text(&format!("image/{}", format), image, Some(&content))
         .await
         .map(|_| ())
 }
