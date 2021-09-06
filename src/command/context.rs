@@ -81,7 +81,15 @@ impl Context {
         format: &str,
         buffer: Bytes,
     ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
-        self.reply_with_image_and_text(format, buffer, None).await
+        self.reply_with_image_and_text(&format!("image/{}", format), buffer, None).await
+    }
+
+    pub async fn reply_with_file(
+        &self,
+        mime: &str,
+        buffer: Bytes,
+    ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
+        self.reply_with_image_and_text(mime, buffer, None).await
     }
 
     pub async fn reply_with_image_and_text(
@@ -105,7 +113,7 @@ impl Context {
             let url = crate::rest::upload_to_filer(
                 &self.assyst.reqwest_client,
                 buffer,
-                &format!("image/{}", format),
+                format,
             )
             .await?;
             let builder = builder.content(&url);
