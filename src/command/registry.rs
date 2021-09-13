@@ -135,6 +135,7 @@ impl CommandRegistry {
         register_command!(self, FLAG_COMMAND, run_flag_command);
         register_command!(self, FLIP_COMMAND, run_flip_command);
         register_command!(self, FLOP_COMMAND, run_flop_command);
+        register_command!(self, FRAMES_COMMAND, run_frames_command);
         register_command!(self, FRINGE_COMMAND, run_fringe_command);
         register_command!(self, GHOST_COMMAND, run_ghost_command);
         register_command!(self, GIF_LOOP_COMMAND, run_gif_loop_command);
