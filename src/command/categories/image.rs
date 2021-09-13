@@ -198,6 +198,15 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
+    pub static ref FRAMES_COMMAND: Command = CommandBuilder::new("frames")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("get frames of a gif")
+        .example(Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref F_SHIFT_COMMAND: Command = CommandBuilder::new("frameshift")
         .arg(Argument::ImageBuffer)
         .alias("butt")
@@ -1011,6 +1020,20 @@ pub async fn run_femurbreaker_command(
     _flags: ParsedFlags,
 ) -> CommandResult {
     run_annmarie_noarg_command!(annmarie::femurbreaker, args, context)
+}
+
+pub async fn run_frames_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    let image = args[0].as_bytes();
+    context.reply_with_text("processing...").await?;
+    let result = wsi::frames(context.assyst.clone(), image, context.author_id())
+        .await
+        .map_err(wsi::format_err)?;
+    context.reply_with_file("application/zip", result).await?;
+    Ok(())
 }
 
 pub async fn run_fringe_command(

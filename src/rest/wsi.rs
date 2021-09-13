@@ -27,6 +27,7 @@ pub mod routes {
     pub const FLASH: &str = "/flash";
     pub const FLIP: &str = "/flip";
     pub const FLOP: &str = "/flop";
+    pub const FRAMES: &str = "/frames";
     pub const GHOST: &str = "/ghost";
     pub const GIF_LOOP: &str = "/gif_loop";
     pub const GIF_MAGIK: &str = "/gif_magik";
@@ -266,6 +267,14 @@ pub async fn motivate(
         user_id,
     )
     .await
+}
+
+pub async fn frames(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::FRAMES, image, &[], user_id).await
 }
 
 pub async fn ghost(
