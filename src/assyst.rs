@@ -27,8 +27,13 @@ use crate::{
 use bytes::Bytes;
 use regex::Captures;
 use reqwest::Client as ReqwestClient;
-use std::{borrow::{Borrow, Cow}, collections::{HashMap, HashSet}, sync::Arc, time::Instant};
-use tokio::sync::{RwLock, Mutex};
+use std::{
+    borrow::{Borrow, Cow},
+    collections::{HashMap, HashSet},
+    sync::Arc,
+    time::Instant,
+};
+use tokio::sync::{Mutex, RwLock};
 use twilight_gateway::Cluster;
 use twilight_http::Client as HttpClient;
 use twilight_model::{
@@ -499,14 +504,15 @@ impl Assyst {
             let (name, kind) = match command.flags.get(name) {
                 Some(c) => c,
                 None => {
-                    return format!("-{} {}", name, {
-                        let value = value.unwrap_or("");
+                    // if the flag doesn't exist, we need to "reconstruct" the original matched string
+                    return format!(" -{}{}", name, {
                         if has_quotes {
-                            Cow::Owned(format!("\"{}\"", value))
+                            // if it has quotes, we need to add them back
+                            format!(" \"{}\"", value.unwrap_or(""))
                         } else {
-                            Cow::Borrowed(value)
+                            value.map(|x| format!(" {}", x)).unwrap_or_else(String::new)
                         }
-                    })
+                    });
                 }
             };
 
