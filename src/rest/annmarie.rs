@@ -1,4 +1,5 @@
-use crate::{assyst::Assyst, rest::wsi::preprocess};
+use crate::{assyst::Assyst, util::get_wsi_request_tier};
+use bincode::serialize;
 use bytes::Bytes;
 use futures::Future;
 use rand::Rng;
@@ -17,9 +18,14 @@ pub type NoArgFunction = Box<
         + Sync,
 >;
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AnnmarieBody {
+    pub route: String,
+    pub query_params: Vec<(String, String)>,
+    pub images: Vec<Vec<u8>>
+}
+
 pub mod routes {
-    pub const AHSHIT: &str = "/ahshit";
-    pub const APRILFOOLS: &str = "/april-fools";
     pub const CARD: &str = "/card";
     pub const DRIP: &str = "/drip";
     pub const FEMURBREAKER: &str = "/femurbreaker";
@@ -34,7 +40,6 @@ pub mod routes {
     pub const SIREN: &str = "/siren";
     pub const SKETCH: &str = "/sketch";
     pub const SWEDEN: &str = "/sweden";
-    pub const TERRARIA: &str = "/terraria";
     pub const ZOOM_BLUR: &str = "/zoom-blur";
     pub const QUOTE: &str = "/discord";
 
@@ -68,12 +73,13 @@ pub enum RequestError {
 
 /// Takes a partially built request, attaches the Authorization header
 /// and sends the request, returning any errors
-pub async fn finish_request(assyst: &Assyst, req: RequestBuilder) -> Result<Bytes, RequestError> {
+pub async fn finish_request(assyst: &Assyst, req: RequestBuilder, premium_level: usize) -> Result<Bytes, RequestError> {
     let result = req
         .header(
             reqwest::header::AUTHORIZATION,
-            assyst.config.auth.annmarie.as_ref(),
+            assyst.config.auth.wsi.as_ref(),
         )
+        .header("premium_level", premium_level)
         .send()
         .await
         .map_err(|_| RequestError::Reqwest("A network error occurred".to_owned()))?;
@@ -101,17 +107,21 @@ pub async fn request_bytes(
     query: &[(&str, &str)],
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    let new_image = preprocess(assyst.clone(), image, user_id)
-        .await
-        .map_err(RequestError::Wsi)?;
+    let body = AnnmarieBody {
+        images: vec![image.to_vec()],
+        query_params: query.iter().map(|x| (x.0.to_owned(), x.1.to_owned())).collect::<Vec<_>>(),
+        route: route.to_owned()
+    };
+
+    let premium_level = get_wsi_request_tier(&assyst.clone(), user_id).await.unwrap();
 
     let req = assyst
         .reqwest_client
-        .post(&format!("{}{}", assyst.config.url.annmarie, route))
+        .post(&format!("{}/annmarie", assyst.config.url.wsi))
         .query(query)
-        .body(new_image);
+        .body(serialize(&body).unwrap());
 
-    finish_request(&assyst, req).await
+    finish_request(&assyst, req, premium_level).await
 }
 
 pub async fn randomize(
@@ -136,32 +146,36 @@ pub async fn quote(
     guild: Guild,
     white: bool,
 ) -> Result<Bytes, RequestError> {
-    let req = assyst
+    let result = assyst
         .reqwest_client
         .post(&format!("{}{}", assyst.config.url.annmarie, routes::QUOTE))
         .json(&AnnmarieQuote {
             messages,
             guild,
             white,
-        });
+        })
+        .header(
+            reqwest::header::AUTHORIZATION,
+            assyst.config.auth.annmarie.as_ref(),
+        )
+        .send()
+        .await
+        .map_err(|_| RequestError::Reqwest("A network error occurred".to_owned()))?;
 
-    finish_request(&assyst, req).await
-}
+    let status = result.status();
 
-pub async fn ahshit(
-    assyst: Arc<Assyst>,
-    image: Bytes,
-    user_id: UserId,
-) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::AHSHIT, image, &[], user_id).await
-}
-
-pub async fn aprilfools(
-    assyst: Arc<Assyst>,
-    image: Bytes,
-    user_id: UserId,
-) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::APRILFOOLS, image, &[], user_id).await
+    return if status != reqwest::StatusCode::OK {
+        let json = result.json::<AnnmarieError>().await.map_err(|_| {
+            RequestError::Reqwest("There was an error decoding the response".to_owned())
+        })?;
+        Err(RequestError::Annmarie(json, status))
+    } else {
+        let bytes = result
+            .bytes()
+            .await
+            .map_err(|e| RequestError::Reqwest(e.to_string()))?;
+        Ok(bytes)
+    };
 }
 
 pub async fn billboard(
@@ -329,14 +343,6 @@ pub async fn sweden(
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::SWEDEN, image, &[], user_id).await
-}
-
-pub async fn terraria(
-    assyst: Arc<Assyst>,
-    image: Bytes,
-    user_id: UserId,
-) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::TERRARIA, image, &[], user_id).await
 }
 
 pub async fn zoom_blur(

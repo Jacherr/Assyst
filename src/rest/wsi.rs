@@ -19,6 +19,9 @@ pub type NoArgFunction = Box<
 
 pub mod routes {
     pub const _3D_ROTATE: &str = "/3d_rotate";
+    pub const AHSHIT: &str = "/ahshit";
+    pub const APRILFOOLS: &str = "/aprilfools";
+    pub const AUDIO: &str = "/audio";
     pub const BLUR: &str = "/blur";
     pub const CAPTION: &str = "/caption";
     pub const COMPRESS: &str = "/compress";
@@ -34,6 +37,7 @@ pub mod routes {
     pub const GIF_SCRAMBLE: &str = "/gif_scramble";
     pub const GIF_SPEED: &str = "/gif_speed";
     pub const GRAYSCALE: &str = "/grayscale";
+    pub const HEART_LOCKET: &str = "/heart_locket";
     pub const IMAGE_INFO: &str = "/image_info";
     pub const IMAGEMAGICK_EVAL: &str = "/imagemagick_eval";
     pub const INVERT: &str = "/invert";
@@ -179,6 +183,31 @@ pub async fn _3d_rotate(
     request_bytes(assyst, routes::_3D_ROTATE, image, &[], user_id).await
 }
 
+pub async fn ahshit(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::AHSHIT, image, &[], user_id).await
+}
+
+pub async fn aprilfools(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::APRILFOOLS, image, &[], user_id).await
+}
+
+pub async fn audio(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    effect: &str,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::AUDIO, image, &[("effect", effect)], user_id).await
+}
+
 pub async fn blur(
     assyst: Arc<Assyst>,
     image: Bytes,
@@ -316,6 +345,15 @@ pub async fn grayscale(
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
     request_bytes(assyst, routes::GRAYSCALE, image, &[], user_id).await
+}
+
+pub async fn heart_locket(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    text: &str,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    request_bytes(assyst, routes::HEART_LOCKET, image, &[("text", text)], user_id).await
 }
 
 pub async fn gif_speed(
