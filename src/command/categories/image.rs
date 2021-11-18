@@ -312,6 +312,17 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
+    pub static ref HEART_LOCKET_COMMAND: Command = CommandBuilder::new("heartlocket")
+        .arg(Argument::ImageBuffer)
+        .arg(Argument::StringRemaining)
+        .alias("hl")
+        .public()
+        .description("heart locket with a caption")
+        .example("https://link.to.my/image.gif yeah")
+        .usage("[image] [text]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref IMAGE_INFO_COMMAND: Command = CommandBuilder::new("imageinfo")
         .arg(Argument::ImageBuffer)
         .alias("ii")
@@ -686,7 +697,14 @@ pub async fn run_ahshit_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    run_annmarie_noarg_command!(annmarie::ahshit, args, context)
+    let raw_image = args[0].as_bytes();
+    let wsi_fn = wsi::ahshit;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes, user_id| Box::pin(wsi_fn(assyst, bytes, user_id))),
+    )
+    .await
 }
 
 pub async fn run_quote_command(
@@ -852,7 +870,14 @@ pub async fn run_aprilfools_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    run_annmarie_noarg_command!(annmarie::aprilfools, args, context)
+    let raw_image = args[0].as_bytes();
+    let wsi_fn = wsi::aprilfools;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes, user_id| Box::pin(wsi_fn(assyst, bytes, user_id))),
+    )
+    .await
 }
 
 pub async fn run_billboard_command(
@@ -886,7 +911,7 @@ pub async fn run_burntext_command(
 ) -> CommandResult {
     let text = args[0].as_text();
     context.reply_with_text("processing...").await?;
-    let result = rest::burning_text(&context.assyst.clone().reqwest_client, text)
+    let result = rest::burning_text(text)
         .await
         .map_err(|e| e.to_string())?;
     context.reply_with_image("gif", result).await?;
@@ -930,7 +955,14 @@ pub async fn run_drip_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    run_annmarie_noarg_command!(annmarie::drip, args, context)
+    let image = args[0].as_bytes();
+    context.reply_with_text("processing...").await?;
+    let result = wsi::audio(context.assyst.clone(), image, "drip", context.author_id())
+        .await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
 }
 
 pub async fn run_fisheye_command(
@@ -1019,7 +1051,14 @@ pub async fn run_femurbreaker_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    run_annmarie_noarg_command!(annmarie::femurbreaker, args, context)
+    let image = args[0].as_bytes();
+    context.reply_with_text("processing...").await?;
+    let result = wsi::audio(context.assyst.clone(), image, "femurbreaker", context.author_id())
+        .await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
 }
 
 pub async fn run_frames_command(
@@ -1143,6 +1182,23 @@ pub async fn run_grayscale_command(
         Box::new(move |assyst, bytes, user_id| Box::pin(wsi_fn(assyst, bytes, user_id))),
     )
     .await
+}
+
+pub async fn run_heart_locket_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    let image = args[0].as_bytes();
+    let text = args[1].as_text();
+
+    context.reply_with_text("processing...").await?;
+    let result = wsi::heart_locket(context.assyst.clone(), image, text, context.author_id())
+        .await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
 }
 
 pub async fn run_image_info_command(
@@ -1561,7 +1617,14 @@ pub async fn run_siren_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    run_annmarie_noarg_command!(annmarie::siren, args, context)
+    let image = args[0].as_bytes();
+    context.reply_with_text("processing...").await?;
+    let result = wsi::audio(context.assyst.clone(), image, "siren", context.author_id())
+        .await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
 }
 
 pub async fn run_sketch_command(
@@ -1637,7 +1700,14 @@ pub async fn run_sweden_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    run_annmarie_noarg_command!(annmarie::sweden, args, context)
+    let image = args[0].as_bytes();
+    context.reply_with_text("processing...").await?;
+    let result = wsi::audio(context.assyst.clone(), image, "sweden", context.author_id())
+        .await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
 }
 
 pub async fn run_terraria_command(
@@ -1645,7 +1715,14 @@ pub async fn run_terraria_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    run_annmarie_noarg_command!(annmarie::terraria, args, context)
+    let image = args[0].as_bytes();
+    context.reply_with_text("processing...").await?;
+    let result = wsi::audio(context.assyst.clone(), image, "terraria", context.author_id())
+        .await
+        .map_err(wsi::format_err)?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
 }
 
 pub async fn run_wall_command(
