@@ -338,6 +338,7 @@ pub fn normalize_emojis<'a>(input: &'a str) -> Cow<'a, str> {
 /// Attempts to extract the page title
 pub fn extract_page_title(input: &str) -> Option<String> {
     let dom = tl::parse(input);
+    let parser = dom.parser();
 
     let tag = dom.find_node(|node| {
         if let Some(tag) = node.as_tag() {
@@ -347,7 +348,7 @@ pub fn extract_page_title(input: &str) -> Option<String> {
         false
     })?;
 
-    Some(tag.inner_text().into_owned())
+    Some(tag.get(parser)?.inner_text(parser).into_owned())
 }
 
 /// Generates a message link
