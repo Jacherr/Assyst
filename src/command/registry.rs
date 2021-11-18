@@ -144,6 +144,7 @@ impl CommandRegistry {
         register_command!(self, GIF_SPEED_COMMAND, run_gif_speed_command);
         register_command!(self, GLOBE_COMMAND, run_globe_command);
         register_command!(self, GRAYSCALE_COMMAND, run_grayscale_command);
+        register_command!(self, HEART_LOCKET_COMMAND, run_heart_locket_command);
         register_command!(self, HELP_COMMAND, run_help_command);
         register_command!(self, IMAGE_INFO_COMMAND, run_image_info_command);
         register_command!(self, IMAGEMAGICK_EVAL_COMMAND, run_imagemagick_eval_command);

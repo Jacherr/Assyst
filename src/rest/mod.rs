@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use bytes::Bytes;
-use reqwest::{Client, Error};
+use reqwest::{Client, ClientBuilder, Error};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -143,7 +143,9 @@ pub async fn fake_eval(client: &Client, code: &str) -> Result<FakeEvalResponse, 
         .await
 }
 
-pub async fn burning_text(client: &Client, text: &str) -> Result<Bytes, Error> {
+pub async fn burning_text(text: &str) -> Result<Bytes, Error> {
+    let client = ClientBuilder::new().danger_accept_invalid_certs(true).build().unwrap();
+    
     let cool_text_response = client
         .post(routes::COOL_TEXT)
         .query(&[

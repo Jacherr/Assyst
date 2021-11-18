@@ -81,7 +81,7 @@ impl Context {
         format: &str,
         buffer: Bytes,
     ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
-        self.reply_with_image_and_text(&format!("image/{}", format), buffer, None)
+        self.reply_with_file(&format!("image/{}", format), buffer)
             .await
     }
 
