@@ -340,15 +340,12 @@ pub fn extract_page_title(input: &str) -> Option<String> {
     let dom = tl::parse(input);
     let parser = dom.parser();
 
-    let tag = dom.find_node(|node| {
-        if let Some(tag) = node.as_tag() {
-            return tag.name() == &Some("title".into());
-        }
-
-        false
+    let tag = dom.nodes().iter().find(|node| {
+        node.as_tag()
+            .map_or(false, |tag| tag.name() == &"title".into())
     })?;
 
-    Some(tag.get(parser)?.inner_text(parser).into_owned())
+    Some(tag.inner_text(parser).into_owned())
 }
 
 /// Generates a message link
