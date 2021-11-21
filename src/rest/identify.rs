@@ -10,12 +10,12 @@ pub struct IdentifyBody<'a> {
 
 #[derive(Deserialize)]
 pub struct IdentifyResponse {
-    pub description: IdentifyDescription,
+    pub description: Option<IdentifyDescription>,
 }
 
 #[derive(Deserialize)]
 pub struct IdentifyDescription {
-    pub captions: [IdentifyCaption; 1],
+    pub captions: Vec<IdentifyCaption>,
 }
 
 #[derive(Deserialize)]

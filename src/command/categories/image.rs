@@ -8,7 +8,7 @@ use crate::{
         context::Context,
         registry::CommandResult,
     },
-    consts::Y21,
+    consts::{self, Y21},
     rest::{
         annmarie,
         wsi::{self, ResizeMethod},
@@ -1825,14 +1825,21 @@ pub async fn run_identify_command(
     .await
     .map_err(|e| e.to_string())?;
 
-    let caption = &identify.description.captions[0];
+    let caption = identify
+        .description
+        .as_ref()
+        .and_then(|description| description.captions.get(0))
+        .map(|caption| {
+            format!(
+                "I think it's {} ({}% confidence)",
+                caption.text,
+                (caption.confidence * 100f32) as u8
+            )
+        })
+        .unwrap_or_else(|| String::from(consts::IDENTIFY_ERROR_MESSAGE));
 
     context
-        .reply_with_text(&format!(
-            "I think it's {} ({}% confidence)",
-            caption.text,
-            (caption.confidence * 100f32) as u8
-        ))
+        .reply_with_text(&caption)
         .await
         .map_err(|e| e.to_string())?;
 
