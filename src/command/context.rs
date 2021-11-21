@@ -90,7 +90,6 @@ impl Context {
         mime: &str,
         buffer: Bytes,
     ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
-        let mime = mime.split('/').nth(1).unwrap();
         self.reply_with_image_and_text(mime, buffer, None).await
     }
 
@@ -101,6 +100,7 @@ impl Context {
         text: Option<&str>,
     ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
         let mut builder = MessageBuilder::new();
+        let real_format = format.split("/").nth(1).unwrap();
 
         if let Some(text) = text {
             let text = if text.len() == 0 {
@@ -117,7 +117,8 @@ impl Context {
             let builder = builder.content(&url);
             self.reply(builder).await
         } else {
-            let builder = builder.attachment(&format!("attachment.{}", format), buffer.to_vec());
+            let builder =
+                builder.attachment(&format!("attachment.{}", real_format), buffer.to_vec());
             self.reply(builder).await
         }
     }
