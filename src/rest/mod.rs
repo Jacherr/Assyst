@@ -5,7 +5,7 @@ use reqwest::{Client, ClientBuilder, Error};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use crate::{assyst::Assyst, consts};
+use crate::assyst::Assyst;
 
 pub mod annmarie;
 pub mod bt;
@@ -31,6 +31,10 @@ mod routes {
 
     pub fn top_gg_stats_url() -> String {
         format!("https://top.gg/api/bots/{}/stats", BOT_ID)
+    }
+
+    pub fn discords_stats_url() -> String {
+        format!("https://discords.com/bots/api/bot/{}", BOT_ID)
     }
 }
 
@@ -163,6 +167,7 @@ pub async fn post_bot_stats(
     client: &Client,
     discord_bot_list_token: &str,
     top_gg_token: &str,
+    discords_token: &str,
     guild_count: u32,
 ) -> Result<(), Error> {
     client
@@ -176,6 +181,14 @@ pub async fn post_bot_stats(
     client
         .post(routes::top_gg_stats_url())
         .header("authorization", top_gg_token)
+        .json(&json!({ "server_count": guild_count }))
+        .send()
+        .await?
+        .error_for_status()?;
+
+    client
+        .post(routes::discord_bot_list_stats_url())
+        .header("authorization", discords_token)
         .json(&json!({ "server_count": guild_count }))
         .send()
         .await?

@@ -313,12 +313,12 @@ impl Assyst {
         let command_instance = &self.registry.commands.get(command.calling_name).unwrap();
 
         // checking if the command is disabled
-        let is_disabled = self
+        let is_guild_disabled = self
             .database
             .is_command_disabled(command_instance.name, message.guild_id.unwrap())
             .await;
 
-        if is_disabled {
+        if is_guild_disabled {
             let owner = get_guild_owner(&self.http, message.guild_id.unwrap())
                 .await
                 .map_err(|e| e.to_string())?;
@@ -333,6 +333,21 @@ impl Assyst {
                 return Ok(());
             };
         };
+
+        let is_global_disabled = command_instance.disabled;
+        
+        if is_global_disabled && !self
+            .config
+            .user
+            .admins
+            .contains(&context.message.author.id.0)    
+        {
+            context
+                .reply_err("This command is globally disabled. :(")
+                .await
+                .map_err(|e| e.to_string())?;
+            return Ok(());
+        }
 
         let context_clone = context.clone();
 
