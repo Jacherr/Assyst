@@ -911,9 +911,7 @@ pub async fn run_burntext_command(
 ) -> CommandResult {
     let text = args[0].as_text();
     context.reply_with_text("processing...").await?;
-    let result = rest::burning_text(text)
-        .await
-        .map_err(|e| e.to_string())?;
+    let result = rest::burning_text(text).await.map_err(|e| e.to_string())?;
     context.reply_with_image("gif", result).await?;
     Ok(())
 }
@@ -1053,9 +1051,14 @@ pub async fn run_femurbreaker_command(
 ) -> CommandResult {
     let image = args[0].as_bytes();
     context.reply_with_text("processing...").await?;
-    let result = wsi::audio(context.assyst.clone(), image, "femurbreaker", context.author_id())
-        .await
-        .map_err(wsi::format_err)?;
+    let result = wsi::audio(
+        context.assyst.clone(),
+        image,
+        "femurbreaker",
+        context.author_id(),
+    )
+    .await
+    .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -1717,9 +1720,14 @@ pub async fn run_terraria_command(
 ) -> CommandResult {
     let image = args[0].as_bytes();
     context.reply_with_text("processing...").await?;
-    let result = wsi::audio(context.assyst.clone(), image, "terraria", context.author_id())
-        .await
-        .map_err(wsi::format_err)?;
+    let result = wsi::audio(
+        context.assyst.clone(),
+        image,
+        "terraria",
+        context.author_id(),
+    )
+    .await
+    .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -1809,12 +1817,22 @@ pub async fn run_identify_command(
     _flags: ParsedFlags,
 ) -> CommandResult {
     let url = args[0].as_text();
-    let identify = rest::identify_image(&context.assyst.reqwest_client, url)
-        .await
-        .map_err(|e| e.to_string())?;
+    let identify = rest::identify::identify_image(
+        &context.assyst.reqwest_client,
+        url,
+        context.assyst.config.auth.rapidapi.as_ref(),
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+
+    let caption = &identify.description.captions[0];
 
     context
-        .reply_with_text(&identify)
+        .reply_with_text(&format!(
+            "I think it's {} ({}% confidence)",
+            caption.text,
+            (caption.confidence * 100f32) as u8
+        ))
         .await
         .map_err(|e| e.to_string())?;
 

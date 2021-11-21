@@ -9,6 +9,7 @@ use crate::{assyst::Assyst, consts};
 
 pub mod annmarie;
 pub mod bt;
+pub mod identify;
 pub mod maryjane;
 pub mod patreon;
 pub mod rust;
@@ -22,7 +23,7 @@ mod routes {
     pub const OCR: &str = "http://ocr.y21_.repl.co/?url=";
     pub const CHARINFO: &str = "https://www.fileformat.info/info/unicode/char/";
     pub const FAKE_EVAL: &str = "https://jacher.io/eval";
-    pub const IDENTIFY: &str = "https://captionbot2.azurewebsites.net/api/messages?language=en-US";
+    pub const IDENTIFY: &str = "https://microsoft-computer-vision3.p.rapidapi.com/analyze?language=en&descriptionExclude=Celebrities&visualFeatures=Description&details=Celebrities";
 
     pub fn discord_bot_list_stats_url() -> String {
         format!("https://discordbotlist.com/api/v1/bots/{}/stats", BOT_ID)
@@ -66,14 +67,6 @@ pub struct CoolTextResponse {
     pub is_animated: bool,
 }
 
-#[derive(Serialize)]
-pub struct IdentifyBody<'a> {
-    #[serde(rename = "Type")]
-    pub ty: &'static str,
-    #[serde(rename = "Content")]
-    pub content: &'a str,
-}
-
 pub async fn ocr_image(client: &Client, url: &str) -> Result<String, OcrError> {
     let text = client
         .get(&format!("{}{}", routes::OCR, url))
@@ -107,20 +100,6 @@ pub async fn upload_to_filer(
         .await
 }
 
-pub async fn identify_image(client: &Client, url: &str) -> Result<String, Error> {
-    Ok(client
-        .post(routes::IDENTIFY)
-        .json(&IdentifyBody {
-            ty: "CaptionRequest",
-            content: url,
-        })
-        .send()
-        .await?
-        .json()
-        .await
-        .unwrap_or_else(|_| String::from(consts::IDENTIFY_ERROR_MESSAGE)))
-}
-
 pub async fn get_char_info(client: &Client, ch: char) -> Result<(String, String), Error> {
     let url = format!("{}{:x}", routes::CHARINFO, ch as u32);
 
@@ -144,8 +123,11 @@ pub async fn fake_eval(client: &Client, code: &str) -> Result<FakeEvalResponse, 
 }
 
 pub async fn burning_text(text: &str) -> Result<Bytes, Error> {
-    let client = ClientBuilder::new().danger_accept_invalid_certs(true).build().unwrap();
-    
+    let client = ClientBuilder::new()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
+
     let cool_text_response = client
         .post(routes::COOL_TEXT)
         .query(&[
@@ -203,9 +185,13 @@ pub async fn post_bot_stats(
 }
 
 pub async fn convert_lottie_to_gif(assyst: Arc<Assyst>, lottie: &str) -> Result<Bytes, Error> {
-    Ok(assyst.reqwest_client
+    Ok(assyst
+        .reqwest_client
         .post(&assyst.config.url.lottie_render.to_string())
-        .header("authorization", &assyst.config.auth.lottie_render.to_string())
+        .header(
+            "authorization",
+            &assyst.config.auth.lottie_render.to_string(),
+        )
         .json(&json!(lottie))
         .send()
         .await?
