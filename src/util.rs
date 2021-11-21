@@ -337,7 +337,7 @@ pub fn normalize_emojis<'a>(input: &'a str) -> Cow<'a, str> {
 
 /// Attempts to extract the page title
 pub fn extract_page_title(input: &str) -> Option<String> {
-    let dom = tl::parse(input);
+    let dom = tl::parse(input, tl::ParserOptions::default());
     let parser = dom.parser();
 
     let tag = dom.nodes().iter().find(|node| {
