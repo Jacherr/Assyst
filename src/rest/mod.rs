@@ -187,7 +187,7 @@ pub async fn post_bot_stats(
         .error_for_status()?;
 
     client
-        .post(routes::discord_bot_list_stats_url())
+        .post(routes::discords_stats_url())
         .header("authorization", discords_token)
         .json(&json!({ "server_count": guild_count }))
         .send()
