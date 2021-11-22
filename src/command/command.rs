@@ -349,7 +349,7 @@ impl CommandBuilder {
             availability,
             category,
             cooldown_seconds: cooldown,
-            disabled
+            disabled: self.disabled,
         }
     }
 }
