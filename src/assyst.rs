@@ -4,27 +4,24 @@ use crate::{
     command::{
         command::{
             Argument, Command, CommandAvailability, CommandParseError, CommandParseErrorType,
-            ParsedArgument, ParsedArgumentResult, ParsedCommand,
+            FlagKind, ParsedArgument, ParsedArgumentResult, ParsedCommand, ParsedFlagKind,
         },
-        context::Context,
+        context::{Context, Metrics},
+        parse,
         registry::CommandRegistry,
     },
-    command::{
-        command::{FlagKind, ParsedFlagKind},
-        context::Metrics,
-    },
     config::Config,
-    consts::{ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES, BOT_ID},
+    consts::BOT_ID,
     database::Database,
     logging::Logger,
     metrics::GlobalMetrics,
-    rest::{convert_lottie_to_gif, patreon::Patron, upload_to_filer},
+    rest::patreon::Patron,
     util::{
-        download_content, get_current_millis, get_guild_owner, is_guild_manager, regexes, Uptime,
+        get_current_millis, get_guild_owner, is_guild_manager, regexes, Uptime,
     },
 };
 
-use bytes::Bytes;
+use async_recursion::async_recursion;
 use regex::Captures;
 use reqwest::Client as ReqwestClient;
 use std::{
@@ -36,10 +33,7 @@ use std::{
 use tokio::sync::{Mutex, RwLock};
 use twilight_gateway::Cluster;
 use twilight_http::Client as HttpClient;
-use twilight_model::{
-    channel::{message::sticker::StickerFormatType, Message},
-    id::UserId,
-};
+use twilight_model::channel::Message;
 
 fn get_command(content: &str, prefix: &str) -> Option<String> {
     get_raw_args(content, prefix, 0)
@@ -323,25 +317,14 @@ impl Assyst {
                 .await
                 .map_err(|e| e.to_string())?;
 
-            if owner != message.author.id
-                && !self
-                    .config
-                    .user
-                    .admins
-                    .contains(&context.message.author.id.0)
-            {
+            if owner != message.author.id && !self.user_is_admin(&context.author_id().0) {
                 return Ok(());
             };
         };
 
         let is_global_disabled = command_instance.disabled;
-        
-        if is_global_disabled && !self
-            .config
-            .user
-            .admins
-            .contains(&context.message.author.id.0)    
-        {
+
+        if is_global_disabled && !self.user_is_admin(&context.author_id().0) {
             context
                 .reply_err("This command is globally disabled. :(")
                 .await
@@ -446,12 +429,7 @@ impl Assyst {
             CommandAvailability::Public => Ok(()), // everyone can run
             CommandAvailability::Private => {
                 // bot admins can run (config-defined)
-                if !self
-                    .config
-                    .user
-                    .admins
-                    .contains(&context.message.author.id.0)
-                {
+                if !self.user_is_admin(&context.author_id().0) {
                     Err(CommandParseError::without_reply(
                         "Insufficient Permissions".to_owned(),
                         CommandParseErrorType::MissingPermissions,
@@ -469,11 +447,7 @@ impl Assyst {
                 .await
                 .map_err(|_| CommandParseError::permission_validator_failed())?;
 
-                let is_bot_admin = self
-                    .config
-                    .user
-                    .admins
-                    .contains(&context.message.author.id.0);
+                let is_bot_admin = self.user_is_admin(&context.author_id().0);
 
                 if is_manager || is_bot_admin {
                     Ok(())
@@ -588,6 +562,7 @@ impl Assyst {
     /// Looks at the type of the argument and what is being parsed into that type.
     /// If possible, this method will do that conversion. If not, the command has
     /// invalid syntax and this function will return an Err.
+    #[async_recursion]
     async fn parse_argument<'a>(
         &self,
         context: &Arc<Context>,
@@ -599,59 +574,11 @@ impl Assyst {
         // check the next type of argument and parse as appropriate
         match arg {
             Argument::Integer | Argument::Decimal => {
-                if args.len() <= *index {
-                    return Err(CommandParseError::with_reply(
-                        "This command expects a numerical argument, but no argument was provided."
-                            .to_owned(),
-                        Some(command),
-                        CommandParseErrorType::MissingArgument,
-                    ));
-                }
-
-                let float = args[*index].parse::<f64>().map_err(|_| {
-                    CommandParseError::with_reply(
-                        format!("Invalid number provided: {}", args[*index]),
-                        Some(command),
-                        CommandParseErrorType::MissingArgument,
-                    )
-                })?;
-
-                return match arg {
-                    Argument::Decimal => Ok(ParsedArgumentResult::increment(ParsedArgument::Text(
-                        float.to_string(),
-                    ))),
-
-                    Argument::Integer => Ok(ParsedArgumentResult::increment(ParsedArgument::Text(
-                        format!("{:.0}", float),
-                    ))),
-
-                    _ => unreachable!(),
-                };
+                return parse::argument_type::numerical(args, arg, command, *index);
             }
 
             Argument::Choice(choices) => {
-                if args.len() <= *index {
-                    return Err(CommandParseError::with_reply(
-                        format!("This command expects a choice argument (one of {:?}), but no argument was provided.", choices),
-                            Some(command),
-                            CommandParseErrorType::MissingArgument
-                    ));
-                }
-
-                let choice = match choices.iter().find(|&&choice| choice == args[*index]) {
-                    Some(k) => k,
-                    None => {
-                        return Err(CommandParseError::with_reply(
-                            format!("Cannot find given argument in {:?}", choices),
-                            Some(command),
-                            CommandParseErrorType::InvalidArgument,
-                        ))
-                    }
-                };
-
-                Ok(ParsedArgumentResult::increment(ParsedArgument::Choice(
-                    choice,
-                )))
+                return parse::argument_type::choice(choices, args, command, *index);
             }
 
             Argument::ImageUrl | Argument::ImageBuffer => {
@@ -660,604 +587,58 @@ impl Assyst {
                 } else {
                     args[*index]
                 };
-                self.parse_image_argument(context, &context.message, argument_to_pass, arg)
+                parse::subsections::parse_image_argument(context, &context.message, argument_to_pass, arg)
                     .await
             }
 
             Argument::String => {
-                if args.len() <= *index {
-                    return Err(CommandParseError::with_reply(
-                        "This command expects a text argument that was not provided.".to_owned(),
-                        Some(command),
-                        CommandParseErrorType::MissingArgument,
-                    ));
-                }
-                Ok(ParsedArgumentResult::increment(ParsedArgument::Text(
-                    args[*index].to_owned(),
-                )))
+                return parse::argument_type::string(args, command, *index);
             }
 
             Argument::StringRemaining => {
-                // check if no extra args or if no referenced message
-                if args.len() <= *index && context.message.referenced_message.is_none() {
-                    Err(CommandParseError::with_reply(
-                        "This command expects a text argument that was not provided.".to_owned(),
-                        Some(command),
-                        CommandParseErrorType::MissingArgument,
-                    ))
-                // check if referenced message and if it has any content to use
-                } else if let Some(r) = &context.message.referenced_message {
-                    if r.content.is_empty() {
-                        Err(CommandParseError::with_reply(
-                            "This command expects a text argument that was not provided."
-                                .to_owned(),
-                            Some(command),
-                            CommandParseErrorType::MissingArgument,
-                        ))
-                    } else if !(args.len() <= *index) {
-                        Ok(ParsedArgumentResult::r#break(ParsedArgument::Text(
-                            args[*index..].join(" "),
-                        )))
-                    } else {
-                        Ok(ParsedArgumentResult::r#break(ParsedArgument::Text(
-                            r.content.clone(),
-                        )))
-                    }
-                } else {
-                    Ok(ParsedArgumentResult::r#break(ParsedArgument::Text(
-                        args[*index..].join(" "),
-                    )))
-                }
+                return parse::argument_type::string_remaining(context, args, command, *index);
             }
 
-            Argument::Optional(a) => {
-                // we need this 'nonoptional' function because
-                // standalone rust doesn't support async recursion. sad!
+            Argument::Optional(a)
+            | Argument::OptionalWithDefault(a, _)
+            | Argument::OptionalWithDefaultDynamic(a, _) => {
                 let result = self
-                    .parse_argument_nonoptional(
-                        context,
-                        &context.message,
-                        command,
-                        args,
-                        &**a,
-                        index,
-                    )
+                    .parse_argument(context, command, args, &**a, index)
                     .await;
+
                 match result {
                     Ok(p) => Ok(p),
-                    Err(e) => {
-                        match e.error_type {
-                            CommandParseErrorType::MissingArgument => {
-                                return Ok(ParsedArgumentResult::increment(ParsedArgument::Nothing))
+                    Err(e) => match e.error_type {
+                        CommandParseErrorType::MissingArgument => match arg {
+                            Argument::Optional(_) => {
+                                Ok(ParsedArgumentResult::increment(ParsedArgument::Nothing))
                             }
-                            _ => (),
-                        }
-                        Err(e)
-                    }
-                }
-            }
 
-            Argument::OptionalWithDefault(a, d) => {
-                let result = self
-                    .parse_argument_nonoptional(
-                        context,
-                        &context.message,
-                        command,
-                        args,
-                        &**a,
-                        index,
-                    )
-                    .await;
-                match result {
-                    Ok(p) => Ok(p),
-                    Err(e) => {
-                        match e.error_type {
-                            CommandParseErrorType::MissingArgument => {
-                                return Ok(ParsedArgumentResult::increment(ParsedArgument::Text(
+                            Argument::OptionalWithDefault(_, d) => {
+                                Ok(ParsedArgumentResult::increment(ParsedArgument::Text(
                                     d.to_owned().to_owned(),
                                 )))
                             }
-                            _ => (),
-                        }
-                        Err(e)
-                    }
-                }
-            }
 
-            Argument::OptionalWithDefaultDynamic(arg, default) => {
-                let result = self
-                    .parse_argument_nonoptional(
-                        context,
-                        &context.message,
-                        command,
-                        args,
-                        &**arg,
-                        index,
-                    )
-                    .await;
-
-                match result {
-                    Ok(p) => Ok(p),
-                    Err(e) => {
-                        match e.error_type {
-                            CommandParseErrorType::MissingArgument => {
-                                return Ok(ParsedArgumentResult::increment(default(
-                                    context.clone(),
-                                )))
+                            Argument::OptionalWithDefaultDynamic(_, default) => {
+                                Ok(ParsedArgumentResult::increment(default(context.clone())))
                             }
-                            _ => (),
-                        }
-                        Err(e)
-                    }
+
+                            _ => unreachable!(),
+                        },
+                        _ => Err(e),
+                    },
                 }
             }
-        }
-    }
-
-    // this function only exists because rust doesn't support
-    // async recursion without the use of a dependency.
-    async fn parse_argument_nonoptional<'a>(
-        &self,
-        context: &Arc<Context>,
-        message: &Message,
-        command: &'a Command,
-        args: &Vec<&str>,
-        arg: &Argument,
-        index: &usize,
-    ) -> Result<ParsedArgumentResult, CommandParseError<'a>> {
-        match arg {
-            Argument::Integer | Argument::Decimal => {
-                if args.len() <= *index {
-                    return Err(CommandParseError::with_reply(
-                        "This command expects a numerical argument, but no argument was provided."
-                            .to_owned(),
-                        Some(command),
-                        CommandParseErrorType::MissingArgument,
-                    ));
-                }
-
-                let float = args[*index].parse::<f64>().map_err(|_| {
-                    CommandParseError::with_reply(
-                        format!("Invalid number provided: {}", args[*index]),
-                        Some(command),
-                        CommandParseErrorType::InvalidArgument,
-                    )
-                })?;
-
-                return match arg {
-                    Argument::Decimal => Ok(ParsedArgumentResult::increment(ParsedArgument::Text(
-                        float.to_string(),
-                    ))),
-
-                    Argument::Integer => Ok(ParsedArgumentResult::increment(ParsedArgument::Text(
-                        format!("{:.0}", float),
-                    ))),
-
-                    _ => unreachable!(),
-                };
-            }
-
-            Argument::Choice(choices) => {
-                if args.len() <= *index {
-                    return Err(CommandParseError::with_reply(
-                        format!("This command expects a choice argument (one of {:?}), but no argument was provided.", choices),
-                            Some(command),
-                            CommandParseErrorType::MissingArgument
-                    ));
-                }
-
-                let choice = match choices.iter().find(|&&choice| choice == args[*index]) {
-                    Some(k) => k,
-                    None => {
-                        return Err(CommandParseError::with_reply(
-                            format!("Cannot find given argument in {:?}", choices),
-                            Some(command),
-                            CommandParseErrorType::InvalidArgument,
-                        ))
-                    }
-                };
-
-                Ok(ParsedArgumentResult::increment(ParsedArgument::Choice(
-                    choice,
-                )))
-            }
-            Argument::ImageUrl | Argument::ImageBuffer => {
-                let argument_to_pass = if args.len() <= *index {
-                    ""
-                } else {
-                    args[*index]
-                };
-                self.parse_image_argument(context, message, argument_to_pass, arg)
-                    .await
-            }
-            Argument::String => {
-                if args.len() <= *index {
-                    return Err(CommandParseError::with_reply(
-                        "This command expects a text argument that was not provided.".to_owned(),
-                        Some(command),
-                        CommandParseErrorType::MissingArgument,
-                    ));
-                }
-                Ok(ParsedArgumentResult::increment(ParsedArgument::Text(
-                    args[*index].to_owned(),
-                )))
-            }
-            Argument::StringRemaining => {
-                if args.len() <= *index {
-                    return Err(CommandParseError::with_reply(
-                        "This command expects a text argument that was not provided.".to_owned(),
-                        Some(command),
-                        CommandParseErrorType::MissingArgument,
-                    ));
-                }
-                Ok(ParsedArgumentResult::r#break(ParsedArgument::Text(
-                    args[*index..].join(" "),
-                )))
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    /// Parses an image from the command for use with image manipulation commands.
-    async fn parse_image_argument<'a>(
-        &self,
-        context: &Arc<Context>,
-        message: &Message,
-        argument: &str,
-        return_as: &Argument,
-    ) -> Result<ParsedArgumentResult, CommandParseError<'a>> {
-        // TODO: rework this to be less hacky? maybe have a proper
-        // defined priority somewhere and use that instead of trying everything
-        // until it works. changing priorities right now is fiddly at best
-        let mut should_increment = true;
-        let mut try_url = self.validate_user_argument(argument).await;
-        if try_url.is_none() {
-            try_url = self.validate_url_argument(argument)
-        };
-        if try_url.is_none() {
-            try_url = self.validate_message_attachment(message);
-            if try_url.is_some() {
-                should_increment = false
-            };
-        };
-        if try_url.is_none() {
-            try_url = self
-                .validate_message_reply_attachment(context, message)
-                .await;
-            if try_url.is_some() {
-                should_increment = false
-            };
-        }
-        if try_url.is_none() {
-            try_url = self.validate_emoji_argument(argument).await;
-        }
-        if try_url.is_none() {
-            try_url = self.validate_message_sticker(context, message).await;
-        }
-        if try_url.is_none() {
-            try_url = self
-                .validate_previous_message_attachment(context, message)
-                .await;
-            if try_url.is_some() {
-                should_increment = false
-            };
-        };
-
-        let mut url = try_url.ok_or_else(|| {
-            CommandParseError::with_reply(
-                "This command expects an image as an argument, but no image could be found."
-                    .to_owned(),
-                None,
-                CommandParseErrorType::MissingArgument,
-            )
-        })?;
-
-        // tenor urls only typically return a png, so this code visits the url
-        // and extracts the appropriate GIF url from the page.
-        if url.starts_with("https://tenor.com/view/") {
-            let page = self
-                .reqwest_client
-                .get(&url)
-                .send()
-                .await
-                .map_err(|e| {
-                    CommandParseError::with_reply(
-                        e.to_string(),
-                        None,
-                        CommandParseErrorType::MediaDownloadFail,
-                    )
-                })?
-                .text()
-                .await
-                .map_err(|e| {
-                    CommandParseError::with_reply(
-                        e.to_string(),
-                        None,
-                        CommandParseErrorType::MediaDownloadFail,
-                    )
-                })?;
-
-            let gif_url = regexes::TENOR_GIF
-                .find(&page)
-                .and_then(|url| Some(url.as_str()))
-                .ok_or_else(|| {
-                    CommandParseError::with_reply(
-                        "Failed to extract Tenor GIF URL".to_owned(),
-                        None,
-                        CommandParseErrorType::MediaDownloadFail,
-                    )
-                })?;
-            url = gif_url.to_owned();
-        };
-
-        if url.ends_with(".json") && url.starts_with("https://cdn.discordapp.com/stickers/") {
-            // we need to download it from discord and convert it to a gif first
-            context
-                .reply_with_text("preparing sticker...")
-                .await
-                .map_err(|_| {
-                    CommandParseError::without_reply(
-                        "failed to send message".to_owned(),
-                        CommandParseErrorType::Other,
-                    )
-                })?;
-
-            let content: Vec<u8> = download_content(
-                &context.assyst.reqwest_client,
-                &url,
-                ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES,
-            )
-            .await
-            .map_err(|e| {
-                CommandParseError::with_reply(
-                    format!("failed to download lottie sticker: {}", e),
-                    None,
-                    CommandParseErrorType::MediaDownloadFail,
-                )
-            })?;
-
-            let string_content = String::from_utf8_lossy(&content);
-            let gif = convert_lottie_to_gif(context.assyst.clone(), &string_content.into_owned())
-                .await
-                .map_err(|_| {
-                    CommandParseError::with_reply(
-                        "failed to process lottie sticker".to_owned(),
-                        None,
-                        CommandParseErrorType::MediaDownloadFail,
-                    )
-                })?;
-
-            // now we need to upload it to filer so that we have a url to work with
-            // since this is how the parser works... pretty inefficient but yeah stfu
-            url = upload_to_filer(&context.assyst.reqwest_client, gif, "image/gif")
-                .await
-                .map_err(|e| {
-                    CommandParseError::with_reply(
-                        format!("failed to upload sticker: {}", e.to_string()),
-                        None,
-                        CommandParseErrorType::MediaDownloadFail,
-                    )
-                })?;
-        }
-
-        match return_as {
-            Argument::ImageBuffer => {
-                let result = download_content(
-                    &self.reqwest_client,
-                    &url,
-                    ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES,
-                )
-                .await
-                .map_err(|e| {
-                    CommandParseError::with_reply(e, None, CommandParseErrorType::MediaDownloadFail)
-                })?;
-
-                if result.len() == 0 {
-                    return Err(CommandParseError::with_reply(
-                        "The media download failed because no data was received.".to_owned(),
-                        None,
-                        CommandParseErrorType::MediaDownloadFail,
-                    ));
-                }
-
-                let parsed_argument_result = match should_increment {
-                    true => {
-                        ParsedArgumentResult::increment(ParsedArgument::Binary(Bytes::from(result)))
-                    }
-                    false => ParsedArgumentResult::no_increment(ParsedArgument::Binary(
-                        Bytes::from(result),
-                    )),
-                };
-                Ok(parsed_argument_result)
-            }
-            Argument::ImageUrl => {
-                let parsed_argument_result = match should_increment {
-                    true => ParsedArgumentResult::increment(ParsedArgument::Text(url)),
-                    false => ParsedArgumentResult::no_increment(ParsedArgument::Text(url)),
-                };
-                Ok(parsed_argument_result)
-            }
-            _ => panic!("return_as must be imageurl or imagebuffer"),
-        }
-    }
-
-    /// Looks at an input string and checks if it is a valid Unicode or custom emoji.
-    async fn validate_emoji_argument(&self, argument: &str) -> Option<String> {
-        let unicode_emoji = emoji::lookup_by_glyph::lookup(argument);
-        if let Some(e) = unicode_emoji {
-            let codepoint = e
-                .codepoint
-                .to_lowercase()
-                .replace(" ", "-")
-                .replace("-fe0f", "");
-            let emoji_url = format!("https://derpystuff.gitlab.io/webstorage3/container/twemoji-JedKxRr7RNYrgV9Sauy8EGAu/{}.png", codepoint);
-            return Some(emoji_url);
-        }
-
-        let emoji_id = regexes::CUSTOM_EMOJI
-            .captures(argument)
-            .and_then(|emoji_id_capture| emoji_id_capture.get(2))
-            .and_then(|id| Some(id.as_str()))
-            .and_then(|id| id.parse::<u64>().ok())?;
-
-        let format = if argument.starts_with("<a") {
-            "gif"
-        } else {
-            "png"
-        };
-        let emoji_url = format!("https://cdn.discordapp.com/emojis/{}.{}", emoji_id, format);
-
-        return Some(emoji_url);
-    }
-
-    /// Looks at a source [`Message`] and see if it has any attachments, returning the
-    /// URL to first one if it does.
-    fn validate_message_attachment(&self, message: &Message) -> Option<String> {
-        message
-            .attachments
-            .first()
-            .and_then(|a| Some(a.url.clone()))
-    }
-
-    /// Looks at a source [`Message`] and see if it has any embeds with an image,
-    /// returning the first one if it does.
-    fn validate_message_embed<'a>(&self, message: &'a Message) -> Option<Cow<'a, String>> {
-        let embed = message.embeds.first()?;
-
-        if let Some(e) = &embed.url {
-            if e.starts_with("https://tenor.com/view/") {
-                return Some(Cow::Borrowed(e));
-            };
-        }
-
-        embed
-            .image
-            .as_ref()
-            .and_then(|img| Some(Cow::Borrowed(img.url.as_ref()?)))
-            .or_else(|| {
-                embed
-                    .thumbnail
-                    .as_ref()
-                    .and_then(|thumbnail| Some(Cow::Borrowed(thumbnail.url.as_ref()?)))
-            })
-    }
-
-    /// If the command invocation is replying to the message, check if the message being replied
-    /// to has an attachment
-    async fn validate_message_reply_attachment(
-        &self,
-        context: &Arc<Context>,
-        message: &Message,
-    ) -> Option<String> {
-        let reply = message.referenced_message.as_ref()?;
-        let attachment = self.validate_message_attachment(reply);
-        if attachment.is_some() {
-            return attachment;
-        };
-        let sticker = self.validate_message_sticker(context, reply).await;
-        if sticker.is_some() {
-            return sticker;
-        }
-        let embed = self.validate_message_embed(reply)?;
-        Some(embed.to_string())
-    }
-
-    /// Load the last N messages in the channel where the command was invocated,
-    /// and check if any of them have an attachment or embed
-    async fn validate_previous_message_attachment(
-        &self,
-        context: &Arc<Context>,
-        message: &Message,
-    ) -> Option<String> {
-        let messages = self.http.channel_messages(message.channel_id).await.ok()?;
-
-        let mut message_attachment_urls: Vec<Option<Cow<String>>> = vec![];
-
-        for message in messages {
-            if let Some(_) = message.embeds.first() {
-                message_attachment_urls.push(
-                    self.validate_message_embed(&message)
-                        .and_then(|a| Some(Cow::Owned(a.to_string()))),
-                );
-            } else if let Some(_) = message.sticker_items.first() {
-                message_attachment_urls.push(
-                    self.validate_message_sticker(context, &message)
-                        .await
-                        .and_then(|a| Some(Cow::Owned(a.clone()))),
-                );
-            } else {
-                message_attachment_urls.push(
-                    message
-                        .attachments
-                        .first()
-                        .and_then(|a| Some(Cow::Owned(a.url.clone()))),
-                );
-            }
-        }
-
-        message_attachment_urls
-            .iter()
-            .find(|attachment| attachment.is_some())?
-            .as_ref()
-            .and_then(|x| Some(x.to_string()))
-    }
-
-    async fn validate_message_sticker(
-        &self,
-        _context: &Arc<Context>, // too lazy to remove this from everywhere
-        message: &Message,
-    ) -> Option<String> {
-        let sticker = message.sticker_items.first()?;
-        let r#type = sticker.format_type;
-        if r#type == StickerFormatType::Lottie {
-            Some(format!(
-                "https://cdn.discordapp.com/stickers/{}.json",
-                sticker.id
-            ))
-        } else {
-            Some(format!(
-                "https://cdn.discordapp.com/stickers/{}.png",
-                sticker.id
-            ))
         }
     }
 
     /// Check if the command invocation contains a valid URL
-    fn validate_url_argument(&self, argument: &str) -> Option<String> {
+    pub fn validate_url_argument(&self, argument: &str) -> Option<String> {
         if regexes::URL.is_match(argument) {
             Some(argument.to_owned())
         } else {
             None
-        }
-    }
-
-    /// Check if the command invocation contains a valid user mention
-    /// or ID, and use the avatar of that user if it does
-    async fn validate_user_argument(&self, argument: &str) -> Option<String> {
-        let user_id = regexes::USER_MENTION
-            .captures(argument)
-            .and_then(|user_id_capture| user_id_capture.get(1))
-            .and_then(|id| Some(id.as_str()))
-            .and_then(|id| id.parse::<u64>().ok())?;
-
-        let user = self.http.user(UserId::from(user_id)).await.ok()??;
-        let avatar_hash = user.avatar;
-        match avatar_hash {
-            Some(hash) => {
-                let format = if hash.starts_with("a_") { "gif" } else { "png" };
-                Some(format!(
-                    "https://cdn.discordapp.com/avatars/{}/{}.{}?size=1024",
-                    user_id, hash, format
-                ))
-            }
-            None => {
-                let discrim = user.discriminator.parse::<u16>().ok()?;
-                let avatar_number = discrim % 5;
-                Some(format!(
-                    "https://cdn.discordapp.com/embed/avatars/{}.png",
-                    avatar_number
-                ))
-            }
         }
     }
 
@@ -1269,5 +650,9 @@ impl Assyst {
     /// Get the [`Uptime`] of this instance of Assyst
     pub fn uptime(&self) -> Uptime {
         Uptime::new(get_current_millis() - self.started_at)
+    }
+
+    pub fn user_is_admin(&self, id: &u64) -> bool {
+        self.config.user.admins.contains(id)
     }
 }
