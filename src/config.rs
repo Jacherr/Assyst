@@ -11,6 +11,7 @@ pub struct Auth {
     pub maryjane: Box<str>,
     pub patreon: Box<str>,
     pub top_gg_post_stats: Box<str>,
+    pub discords_post_stats: Box<str>,
     pub wsi: Box<str>,
     pub rapidapi: Box<str>,
 }

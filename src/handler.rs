@@ -30,7 +30,7 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
             }
         }
         Event::GuildDelete(guild) => {
-            if !assyst.guild_in_list(guild.id.0).await {
+            if !assyst.guild_in_list(guild.id.0).await && !guild.unavailable {
                 assyst
                     .logger
                     .info(&assyst, &format!("Removed from guild: {}", guild.id))

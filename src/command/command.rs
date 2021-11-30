@@ -236,6 +236,7 @@ pub struct Command {
     pub name: &'static str,
     pub cooldown_seconds: usize,
     pub category: &'static str,
+    pub disabled: bool,
 }
 
 pub struct CommandBuilder {
@@ -247,6 +248,7 @@ pub struct CommandBuilder {
     name: &'static str,
     cooldown_seconds: Option<usize>,
     category: Option<&'static str>,
+    disabled: bool,
 }
 impl CommandBuilder {
     pub fn new(name: &'static str) -> Self {
@@ -263,6 +265,7 @@ impl CommandBuilder {
             name,
             cooldown_seconds: None,
             category: None,
+            disabled: false,
         }
     }
 
@@ -293,6 +296,11 @@ impl CommandBuilder {
 
     pub fn description(mut self, description: &'static str) -> Self {
         self.metadata.description = description;
+        self
+    }
+
+    pub fn disable(mut self) -> Self {
+        self.disabled = true;
         self
     }
 
@@ -341,6 +349,7 @@ impl CommandBuilder {
             availability,
             category,
             cooldown_seconds: cooldown,
+            disabled: self.disabled,
         }
     }
 }
