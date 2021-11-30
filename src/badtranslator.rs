@@ -1,4 +1,5 @@
 use crate::assyst::Assyst;
+use crate::util::normalize_mentions;
 use crate::{
     rest::bt, util::get_current_millis, util::normalize_emojis, util::sanitize_message_content,
 };
@@ -241,6 +242,7 @@ impl BadTranslator {
         }
 
         let content = normalize_emojis(&message.content);
+        let content = normalize_mentions(&content, &message.mentions);
 
         let guild = message.guild_id.unwrap();
 

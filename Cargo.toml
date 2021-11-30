@@ -23,7 +23,7 @@ regex = "1.4.3"
 reqwest = { version = "0.11.0", features = ["json", "stream"] }
 bytes = "1.0.1"
 futures-util = "0.3.12"
-tl = { git = "https://github.com/y21/tl", branch = "next" }
+tl = "0.4.2"
 twilight-embed-builder = "0.5.0"
 warp = "0.3.0"
 emoji = "0.2.1"
