@@ -1,6 +1,6 @@
 use super::command::{Command, ParsedArgument, ParsedCommand, ParsedFlags};
 use super::{
-    categories::{fun::*, image::*, misc::*},
+    categories::{fun::*, image_wsi::*, image_annmarie::*, misc::*},
     command::CommandAvailability,
 };
 use crate::command::context::Context;

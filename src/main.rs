@@ -68,7 +68,7 @@ async fn main() {
         .unwrap();
 
     let spawned_cluster = cluster.clone();
-    tokio::spawn(async move { spawned_cluster.up().await });
+    tokio::spawn(async move { spawned_cluster.up().await }); 
 
     // Tasks
     tasks::init_bot_list_posting_loop(assyst.clone());
@@ -79,6 +79,8 @@ async fn main() {
     // Bot list webhooks
     botlist_run(assyst.clone());
 
+
+    // Event loop
     {
         let handle = tokio::runtime::Handle::current();
         let assyst = Arc::clone(&assyst);
@@ -100,4 +102,6 @@ async fn main() {
             handle_event(assyst_clone, event).await;
         });
     }
+
+    println!("{}", "shutting down");
 }
