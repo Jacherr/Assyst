@@ -20,7 +20,7 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
                     .info(
                         &assyst,
                         &format!(
-                            "Added to guild: {} ({}) ({} members)",
+                            "{} ({}) ({} members)",
                             guild.name,
                             guild.id,
                             guild.member_count.unwrap_or(0)
@@ -30,7 +30,7 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
             }
         }
         Event::GuildDelete(guild) => {
-            if !assyst.guild_in_list(guild.id.0).await && !guild.unavailable {
+            if assyst.guild_in_list(guild.id.0).await && !guild.unavailable {
                 assyst
                     .logger
                     .info(&assyst, &format!("Removed from guild: {}", guild.id))
@@ -54,12 +54,14 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
                 .await;
         }
         Event::ShardConnected(d) => {
+            /* 
             assyst
                 .logger
                 .info(&assyst, &format!("Shard {}: CONNECTED", d.shard_id))
-                .await;
+                .await;*/
         }
         Event::ShardDisconnected(d) => {
+            /* 
             assyst
                 .logger
                 .info(
@@ -70,13 +72,13 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
                         d.reason.to_owned()
                     ),
                 )
-                .await;
+                .await;*/
         }
         Event::ShardReconnecting(r) => {
-            assyst
+            /*assyst
                 .logger
                 .info(&assyst, &format!("Shard {}: RECONNECTING", r.shard_id))
-                .await;
+                .await;*/
         }
         _ => {}
     }
