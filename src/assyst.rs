@@ -373,7 +373,7 @@ impl Assyst {
             .processing
             .add(context.metrics.processing_time_start.elapsed().as_millis() as f32);
 
-        self.logger.info(self.clone(), &format!("Command executed: {}", command_instance.name));
+        self.logger.info(&self.clone(), &format!("Command executed: {}", command_instance.name)).await;
 
         Ok(())
     }

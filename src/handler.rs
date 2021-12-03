@@ -53,14 +53,14 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
                 )
                 .await;
         }
-        Event::ShardConnected(d) => {
+        Event::ShardConnected(_d) => {
             /* 
             assyst
                 .logger
                 .info(&assyst, &format!("Shard {}: CONNECTED", d.shard_id))
                 .await;*/
         }
-        Event::ShardDisconnected(d) => {
+        Event::ShardDisconnected(_d) => {
             /* 
             assyst
                 .logger
@@ -74,7 +74,7 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
                 )
                 .await;*/
         }
-        Event::ShardReconnecting(r) => {
+        Event::ShardReconnecting(_r) => {
             /*assyst
                 .logger
                 .info(&assyst, &format!("Shard {}: RECONNECTING", r.shard_id))
