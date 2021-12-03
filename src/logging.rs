@@ -47,6 +47,20 @@ impl Logger {
             .await;
     }
 
+    pub async fn guild_add(&self, assyst: &Assyst, message: &str) {
+        let url: &str = assyst.config.logs.info.as_ref();
+        if url.is_empty() {
+            println!("guild add: {}", message);
+            return;
+        };
+
+        let message = format!("**guild add**: {}", message);
+
+        let _ = self
+            .exec_webhook_with(assyst, None, url, &message, 0x3c200)
+            .await;
+    }
+
     pub async fn log_vote(&self, assyst: &Assyst, message: &str) {
         let url: &str = assyst.config.logs.vote.as_ref();
         if url.is_empty() {
