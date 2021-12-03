@@ -13,7 +13,7 @@ use std::{
 };
 use twilight_http::{error::Error, Client};
 use twilight_model::{
-    channel::Channel,
+    channel::{message::Mention, Channel},
     guild::Permissions,
     id::{GuildId, UserId},
 };
@@ -331,8 +331,21 @@ pub fn format_time(input: u64) -> String {
 }
 
 /// Normalizes custom emojis by replacing them with their names
-pub fn normalize_emojis<'a>(input: &'a str) -> Cow<'a, str> {
+pub fn normalize_emojis(input: &str) -> Cow<'_, str> {
     regexes::CUSTOM_EMOJI.replace_all(input, |c: &Captures| c.get(1).unwrap().as_str().to_string())
+}
+
+/// Normalizes mentions by replacing them with their names
+pub fn normalize_mentions<'a>(input: &'a str, mentions: &[Mention]) -> Cow<'a, str> {
+    regexes::USER_MENTION.replace_all(input, |c: &Captures| {
+        let id = c.get(1).unwrap().as_str();
+        let name = mentions
+            .iter()
+            .find(|m| m.id.to_string().eq(id))
+            .map(|m| m.name.clone())
+            .unwrap_or_else(String::new);
+        name
+    })
 }
 
 /// Attempts to extract the page title
@@ -340,10 +353,7 @@ pub fn extract_page_title(input: &str) -> Option<String> {
     let dom = tl::parse(input, tl::ParserOptions::default());
     let parser = dom.parser();
 
-    let tag = dom.nodes().iter().find(|node| {
-        node.as_tag()
-            .map_or(false, |tag| tag.name() == &"title".into())
-    })?;
+    let tag = dom.query_selector("title")?.next()?.get(parser)?;
 
     Some(tag.inner_text(parser).into_owned())
 }
