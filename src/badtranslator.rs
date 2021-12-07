@@ -58,8 +58,7 @@ mod flags {
 }
 
 mod constants {
-    pub const MAX_MESSAGE_LEN: usize = 500;
-    pub const RATELIMIT_LEN: u64 = 3000;
+    pub const RATELIMIT_LEN: u64 = 2500;
     pub const RATELIMITED_MESSAGE: &'static str = "You are sending messages too quickly!";
 }
 
@@ -203,7 +202,7 @@ impl BadTranslator {
             return;
         }
 
-        if message_len == 0 || message_len >= constants::MAX_MESSAGE_LEN || message.author.bot {
+        if message_len == 0 || message.author.bot {
             let _ = assyst
                 .http
                 .delete_message(message.channel_id, message.id)
