@@ -363,7 +363,7 @@ pub async fn zoom_blur(
 
 pub fn format_err(err: RequestError) -> String {
     match err {
-        RequestError::Reqwest(e) => String::from("A network error occurred"),
+        RequestError::Reqwest(_) => String::from("A network error occurred"),
         RequestError::Annmarie(e, _) => e.message.to_string(),
         RequestError::InvalidStatus(e) => e.to_string(),
         RequestError::Wsi(e) => crate::rest::wsi::format_err(e),

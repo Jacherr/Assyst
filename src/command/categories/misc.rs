@@ -460,7 +460,7 @@ pub async fn run_stats_command(
         .unwrap_or(0)
         .to_string();
 
-    let uptime_minutes = context.assyst.uptime().0 as f32 / 1000f32 / 30f32;
+    let uptime_minutes = context.assyst.uptime().0 as f32 / 1000f32 / 60f32;
     let commands_per_minute = *context.assyst.commands_executed.lock().await as f32 / uptime_minutes;
 
     let stats_table = generate_table(&[
