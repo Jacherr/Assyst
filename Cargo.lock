@@ -1779,8 +1779,9 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 
 [[package]]
 name = "tl"
-version = "0.3.0"
-source = "git+https://github.com/y21/tl?branch=next#bf6c1149df4c4968ea2498538573951b1c4c3f67"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe3c1e80b90365b845a0066e88fe71d4090cac530274e98cdb35a2bcb8179429"
 
 [[package]]
 name = "tokio"
