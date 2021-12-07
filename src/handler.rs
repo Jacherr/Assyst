@@ -17,7 +17,7 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
             if !assyst.guild_in_list(guild.id.0).await {
                 assyst
                     .logger
-                    .info(
+                    .guild_add(
                         &assyst,
                         &format!(
                             "{} ({}) ({} members)",

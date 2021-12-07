@@ -117,6 +117,7 @@ pub struct Assyst {
     pub replies: RwLock<Replies>,
     pub reqwest_client: ReqwestClient,
     pub started_at: u64,
+    pub commands_executed: Mutex<u64>,
 }
 impl Assyst {
     /// Create a new Assyst instance from a token. This method does NOT
@@ -147,6 +148,7 @@ impl Assyst {
             replies: RwLock::new(Replies::new()),
             reqwest_client,
             started_at: get_current_millis(),
+            commands_executed: Mutex::new(0)
         };
         if assyst.config.disable_bad_translator {
             assyst.badtranslator.disable().await
@@ -373,7 +375,8 @@ impl Assyst {
             .processing
             .add(context.metrics.processing_time_start.elapsed().as_millis() as f32);
 
-        self.logger.info(&self.clone(), &format!("Command executed: {}", command_instance.name)).await;
+        let mut lock = self.commands_executed.lock().await;
+        *lock += 1;
 
         Ok(())
     }
