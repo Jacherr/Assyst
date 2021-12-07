@@ -469,7 +469,7 @@ pub async fn run_stats_command(
         ("Commands", &commands),
         ("Avg Processing Time", &format!("{:.4}s", proc_time)),
         ("Commands Ran", &total_command_calls),
-        ("Commands Per Minute", &format!("{:.2}", commands_per_minute.to_string())),
+        ("Commands Per Minute", &format!("{:.2}", commands_per_minute)),
         ("Events Since Restart", &events.to_string()),
         ("BadTranslator Messages", &{
             let (total, guild) = context
