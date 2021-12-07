@@ -257,7 +257,7 @@ pub fn pluralize<'a>(s: &'a str, adder: &str, count: u64) -> Cow<'a, str> {
 }
 
 /// A wrapper around uptime
-pub struct Uptime(u64);
+pub struct Uptime(pub u64);
 impl Uptime {
     pub fn new(time: u64) -> Self {
         Self(time)
