@@ -198,7 +198,7 @@ impl<'a> CommandParseError<'a> {
 #[derive(Debug)]
 pub struct CommandMetadata {
     pub description: &'static str,
-    pub examples: Vec<&'static str>,
+    pub examples: Vec<Cow<'static, str>>,
     pub usage: &'static str,
 }
 #[derive(Debug)]
@@ -314,8 +314,8 @@ impl CommandBuilder {
         self
     }
 
-    pub fn example(mut self, example: &'static str) -> Self {
-        self.metadata.examples.push(example);
+    pub fn example<C: Into<Cow<'static, str>>>(mut self, example: C) -> Self {
+        self.metadata.examples.push(example.into());
         self
     }
 

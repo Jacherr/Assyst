@@ -502,9 +502,10 @@ lazy_static! {
         .arg(Argument::ImageBuffer)
         .flag("exclude", Some(FlagKind::List))
         .public()
-        .description("sends a provided image through multiple filters")
+        .description("sends a provided image through multiple random filters")
         .example(Y21)
-        .usage("[image]")
+        .example(format!(r#"{} -exclude "card jpeg""#, Y21))
+        .usage(r#"[image] -exclude "command1 command2""#)
         .cooldown(Duration::from_secs(5))
         .category(CATEGORY_NAME)
         .build();
