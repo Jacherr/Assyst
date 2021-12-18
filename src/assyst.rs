@@ -526,13 +526,7 @@ impl Assyst {
                     .map(ToOwned::to_owned)
                     .map(ParsedFlagKind::Text),
                 Some(FlagKind::List) => value
-                    .map(|v| {
-                        v.split(' ')
-                            .collect::<Vec<_>>()
-                            .into_iter()
-                            .map(ToOwned::to_owned)
-                            .collect::<Vec<_>>()
-                    })
+                    .map(|v| v.split(' ').map(ToOwned::to_owned).collect::<Vec<_>>())
                     .map(ParsedFlagKind::List),
             };
 

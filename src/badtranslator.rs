@@ -219,7 +219,7 @@ impl BadTranslator {
                 .delete_message(message.channel_id, message.id)
                 .await;
 
-            let res_message = assyst
+            let res_message = if let Ok(message) = assyst
                 .http
                 .create_message(message.channel_id)
                 .content(&format!(
@@ -229,14 +229,19 @@ impl BadTranslator {
                 ))
                 .unwrap()
                 .await
-                .unwrap();
+            {
+                message
+            } else {
+                return;
+            };
 
             tokio::time::sleep(Duration::from_secs(5)).await;
 
             let _ = assyst
                 .http
-                .delete_message(res_message.channel_id, res_message.id)
+                .delete_message(message.channel_id, res_message.id)
                 .await;
+
             return;
         }
 
@@ -285,7 +290,8 @@ impl BadTranslator {
 
         let token = unwrap_or_eprintln!(webhook.token.as_ref(), "Failed to extract token");
 
-        let translation = sanitize_message_content(&translation[0..min(translation.len(), 1999)]);
+        let translation =
+            sanitize_message_content(translation.chars().take(2000).collect::<String>().as_str());
 
         if let Err(e) = assyst
             .http
