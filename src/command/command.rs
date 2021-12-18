@@ -17,6 +17,7 @@ pub enum FlagKind {
     Number,
     Decimal,
     Boolean,
+    List,
     Choice(&'static [&'static str]),
 }
 
@@ -26,6 +27,7 @@ pub enum ParsedFlagKind {
     Number(u64),
     Decimal(f64),
     Boolean(bool),
+    List(Vec<String>),
 }
 
 impl ParsedFlagKind {
@@ -35,6 +37,7 @@ impl ParsedFlagKind {
             Self::Number(n) => Cow::Owned(n.to_string()),
             Self::Decimal(n) => Cow::Owned(n.to_string()),
             Self::Boolean(b) => Cow::Owned(b.to_string()),
+            Self::List(l) => Cow::Owned(l.join(" ")),
         }
     }
 
@@ -57,6 +60,13 @@ impl ParsedFlagKind {
     pub fn as_boolean(&self) -> Option<bool> {
         match self {
             Self::Boolean(b) => Some(*b),
+            _ => None,
+        }
+    }
+
+    pub fn into_list(self) -> Option<Vec<String>> {
+        match self {
+            Self::List(l) => Some(l),
             _ => None,
         }
     }

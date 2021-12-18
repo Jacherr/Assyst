@@ -22,7 +22,7 @@ pub type NoArgFunction = Box<
 pub struct AnnmarieBody {
     pub route: String,
     pub query_params: Vec<(String, String)>,
-    pub images: Vec<Vec<u8>>
+    pub images: Vec<Vec<u8>>,
 }
 
 pub mod routes {
@@ -44,6 +44,16 @@ pub mod routes {
     pub const QUOTE: &str = "/discord";
 
     pub const RANDOMIZABLE_ROUTES: &[&str] = &[CARD, FISHEYE, GLOBE, PAINT];
+
+    pub fn command_name_to_route(command: &str) -> Option<&'static str> {
+        match command {
+            "card" => Some(CARD),
+            "fisheye" => Some(FISHEYE),
+            "globe" => Some(GLOBE),
+            "paint" => Some(PAINT),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -73,7 +83,11 @@ pub enum RequestError {
 
 /// Takes a partially built request, attaches the Authorization header
 /// and sends the request, returning any errors
-pub async fn finish_request(assyst: &Assyst, req: RequestBuilder, premium_level: usize) -> Result<Bytes, RequestError> {
+pub async fn finish_request(
+    assyst: &Assyst,
+    req: RequestBuilder,
+    premium_level: usize,
+) -> Result<Bytes, RequestError> {
     let result = req
         .header(
             reqwest::header::AUTHORIZATION,
@@ -109,11 +123,16 @@ pub async fn request_bytes(
 ) -> Result<Bytes, RequestError> {
     let body = AnnmarieBody {
         images: vec![image.to_vec()],
-        query_params: query.iter().map(|x| (x.0.to_owned(), x.1.to_owned())).collect::<Vec<_>>(),
-        route: route.to_owned()
+        query_params: query
+            .iter()
+            .map(|x| (x.0.to_owned(), x.1.to_owned()))
+            .collect::<Vec<_>>(),
+        route: route.to_owned(),
     };
 
-    let premium_level = get_wsi_request_tier(&assyst.clone(), user_id).await.unwrap();
+    let premium_level = get_wsi_request_tier(&assyst.clone(), user_id)
+        .await
+        .unwrap();
 
     let req = assyst
         .reqwest_client
@@ -128,9 +147,10 @@ pub async fn randomize(
     assyst: Arc<Assyst>,
     image: Bytes,
     user_id: UserId,
+    acceptable_routes: &mut Vec<&'static str>,
 ) -> (&'static str, Result<Bytes, RequestError>) {
-    let index = rand::thread_rng().gen_range(0..routes::RANDOMIZABLE_ROUTES.len());
-    let route = routes::RANDOMIZABLE_ROUTES[index];
+    let index = rand::thread_rng().gen_range(0..acceptable_routes.len());
+    let route = acceptable_routes.remove(index);
 
     let bytes = request_bytes(assyst, route, image, &[], user_id).await;
 

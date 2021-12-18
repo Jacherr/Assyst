@@ -16,9 +16,7 @@ use crate::{
     logging::Logger,
     metrics::GlobalMetrics,
     rest::patreon::Patron,
-    util::{
-        get_current_millis, get_guild_owner, is_guild_manager, regexes, Uptime,
-    },
+    util::{get_current_millis, get_guild_owner, is_guild_manager, regexes, Uptime},
 };
 
 use async_recursion::async_recursion;
@@ -148,7 +146,7 @@ impl Assyst {
             replies: RwLock::new(Replies::new()),
             reqwest_client,
             started_at: get_current_millis(),
-            commands_executed: Mutex::new(0)
+            commands_executed: Mutex::new(0),
         };
         if assyst.config.disable_bad_translator {
             assyst.badtranslator.disable().await
@@ -527,6 +525,15 @@ impl Assyst {
                     .copied()
                     .map(ToOwned::to_owned)
                     .map(ParsedFlagKind::Text),
+                Some(FlagKind::List) => value
+                    .map(|v| {
+                        v.split(' ')
+                            .collect::<Vec<_>>()
+                            .into_iter()
+                            .map(ToOwned::to_owned)
+                            .collect::<Vec<_>>()
+                    })
+                    .map(ParsedFlagKind::List),
             };
 
             flags.insert(*name, parsed_value);
@@ -592,8 +599,13 @@ impl Assyst {
                 } else {
                     args[*index]
                 };
-                parse::subsections::parse_image_argument(context, &context.message, argument_to_pass, arg)
-                    .await
+                parse::subsections::parse_image_argument(
+                    context,
+                    &context.message,
+                    argument_to_pass,
+                    arg,
+                )
+                .await
             }
 
             Argument::String => {
