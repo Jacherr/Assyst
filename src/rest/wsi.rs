@@ -68,6 +68,24 @@ pub mod routes {
     pub const RANDOMIZABLE_ROUTES: &[&str] = &[
         FLIP, FLOP, GIF_MAGIK, GRAYSCALE, INVERT, JPEG, MAGIK, RAINBOW, REVERSE, SPIN, SWIRL, TEHI,
     ];
+
+    pub fn command_name_to_route(command: &str) -> Option<&'static str> {
+        match command {
+            "flip" => Some(FLIP),
+            "flop" => Some(FLOP),
+            "gifmagik" | "gifmagick" | "gcas" | "gmagik" => Some(GIF_MAGIK),
+            "grayscale" | "gray" => Some(GRAYSCALE),
+            "invert" => Some(INVERT),
+            "jpeg" => Some(JPEG),
+            "magik" => Some(MAGIK),
+            "rainbow" => Some(RAINBOW),
+            "reverse" => Some(REVERSE),
+            "spin" => Some(SPIN),
+            "swirl" => Some(SWIRL),
+            "tehi" => Some(TEHI),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -127,9 +145,10 @@ pub async fn randomize(
     assyst: Arc<Assyst>,
     image: Bytes,
     user_id: UserId,
+    acceptable_routes: &mut Vec<&'static str>,
 ) -> (&'static str, Result<Bytes, RequestError>) {
-    let index = rand::thread_rng().gen_range(0..routes::RANDOMIZABLE_ROUTES.len());
-    let route = routes::RANDOMIZABLE_ROUTES[index];
+    let index = rand::thread_rng().gen_range(0..acceptable_routes.len());
+    let route = acceptable_routes.remove(index);
 
     let bytes = request_bytes(assyst, route, image, &[], user_id).await;
 
@@ -353,7 +372,14 @@ pub async fn heart_locket(
     text: &str,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::HEART_LOCKET, image, &[("text", text)], user_id).await
+    request_bytes(
+        assyst,
+        routes::HEART_LOCKET,
+        image,
+        &[("text", text)],
+        user_id,
+    )
+    .await
 }
 
 pub async fn gif_speed(

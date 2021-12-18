@@ -2,19 +2,19 @@ use crate::{
     assyst::Assyst,
     command::{
         command::{
-            Argument, Command, CommandAvailability, CommandBuilder, FlagKind,
-            ParsedArgument, ParsedFlags,
+            Argument, Command, CommandAvailability, CommandBuilder, FlagKind, ParsedArgument,
+            ParsedFlagKind, ParsedFlags,
         },
         context::Context,
         registry::CommandResult,
     },
+    consts,
     consts::Y21,
     rest::{
         annmarie,
         wsi::{self, ResizeMethod},
     },
     util::{bytes_to_readable, generate_list},
-    consts
 };
 use crate::{
     rest,
@@ -500,6 +500,7 @@ lazy_static! {
     pub static ref RANDOMIZE_COMMAND: Command = CommandBuilder::new("randomize")
         .alias("badcommand")
         .arg(Argument::ImageBuffer)
+        .flag("exclude", Some(FlagKind::List))
         .public()
         .description("sends a provided image through multiple filters")
         .example(Y21)
@@ -542,18 +543,21 @@ pub async fn run_ahshit_command(
 pub async fn run_randomize_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
-    _flags: ParsedFlags,
+    mut flags: ParsedFlags,
 ) -> CommandResult {
     async fn inner_randomize(
         assyst: Arc<Assyst>,
         image: Bytes,
         user_id: UserId,
+        wsi_routes: &mut Vec<&'static str>,
+        annmarie_routes: &mut Vec<&'static str>,
     ) -> (
         &'static str,
         Result<Bytes, Box<dyn std::error::Error + Send + Sync>>,
     ) {
-        if rand::random() {
-            let (route, bytes) = wsi::randomize(assyst, image, user_id).await;
+        let can_use_annmarie = annmarie_routes.len() > 0;
+        if rand::random() || !can_use_annmarie {
+            let (route, bytes) = wsi::randomize(assyst, image, user_id, wsi_routes).await;
             let filter = route.strip_prefix("/").unwrap_or(route);
 
             match bytes {
@@ -561,7 +565,7 @@ pub async fn run_randomize_command(
                 Err(e) => (filter, Err(wsi::format_err(e).into())),
             }
         } else {
-            let (route, bytes) = annmarie::randomize(assyst, image, user_id).await;
+            let (route, bytes) = annmarie::randomize(assyst, image, user_id, annmarie_routes).await;
             let filter = route.strip_prefix("/").unwrap_or(route);
 
             match bytes {
@@ -573,18 +577,59 @@ pub async fn run_randomize_command(
 
     let mut image = Some(args[0].as_bytes());
     let mut filters = Vec::new();
+
+    let exclude = flags
+        .remove("exclude")
+        .flatten()
+        .and_then(ParsedFlagKind::into_list)
+        .unwrap_or_else(Vec::new);
+
+    let mut wsi_exclude = Vec::new();
+    let mut annmarie_exclude = Vec::new();
+
+    for filter in exclude {
+        if let Some(filter) = wsi::routes::command_name_to_route(&filter) {
+            wsi_exclude.push(filter);
+        } else if let Some(filter) = annmarie::routes::command_name_to_route(&filter) {
+            annmarie_exclude.push(filter);
+        }
+    }
+
+    let mut wsi_routes = wsi::routes::RANDOMIZABLE_ROUTES
+        .iter()
+        .filter(|route| !wsi_exclude.contains(route))
+        .copied()
+        .collect::<Vec<_>>();
+
+    let mut annmarie_routes = annmarie::routes::RANDOMIZABLE_ROUTES
+        .iter()
+        .filter(|route| !annmarie_exclude.contains(route))
+        .copied()
+        .collect::<Vec<_>>();
+
+    let available_filters = wsi_routes.len() + annmarie_routes.len();
+    if available_filters < consts::RANDOMIZE_COUNT {
+        return Err(
+            "Not enough filters to choose from! Perhaps you are excluding too many commands?"
+                .into(),
+        );
+    }
+
     let mut maybe_error = None;
 
-    for _ in 0..3 {
+    for _ in 0..consts::RANDOMIZE_COUNT {
         let old_image = image.take().unwrap();
 
-        match inner_randomize(
+        let resp = inner_randomize(
             Arc::clone(&context.assyst),
             old_image.clone(),
             context.author_id(),
+            &mut wsi_routes,
+            &mut annmarie_routes,
         )
-        .await
-        {
+        .await;
+
+        match resp {
             (filter, Ok(bytes)) => {
                 filters.push(filter);
                 image = Some(bytes);
@@ -660,9 +705,7 @@ pub async fn run_burntext_command(
 ) -> CommandResult {
     let text = args[0].as_text();
     context.reply_with_text("processing...").await?;
-    let result = rest::burning_text(text)
-        .await
-        .map_err(|e| e.to_string())?;
+    let result = rest::burning_text(text).await.map_err(|e| e.to_string())?;
     context.reply_with_image("gif", result).await?;
     Ok(())
 }
@@ -762,9 +805,14 @@ pub async fn run_femurbreaker_command(
 ) -> CommandResult {
     let image = args[0].as_bytes();
     context.reply_with_text("processing...").await?;
-    let result = wsi::audio(context.assyst.clone(), image, "femurbreaker", context.author_id())
-        .await
-        .map_err(wsi::format_err)?;
+    let result = wsi::audio(
+        context.assyst.clone(),
+        image,
+        "femurbreaker",
+        context.author_id(),
+    )
+    .await
+    .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -1361,9 +1409,14 @@ pub async fn run_terraria_command(
 ) -> CommandResult {
     let image = args[0].as_bytes();
     context.reply_with_text("processing...").await?;
-    let result = wsi::audio(context.assyst.clone(), image, "terraria", context.author_id())
-        .await
-        .map_err(wsi::format_err)?;
+    let result = wsi::audio(
+        context.assyst.clone(),
+        image,
+        "terraria",
+        context.author_id(),
+    )
+    .await
+    .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
