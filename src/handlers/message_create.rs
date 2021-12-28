@@ -34,7 +34,7 @@ pub async fn handle(assyst: Arc<Assyst>, message: Box<MessageCreate>) {
         return;
     };
 
-    if let Err(e) = assyst.handle_command(message.0).await {
+    if let Err(e) = assyst.handle_command(message.0, false).await {
         assyst
             .logger
             .fatal(&assyst, &format!("Command execution failed: {:?}", e))

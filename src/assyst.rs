@@ -182,13 +182,13 @@ impl Assyst {
     /// The instance of [`Assyst`] in which this function is called must be [`Arc`]ed because
     /// it requires itself to be cloned during the execution process, since some actions
     /// happen on separate threads of execution.
-    pub async fn handle_command(self: &Arc<Self>, _message: Message) -> Result<(), String> {
+    pub async fn handle_command(self: &Arc<Self>, _message: Message, from_update: bool) -> Result<(), String> {
         // timing for use in ping command
         let start = Instant::now();
 
         let message = Arc::new(_message);
 
-        if message.kind != MessageType::Regular {
+        if from_update && message.edited_timestamp.is_none() {
             return Ok(());
         }
 
