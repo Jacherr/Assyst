@@ -31,7 +31,7 @@ use std::{
 use tokio::sync::{Mutex, RwLock};
 use twilight_gateway::Cluster;
 use twilight_http::Client as HttpClient;
-use twilight_model::channel::Message;
+use twilight_model::channel::{Message, message::MessageType};
 
 fn get_command(content: &str, prefix: &str) -> Option<String> {
     get_raw_args(content, prefix, 0)
@@ -187,6 +187,10 @@ impl Assyst {
         let start = Instant::now();
 
         let message = Arc::new(_message);
+
+        if message.kind != MessageType::Regular {
+            return Ok(());
+        }
 
         // checking if user is blackisted from bot
         if self.config.user.blacklist.contains(&message.author.id.0) {
