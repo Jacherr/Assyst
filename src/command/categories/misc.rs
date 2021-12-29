@@ -449,7 +449,7 @@ pub async fn run_stats_command(
     let memory = get_memory_usage().unwrap_or("Unknown".to_owned());
     let commands = context.assyst.registry.get_command_count().to_string();
     let proc_time = (context.assyst.get_average_processing_time().await / 1e3).to_string();
-    let events = context.assyst.metrics.read().await.processing.events;
+    let events = context.assyst.metrics.read().await.processing.events.get();
 
     let total_command_calls = context
         .assyst
@@ -461,7 +461,8 @@ pub async fn run_stats_command(
         .to_string();
 
     let uptime_minutes = context.assyst.uptime().0 as f32 / 1000f32 / 60f32;
-    let commands_per_minute = *context.assyst.commands_executed.lock().await as f32 / uptime_minutes;
+    let commands_per_minute =
+        *context.assyst.commands_executed.lock().await as f32 / uptime_minutes;
 
     let stats_table = generate_table(&[
         ("Guilds", &guild_count),
@@ -469,7 +470,10 @@ pub async fn run_stats_command(
         ("Commands", &commands),
         ("Avg Processing Time", &format!("{:.4}s", proc_time)),
         ("Commands Ran", &total_command_calls),
-        ("Commands Per Minute", &format!("{:.2}", commands_per_minute)),
+        (
+            "Commands Per Minute",
+            &format!("{:.2}", commands_per_minute),
+        ),
         ("Events Since Restart", &events.to_string()),
         ("BadTranslator Messages", &{
             let (total, guild) = context

@@ -92,6 +92,7 @@ mod filters {
 
     const DISCORD_BOT_LIST_ENDPOINT: &str = "dbl";
     const TOP_GG_ENDPOINT: &str = "topgg";
+    const METRICS_ENDPOINT: &str = "metrics";
 
     pub fn root() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
         warp::path::end().and(warp::get()).and_then(handlers::root)
@@ -136,11 +137,19 @@ mod filters {
             .and_then(handlers::topgg)
             .boxed()
     }
+
+    pub fn metrics() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+        warp::path(METRICS_ENDPOINT)
+            .and(warp::get())
+            .and_then(handlers::metrics)
+            .boxed()
+    }
 }
 
 mod handlers {
     use super::{DiscordBotListWebhookBody, TopGgWebhookBody};
     use crate::assyst::Assyst;
+    use prometheus::TextEncoder;
     use std::sync::Arc;
     use warp::{hyper::Uri, Rejection, Reply};
 
@@ -148,6 +157,13 @@ mod handlers {
         Ok(warp::redirect::redirect(Uri::from_static(
             "https://jacher.io/assyst",
         )))
+    }
+
+    pub async fn metrics() -> Result<impl warp::Reply, Rejection> {
+        let encoder = TextEncoder::new();
+        let family = prometheus::gather();
+        let response = encoder.encode_to_string(&family).expect("Encoding failed");
+        Ok(response)
     }
 
     pub async fn dbl_redirect() -> Result<impl Reply, Rejection> {
@@ -195,6 +211,7 @@ pub fn run(assyst: Arc<Assyst>) {
     let auth = to_static_str(&assyst.config.auth.bot_list_webhook);
 
     let filters = root()
+        .or(metrics())
         .or(dbl(assyst.clone(), auth))
         .or(topgg(assyst.clone(), auth))
         .or(dbl_redirect())
