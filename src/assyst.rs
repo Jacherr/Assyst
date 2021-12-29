@@ -31,7 +31,7 @@ use std::{
 use tokio::sync::{Mutex, RwLock};
 use twilight_gateway::Cluster;
 use twilight_http::Client as HttpClient;
-use twilight_model::channel::{Message, message::MessageType};
+use twilight_model::channel::Message;
 
 fn get_command(content: &str, prefix: &str) -> Option<String> {
     get_raw_args(content, prefix, 0)
@@ -140,7 +140,7 @@ impl Assyst {
             database,
             http,
             logger: Logger {},
-            metrics: RwLock::new(GlobalMetrics::new()),
+            metrics: RwLock::new(GlobalMetrics::new().expect("Failed to create metric registry")),
             patrons: RwLock::new(vec![]),
             registry: CommandRegistry::new(),
             replies: RwLock::new(Replies::new()),
@@ -182,7 +182,11 @@ impl Assyst {
     /// The instance of [`Assyst`] in which this function is called must be [`Arc`]ed because
     /// it requires itself to be cloned during the execution process, since some actions
     /// happen on separate threads of execution.
-    pub async fn handle_command(self: &Arc<Self>, _message: Message, from_update: bool) -> Result<(), String> {
+    pub async fn handle_command(
+        self: &Arc<Self>,
+        _message: Message,
+        from_update: bool,
+    ) -> Result<(), String> {
         // timing for use in ping command
         let start = Instant::now();
 
@@ -375,7 +379,7 @@ impl Assyst {
             .write()
             .await
             .processing
-            .add(context.metrics.processing_time_start.elapsed().as_millis() as f32);
+            .add(context.metrics.processing_time_start.elapsed().as_millis() as f64);
 
         let mut lock = self.commands_executed.lock().await;
         *lock += 1;

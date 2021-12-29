@@ -1,31 +1,35 @@
 use std::collections::HashMap;
 
+use prometheus::{register_counter, register_int_counter, Counter, IntCounter};
+
 pub struct CountableMetrics {
-    pub total_commands: u32,
-    pub total_processing_time: f32,
-    pub events: u32
+    pub total_commands: IntCounter,
+    pub total_processing_time: Counter,
+    pub events: IntCounter,
 }
 
 impl CountableMetrics {
-    pub fn new() -> Self {
-        Self {
-            total_commands: 0,
-            total_processing_time: 0f32,
-            events: 0
-        }
+    pub fn new() -> Result<Self, prometheus::Error> {
+        Ok(Self {
+            total_commands: register_int_counter!("commands", "Total number of commands executed")?,
+            total_processing_time: register_counter!("processing_time", "Total processing time")?,
+            events: register_int_counter!("events", "Total number of events")?,
+        })
     }
 
-    pub fn add(&mut self, time: f32) {
-        self.total_commands += 1;
-        self.total_processing_time += time;
+    pub fn add(&mut self, time: f64) {
+        self.total_commands.inc();
+        self.total_processing_time.inc_by(time)
     }
 
     pub fn add_event(&mut self) {
-        self.events += 1;
+        self.events.inc()
     }
 
     pub fn avg(&self) -> f32 {
-        self.total_processing_time / (self.total_commands as f32)
+        let processing_time = self.total_processing_time.get();
+        let commands = self.total_commands.get();
+        processing_time as f32 / commands as f32
     }
 }
 
@@ -51,10 +55,10 @@ pub struct GlobalMetrics {
 }
 
 impl GlobalMetrics {
-    pub fn new() -> Self {
-        Self {
-            processing: CountableMetrics::new(),
+    pub fn new() -> Result<Self, prometheus::Error> {
+        Ok(Self {
+            processing: CountableMetrics::new()?,
             bt_messages: BtMessagesMetrics::new(),
-        }
+        })
     }
 }

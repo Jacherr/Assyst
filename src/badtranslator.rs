@@ -5,7 +5,7 @@ use crate::{
 };
 use reqwest::StatusCode;
 use std::{borrow::Cow, time::Duration};
-use std::{cmp::min, collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
 use twilight_http::error::ErrorType;
 use twilight_model::gateway::payload::MessageCreate;
