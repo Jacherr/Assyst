@@ -1,11 +1,14 @@
 use std::collections::HashMap;
 
-use prometheus::{register_counter, register_int_counter, Counter, IntCounter};
+use prometheus::{
+    register_counter, register_gauge, register_int_counter, Counter, Gauge, IntCounter,
+};
 
 pub struct CountableMetrics {
     pub total_commands: IntCounter,
     pub total_processing_time: Counter,
     pub events: IntCounter,
+    pub guilds: Gauge,
 }
 
 impl CountableMetrics {
@@ -14,16 +17,25 @@ impl CountableMetrics {
             total_commands: register_int_counter!("commands", "Total number of commands executed")?,
             total_processing_time: register_counter!("processing_time", "Total processing time")?,
             events: register_int_counter!("events", "Total number of events")?,
+            guilds: register_gauge!("guilds", "Total guilds")?,
         })
     }
 
-    pub fn add(&mut self, time: f64) {
+    pub fn add(&self, time: f64) {
         self.total_commands.inc();
         self.total_processing_time.inc_by(time)
     }
 
-    pub fn add_event(&mut self) {
+    pub fn add_event(&self) {
         self.events.inc()
+    }
+
+    pub fn add_guild(&self) {
+        self.guilds.inc();
+    }
+
+    pub fn delete_guild(&self) {
+        self.guilds.dec();
     }
 
     pub fn avg(&self) -> f32 {
