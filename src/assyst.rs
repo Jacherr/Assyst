@@ -167,7 +167,7 @@ impl Assyst {
 
     /// Remove a guild from cached guild list
     pub async fn remove_guild_from_list(&self, guild: u64) {
-        self.guilds.lock().await.delete(guild);
+        self.guilds.lock().await.remove(&guild);
     }
 
     /// Set the cluster instance that this instance of Assyst receives its events from.
