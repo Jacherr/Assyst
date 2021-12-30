@@ -37,12 +37,12 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
             if !guild.unavailable {
                 assyst.metrics.read().await.processing.delete_guild();
 
-                if assyst.guild_in_list(guild.id.0).await {
-                    assyst
-                        .logger
-                        .info(&assyst, &format!("Removed from guild: {}", guild.id))
-                        .await;
-                }
+                assyst
+                    .logger
+                    .info(&assyst, &format!("Removed from guild: {}", guild.id))
+                    .await;
+
+                assyst.remove_guild_from_list(guild.id.0).await;
             }
         }
         Event::Ready(r) => {
