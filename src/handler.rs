@@ -14,6 +14,10 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
             message_update::handle(assyst, message).await;
         }
         Event::GuildCreate(guild) => {
+            if !guild.unavailable {
+                assyst.metrics.read().await.processing.add_guild();
+            }
+
             if !assyst.guild_in_list(guild.id.0).await {
                 assyst
                     .logger
@@ -30,11 +34,15 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
             }
         }
         Event::GuildDelete(guild) => {
-            if assyst.guild_in_list(guild.id.0).await && !guild.unavailable {
-                assyst
-                    .logger
-                    .info(&assyst, &format!("Removed from guild: {}", guild.id))
-                    .await;
+            if !guild.unavailable {
+                assyst.metrics.read().await.processing.delete_guild();
+
+                if assyst.guild_in_list(guild.id.0).await {
+                    assyst
+                        .logger
+                        .info(&assyst, &format!("Removed from guild: {}", guild.id))
+                        .await;
+                }
             }
         }
         Event::Ready(r) => {
@@ -54,14 +62,14 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
                 .await;
         }
         Event::ShardConnected(_d) => {
-            /* 
+            /*
             assyst
                 .logger
                 .info(&assyst, &format!("Shard {}: CONNECTED", d.shard_id))
                 .await;*/
         }
         Event::ShardDisconnected(_d) => {
-            /* 
+            /*
             assyst
                 .logger
                 .info(
@@ -76,9 +84,9 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
         }
         Event::ShardReconnecting(_r) => {
             /*assyst
-                .logger
-                .info(&assyst, &format!("Shard {}: RECONNECTING", r.shard_id))
-                .await;*/
+            .logger
+            .info(&assyst, &format!("Shard {}: RECONNECTING", r.shard_id))
+            .await;*/
         }
         _ => {}
     }
