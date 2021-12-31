@@ -71,6 +71,12 @@ pub struct CoolTextResponse {
     pub is_animated: bool,
 }
 
+#[derive(Deserialize)]
+pub struct Rule34Result {
+    pub url: String,
+    pub score: u32
+}
+
 pub async fn ocr_image(client: &Client, url: &str) -> Result<String, OcrError> {
     let text = client
         .get(&format!("{}{}", routes::OCR, url))
@@ -210,5 +216,20 @@ pub async fn convert_lottie_to_gif(assyst: Arc<Assyst>, lottie: &str) -> Result<
         .await?
         .error_for_status()?
         .bytes()
+        .await?)
+}
+
+pub async fn get_random_rule34(assyst: Arc<Assyst>, tags: &str) -> Result<Vec<Rule34Result>, Error> {
+    Ok(assyst
+        .reqwest_client
+        .get(&format!(
+            "{}?tags={}&limit=1&rating=e&formats=jpeg png gif jpg webm mp4",
+            assyst.config.url.rule34.to_string(),
+            tags
+        ))
+        .send()
+        .await?
+        .error_for_status()?
+        .json::<Vec<Rule34Result>>()
         .await?)
 }

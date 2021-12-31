@@ -52,6 +52,7 @@ pub struct Url {
     pub annmarie: Box<str>,
     pub lottie_render: Box<str>,
     pub maryjane: Box<str>,
+    pub rule34: Box<str>,
     pub wsi: Box<str>,
 }
 
