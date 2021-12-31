@@ -247,6 +247,7 @@ pub struct Command {
     pub cooldown_seconds: usize,
     pub category: &'static str,
     pub disabled: bool,
+    pub nsfw: bool
 }
 
 pub struct CommandBuilder {
@@ -259,6 +260,7 @@ pub struct CommandBuilder {
     cooldown_seconds: Option<usize>,
     category: Option<&'static str>,
     disabled: bool,
+    nsfw: bool
 }
 impl CommandBuilder {
     pub fn new(name: &'static str) -> Self {
@@ -276,6 +278,7 @@ impl CommandBuilder {
             cooldown_seconds: None,
             category: None,
             disabled: false,
+            nsfw: false
         }
     }
 
@@ -334,6 +337,11 @@ impl CommandBuilder {
         self
     }
 
+    pub fn nsfw(mut self) -> Self {
+        self.nsfw = true;
+        self
+    }
+
     pub fn build(self) -> Command {
         let category = self.category.expect("Command must belong to a category");
         let cooldown = self.cooldown_seconds.unwrap_or(4);
@@ -360,6 +368,7 @@ impl CommandBuilder {
             category,
             cooldown_seconds: cooldown,
             disabled: self.disabled,
+            nsfw: self.nsfw
         }
     }
 }

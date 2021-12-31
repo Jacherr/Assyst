@@ -31,7 +31,7 @@ use std::{
 use tokio::sync::{Mutex, RwLock};
 use twilight_gateway::Cluster;
 use twilight_http::Client as HttpClient;
-use twilight_model::channel::Message;
+use twilight_model::channel::{Channel, GuildChannel, Message};
 
 fn get_command(content: &str, prefix: &str) -> Option<String> {
     get_raw_args(content, prefix, 0)
@@ -334,6 +334,35 @@ impl Assyst {
                 return Ok(());
             };
         };
+
+        if command_instance.nsfw {
+            let channel = self
+                .http
+                .channel(message.channel_id)
+                .await
+                .map_err(|e| format!("fetching channel for nsfw check fail: {}", e.to_string()))?
+                .unwrap();
+
+            if let Channel::Guild(guild) = channel {
+                if let GuildChannel::Text(guild_text) = guild {
+                    if !guild_text.nsfw {
+                        context
+                            .reply_err("This command is limited to NSFW text channels only.")
+                            .await
+                            .map_err(|e| e.to_string())?;
+                        return Ok(());
+                    }
+                } else {
+                    context
+                        .reply_err("This command is limited to NSFW text channels only.")
+                        .await
+                        .map_err(|e| e.to_string())?;
+                    return Ok(());
+                }
+            } else {
+                unreachable!()
+            }
+        }
 
         let is_global_disabled = command_instance.disabled;
 

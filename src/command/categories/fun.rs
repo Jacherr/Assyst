@@ -65,12 +65,14 @@ lazy_static! {
         .build();
     pub static ref RULE34_COMMAND: Command = CommandBuilder::new("rule34")
         .alias("r34")
+        .arg(Argument::OptionalWithDefault(Box::new(Argument::StringRemaining), ""))
         .public()
-        .description("search rule34.xxx")
+        .description("search rule34.xxx with tags")
         .example("anime")
-        .usage("[query]")
+        .usage("[tags separated by spaces]")
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
+        .nsfw()
         .build();
     pub static ref COLOR_COMMAND: Command = CommandBuilder::new("color")
         .alias("colors")
@@ -222,15 +224,22 @@ pub async fn run_ocrtr_command(
 
 pub async fn run_rule34_command(
     context: Arc<Context>,
-    _: Vec<ParsedArgument>,
+    args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    tokio::time::sleep(Duration::from_millis(1500)).await;
+    let query = args[0].as_text();
+    let result = rest::get_random_rule34(context.assyst.clone(), query)
+        .await?;
 
-    context
-        .reply_err("450 Blocked By Windows Parental Controls")
-        .await
-        .map_err(|e| e.to_string())?;
+    let result = if result.len() == 0 {
+        "No results found".to_string()
+    } else {
+        let first = &result[0];
+        format!("**Score: {}**\n{}", first.score, first.url)
+    };
+
+    context.reply_with_text(&result).await?;
+
     Ok(())
 }
 
