@@ -222,11 +222,13 @@ pub async fn convert_lottie_to_gif(assyst: Arc<Assyst>, lottie: &str) -> Result<
 pub async fn get_random_rule34(assyst: Arc<Assyst>, tags: &str) -> Result<Vec<Rule34Result>, Error> {
     Ok(assyst
         .reqwest_client
-        .get(&format!(
-            "{}?tags={}&limit=1&rating=e&formats=jpeg png gif jpg webm mp4",
-            assyst.config.url.rule34.to_string(),
-            tags
-        ))
+        .get(&*assyst.config.url.rule34)
+        .query(&[
+            ("tags", tags),
+            ("limit", "1"),
+            ("rating", "e"),
+            ("formats", "jpeg png gif jpg webm mp4")  
+        ])
         .send()
         .await?
         .error_for_status()?
