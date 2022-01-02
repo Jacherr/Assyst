@@ -9,6 +9,7 @@ pub struct CountableMetrics {
     pub total_processing_time: Counter,
     pub events: IntCounter,
     pub guilds: Gauge,
+    pub current_commands: Gauge
 }
 
 impl CountableMetrics {
@@ -18,12 +19,21 @@ impl CountableMetrics {
             total_processing_time: register_counter!("processing_time", "Total processing time")?,
             events: register_int_counter!("events", "Total number of events")?,
             guilds: register_gauge!("guilds", "Total guilds")?,
+            current_commands: register_gauge!("current_commands", "Count of currently executing commands")?,
         })
     }
 
     pub fn add(&self, time: f64) {
         self.total_commands.inc();
         self.total_processing_time.inc_by(time)
+    }
+
+    pub fn add_command(&self) {
+        self.current_commands.inc();
+    }
+
+    pub fn delete_command(&self) {
+        self.current_commands.dec();
     }
 
     pub fn add_event(&self) {

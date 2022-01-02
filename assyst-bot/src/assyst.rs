@@ -400,8 +400,11 @@ impl Assyst {
         ratelimit_lock.set_command_expire_at(message.guild_id.unwrap(), &command_instance);
         drop(ratelimit_lock);
 
+        self.metrics.write().await.processing.add_command();
         // run the command
         let command_result = self.registry.execute_command(command, context_clone).await;
+
+        self.metrics.write().await.processing.delete_command();
 
         reply.lock().await.in_use = false;
         if let Err(err) = command_result {

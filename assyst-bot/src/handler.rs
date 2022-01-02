@@ -34,7 +34,7 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
             }
         }
         Event::GuildDelete(guild) => {
-            if !guild.unavailable {
+            if !guild.unavailable && guild.id.0 != 907706584791150622 /* always get this on startup, no idea */ {
                 assyst.metrics.read().await.processing.delete_guild();
 
                 assyst
