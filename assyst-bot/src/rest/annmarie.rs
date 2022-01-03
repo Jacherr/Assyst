@@ -8,8 +8,6 @@ use serde::{Deserialize, Serialize};
 use std::{pin::Pin, sync::Arc};
 use twilight_model::{channel::Message, guild::Guild, id::UserId};
 
-use super::wsi::get_next_wsi_instance;
-
 pub type NoArgFunction = Box<
     dyn Fn(
             Arc<Assyst>,
@@ -86,14 +84,14 @@ pub enum RequestError {
 /// Takes a partially built request, attaches the Authorization header
 /// and sends the request, returning any errors
 pub async fn finish_request(
+    assyst: &Assyst,
     req: RequestBuilder,
     premium_level: usize,
-    auth: String
 ) -> Result<Bytes, RequestError> {
     let result = req
         .header(
             reqwest::header::AUTHORIZATION,
-            auth,
+            assyst.config.auth.wsi.as_ref(),
         )
         .header("premium_level", premium_level)
         .send()
@@ -136,15 +134,13 @@ pub async fn request_bytes(
         .await
         .unwrap();
 
-    let next_instance = get_next_wsi_instance(assyst.clone());
-
     let req = assyst
         .reqwest_client
-        .post(&format!("{}/annmarie", next_instance.0))
+        .post(&format!("{}/annmarie", assyst.config.url.wsi))
         .query(query)
         .body(serialize(&body).unwrap());
 
-    finish_request(req, premium_level, next_instance.1).await
+    finish_request(&assyst, req, premium_level).await
 }
 
 pub async fn randomize(
