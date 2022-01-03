@@ -10,8 +10,8 @@ tokio = { version = "1.0", features = ["full"] }
 warp = "0.3.0"
 prometheus = "0.13.0"
 serde = { version = "1.0.123", features = ["derive"] }
-twilight-model = "0.8.3"
-twilight-http = "0.8.3"
+twilight-model = "0.5.0"
+twilight-http = "0.5.0"
 assyst-common = { path = "../assyst-common" }
 assyst-database = { path = "../assyst-database" }
 assyst-logger = { path = "../assyst-logger" }

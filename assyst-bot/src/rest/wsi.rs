@@ -4,7 +4,7 @@ use bytes::Bytes;
 use rand::Rng;
 use reqwest::Error;
 use serde::{Deserialize, Serialize};
-use std::{future::Future, pin::Pin, sync::{Arc, atomic::{AtomicUsize, Ordering}}};
+use std::{future::Future, pin::Pin, sync::Arc};
 use twilight_model::id::UserId;
 
 pub type NoArgFunction = Box<
@@ -169,12 +169,13 @@ pub async fn request_bytes(
         .await
         .map_err(RequestError::Sqlx)?;
 
-    let next_instance = get_next_wsi_instance(assyst.clone());
-
     let result = assyst
         .reqwest_client
-        .post(&format!("{}{}", next_instance.0, route))
-        .header(reqwest::header::AUTHORIZATION, next_instance.1)
+        .post(&format!("{}{}", assyst.config.url.wsi, route))
+        .header(
+            reqwest::header::AUTHORIZATION,
+            assyst.config.auth.wsi.as_ref(),
+        )
         .header("premium_level", premium_level)
         .query(query)
         .body(image)
@@ -398,14 +399,10 @@ pub async fn gif_speed(
 pub async fn image_info(assyst: Arc<Assyst>, image: Bytes) -> Result<ImageInfo, RequestError> {
     let result = assyst
         .reqwest_client
-        .post(&format!(
-            "{}{}",
-            assyst.config.url.wsi[0],
-            routes::IMAGE_INFO
-        ))
+        .post(&format!("{}{}", assyst.config.url.wsi, routes::IMAGE_INFO))
         .header(
             reqwest::header::AUTHORIZATION,
-            assyst.config.auth.wsi[0].as_ref(),
+            assyst.config.auth.wsi.as_ref(),
         )
         .header("premium_level", 0)
         .body(image)
@@ -610,10 +607,10 @@ pub async fn overlay(
 pub async fn restart(assyst: Arc<Assyst>) -> Result<(), RequestError> {
     let result = assyst
         .reqwest_client
-        .get(&format!("{}{}", assyst.config.url.wsi[0], routes::RESTART))
+        .get(&format!("{}{}", assyst.config.url.wsi, routes::RESTART))
         .header(
             reqwest::header::AUTHORIZATION,
-            assyst.config.auth.wsi[0].as_ref(),
+            assyst.config.auth.wsi.as_ref(),
         )
         .send()
         .await
@@ -689,7 +686,7 @@ pub async fn spread(
 pub async fn stats(assyst: Arc<Assyst>) -> Result<Stats, RequestError> {
     let result = assyst
         .reqwest_client
-        .get(&format!("{}{}", assyst.config.url.wsi[0], routes::STATS))
+        .get(&format!("{}{}", assyst.config.url.wsi, routes::STATS))
         .send()
         .await
         .map_err(|e| RequestError::Reqwest(e))?;
@@ -764,18 +761,4 @@ pub fn format_err(err: RequestError) -> String {
         RequestError::Serde(e) => e.to_string(),
         RequestError::Sqlx(e) => e.to_string(),
     }
-}
-
-static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
-
-pub fn get_next_wsi_instance(assyst: Arc<Assyst>) -> (String, String) {
-    let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
-
-    let urls = &assyst.config.url.wsi;
-    let url = &urls[id % urls.len()];
-    
-    let auths = &assyst.config.auth.wsi;
-    let auth = &auths[id % auths.len()];
-    
-    (url.to_string(), auth.to_string())
 }
