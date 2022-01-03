@@ -22,7 +22,7 @@ use handler::handle_event;
 use std::env;
 use std::sync::Arc;
 use twilight_gateway::cluster::{Cluster, ShardScheme};
-use twilight_model::gateway::payload::update_presence::UpdatePresencePayload;
+use twilight_model::gateway::payload::outgoing::update_presence::UpdatePresencePayload;
 use twilight_model::gateway::{
     presence::{Activity, ActivityType, Status},
     Intents,
@@ -33,7 +33,7 @@ async fn main() {
     dotenv().ok();
     let token = env::var("DISCORD_TOKEN").unwrap();
 
-    let assyst = Arc::new(Assyst::new(&token).await);
+    let assyst = Arc::new(Assyst::new(token).await);
     let activity = Activity {
         application_id: None,
         assets: None,
@@ -64,7 +64,7 @@ async fn main() {
         .await
         .unwrap();
 
-    let spawned_cluster = cluster.clone();
+    let spawned_cluster = cluster;
     tokio::spawn(async move { spawned_cluster.up().await });
 
     // Tasks

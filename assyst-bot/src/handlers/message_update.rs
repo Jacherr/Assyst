@@ -1,7 +1,7 @@
 use crate::Assyst;
 use std::sync::Arc;
 use twilight_model::channel::message::Message;
-use twilight_model::{channel::message::MessageType, gateway::payload::MessageUpdate};
+use twilight_model::{channel::message::MessageType, gateway::payload::incoming::MessageUpdate};
 
 pub async fn handle(assyst: Arc<Assyst>, message: Box<MessageUpdate>) -> () {
     if !should_handle_message(&message).await {
@@ -37,7 +37,7 @@ fn convert_message_update_to_message(event: MessageUpdate) -> Option<Message> {
     let mention_everyone = event.mention_everyone.unwrap_or_default();
     let mention_roles = event.mention_roles.unwrap_or_default();
     let pinned = event.pinned.unwrap_or_default();
-    let timestamp = event.timestamp.unwrap_or_default();
+    let timestamp = event.timestamp.unwrap_or_else(|| Timestamp::from_secs(0));
     Some(Message {
         application_id: None,
         interaction: None,
@@ -66,5 +66,7 @@ fn convert_message_update_to_message(event: MessageUpdate) -> Option<Message> {
         timestamp,
         tts: false,
         webhook_id: None,
+        components: vec![],
+        thread: None
     })
 }

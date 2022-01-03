@@ -9,7 +9,7 @@ use std::{borrow::Cow, time::Duration};
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
 use twilight_http::error::ErrorType;
-use twilight_model::gateway::payload::MessageCreate;
+use twilight_model::gateway::payload::incoming::MessageCreate;
 use twilight_model::{
     channel::Webhook,
     id::{ChannelId, UserId},

@@ -7,5 +7,6 @@ edition = "2021"
 
 [dependencies]
 twilight-model = "0.8.3"
+twilight-http = "0.8.3"
 serde = { version = "1.0.123", features = ["derive"] }
 toml = "0.5.8"

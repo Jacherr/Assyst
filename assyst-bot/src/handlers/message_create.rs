@@ -1,6 +1,6 @@
 use crate::Assyst;
 use std::sync::Arc;
-use twilight_model::gateway::payload::MessageCreate;
+use twilight_model::gateway::payload::incoming::MessageCreate;
 
 pub async fn handle(assyst: Arc<Assyst>, message: Box<MessageCreate>) {
     // If this is the first message, we want to populate the BT channel cache

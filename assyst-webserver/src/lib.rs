@@ -5,7 +5,7 @@ use std::sync::Arc;
 use assyst_common::{config::Config, util::to_static_str};
 use assyst_database::Database;
 use filters::*;
-use twilight_http::Client as HttpClient;
+use assyst_common::HttpClient;
 use warp::Filter;
 
 mod filters;

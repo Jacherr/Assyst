@@ -1,10 +1,11 @@
 use assyst_common::config::Config;
 use assyst_database::Database;
 use assyst_logger as logger;
+use futures::{FutureExt, TryFutureExt};
 use prometheus::TextEncoder;
 use serde::Deserialize;
-use std::sync::Arc;
-use twilight_http::Client as HttpClient;
+use std::{sync::Arc, num::NonZeroU64};
+use assyst_common::HttpClient;
 use twilight_model::id::UserId;
 use warp::{hyper::Uri, Rejection, Reply};
 
@@ -50,13 +51,18 @@ pub async fn handle_vote(
         )
         .await;
     } else {
-        let user = client.user(UserId::from(user_id as u64)).await.unwrap();
+        let user = client.user(NonZeroU64::new(user_id as u64).unwrap().into())
+            .exec()
+            .map_err(|x| Box::new(x) as Box<dyn std::error::Error + Send + Sync>)
+            .and_then(|x| async { x.model().await.map_err(Into::into) })
+            .await;
+
         let message;
 
         match user {
-            Some(u) => {
+            Ok(u) => {
                 database
-                    .increment_user_votes(user_id, &u.name, &u.discriminator)
+                    .increment_user_votes(user_id, &u.name, &u.discriminator.to_string())
                     .await;
 
                 let user_votes_entry = database.get_voter(user_id).await;
@@ -71,7 +77,7 @@ pub async fn handle_vote(
                     u.name, u.discriminator, service, VOTE_FREE_TIER_1_REQUESTS, user_votes
                 )
             }
-            None => {
+            _ => {
                 message = format!(
                     "An unknown user voted for Assyst on {} and got {} free tier 1 requests!",
                     service, VOTE_FREE_TIER_1_REQUESTS

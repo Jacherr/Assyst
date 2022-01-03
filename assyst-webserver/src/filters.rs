@@ -2,7 +2,7 @@ use super::handlers;
 use assyst_common::config::Config;
 use assyst_database::Database;
 use std::{convert::Infallible, sync::Arc};
-use twilight_http::Client as HttpClient;
+use assyst_common::HttpClient;
 use warp::{Filter, Rejection, Reply};
 
 const DISCORD_BOT_LIST_ENDPOINT: &str = "dbl";

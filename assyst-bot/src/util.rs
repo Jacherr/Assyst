@@ -458,7 +458,7 @@ pub async fn get_wsi_request_tier(assyst: &Assyst, user_id: UserId) -> Result<us
 
     let has_free_tier_1 = assyst
         .database
-        .get_and_subtract_free_tier_1_request(user_id.0 as i64)
+        .get_and_subtract_free_tier_1_request(user_id.0.get() as i64)
         .await?;
 
     if has_free_tier_1 {

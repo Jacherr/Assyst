@@ -106,7 +106,7 @@ pub struct Assyst {
     pub command_ratelimits: RwLock<Ratelimits>,
     pub config: Arc<Config>,
     pub database: Arc<Database>,
-    pub http: HttpClient,
+    pub http: Arc<HttpClient>,
     pub logger: Logger,
     pub metrics: RwLock<GlobalMetrics>,
     pub patrons: RwLock<Vec<Patron>>,
@@ -125,8 +125,8 @@ impl Assyst {
     /// Assyst itself is not configurable using this method.
     /// Assyst configuration exists in the config.toml file at the root
     /// of this project. Use that to configure the behaviour of the bot.
-    pub async fn new(token: &str) -> Self {
-        let http = HttpClient::new(token);
+    pub async fn new(token: String) -> Self {
+        let http = Arc::new(HttpClient::new(token));
         let reqwest_client = ReqwestClient::new();
         let config = Arc::new(Config::new());
         let database = Database::new(2, config.database.to_url())
@@ -205,7 +205,7 @@ impl Assyst {
         }
 
         // checking if user is blackisted from bot
-        if self.config.user.blacklist.contains(&message.author.id.0) {
+        if self.config.user.blacklist.contains(&message.author.id.0.get()) {
             return Ok(());
         }
 
@@ -228,7 +228,7 @@ impl Assyst {
                     let try_prefix = self
                         .database
                         .get_or_set_prefix_for(
-                            message.guild_id.unwrap().0,
+                            message.guild_id.unwrap().0.get(),
                             &self.config.prefix.default,
                         )
                         .await
@@ -333,7 +333,7 @@ impl Assyst {
                 .await
                 .map_err(|e| e.to_string())?;
 
-            if owner != message.author.id && !self.user_is_admin(&context.author_id().0) {
+            if owner != message.author.id && !self.user_is_admin(context.author_id().0.get()) {
                 return Ok(());
             };
         };
@@ -342,8 +342,11 @@ impl Assyst {
             let channel = self
                 .http
                 .channel(message.channel_id)
+                .exec()
                 .await
                 .map_err(|e| format!("fetching channel for nsfw check fail: {}", e.to_string()))?
+                .model()
+                .await
                 .unwrap();
 
             if let Channel::Guild(guild) = channel {
@@ -369,7 +372,7 @@ impl Assyst {
 
         let is_global_disabled = command_instance.disabled;
 
-        if is_global_disabled && !self.user_is_admin(&context.author_id().0) {
+        if is_global_disabled && !self.user_is_admin(context.author_id().0.get()) {
             context
                 .reply_err("This command is globally disabled. :(")
                 .await
@@ -480,7 +483,7 @@ impl Assyst {
             CommandAvailability::Public => Ok(()), // everyone can run
             CommandAvailability::Private => {
                 // bot admins can run (config-defined)
-                if !self.user_is_admin(&context.author_id().0) {
+                if !self.user_is_admin(context.author_id().0.get()) {
                     Err(CommandParseError::without_reply(
                         "Insufficient Permissions".to_owned(),
                         CommandParseErrorType::MissingPermissions,
@@ -498,7 +501,7 @@ impl Assyst {
                 .await
                 .map_err(|_| CommandParseError::permission_validator_failed())?;
 
-                let is_bot_admin = self.user_is_admin(&context.author_id().0);
+                let is_bot_admin = self.user_is_admin(context.author_id().0.get());
 
                 if is_manager || is_bot_admin {
                     Ok(())
@@ -711,7 +714,7 @@ impl Assyst {
         Uptime::new(get_current_millis() - self.started_at)
     }
 
-    pub fn user_is_admin(&self, id: &u64) -> bool {
-        self.config.user.admins.contains(id)
+    pub fn user_is_admin(&self, id: u64) -> bool {
+        self.config.user.admins.contains(&id)
     }
 }

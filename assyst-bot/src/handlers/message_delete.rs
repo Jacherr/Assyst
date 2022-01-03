@@ -1,6 +1,6 @@
 use crate::Assyst;
 use std::sync::Arc;
-use twilight_model::gateway::payload::MessageDelete;
+use twilight_model::gateway::payload::incoming::MessageDelete;
 
 pub async fn handle(assyst: Arc<Assyst>, message: MessageDelete) -> () {
     let try_reply = assyst
