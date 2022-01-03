@@ -12,7 +12,7 @@ pub struct Auth {
     pub patreon: Box<str>,
     pub top_gg_post_stats: Box<str>,
     pub discords_post_stats: Box<str>,
-    pub wsi: Box<str>,
+    pub wsi: Vec<Box<str>>,
     pub rapidapi: Box<str>,
 }
 
@@ -53,7 +53,7 @@ pub struct Url {
     pub lottie_render: Box<str>,
     pub maryjane: Box<str>,
     pub rule34: Box<str>,
-    pub wsi: Box<str>,
+    pub wsi: Vec<Box<str>>,
 }
 
 #[derive(Clone, Deserialize)]

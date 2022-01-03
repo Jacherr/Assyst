@@ -1,4 +1,4 @@
-use std::error::Error;
+use std::{error::Error, num::NonZeroU64};
 
 use assyst_common::{config::Config, consts::MESSAGE_CHARACTER_LIMIT};
 use twilight_embed_builder::EmbedBuilder;
@@ -89,14 +89,16 @@ async fn exec_webhook_with(
         .color(color)
         .build()?;
 
+    let embed_vec = vec![embed];
+
     let mut builder = client
-        .execute_webhook(WebhookId::from(id.parse::<u64>().unwrap()), *token)
-        .embeds(vec![embed]);
+        .execute_webhook(WebhookId::from(id.parse::<NonZeroU64>().unwrap()), *token)
+        .embeds(&embed_vec);
 
     if let Some(content) = content {
         builder = builder.content(content);
     }
 
-    builder.await?;
+    builder.exec().await?;
     Ok(())
 }

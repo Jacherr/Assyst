@@ -433,16 +433,7 @@ pub async fn run_stats_command(
     _: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    let app = crate::rest::maryjane::get_application(
-        context.assyst.clone(),
-        context.assyst.config.bot_id,
-    )
-    .await;
-
-    let guild_count = match app {
-        Ok(a) => a.bot.guild_count.to_string(),
-        Err(e) => format!("failed to fetch: {}", crate::rest::annmarie::format_err(e)),
-    };
+    let guild_count = context.assyst.metrics.read().await.processing.guilds.get() as u32;
 
     let guild_id = context.message.guild_id.unwrap().0;
 
@@ -465,7 +456,7 @@ pub async fn run_stats_command(
         *context.assyst.commands_executed.lock().await as f32 / uptime_minutes;
 
     let stats_table = generate_table(&[
-        ("Guilds", &guild_count),
+        ("Guilds", &guild_count.to_string()),
         ("Memory", &memory),
         ("Commands", &commands),
         ("Avg Processing Time", &format!("{:.4}s", proc_time)),

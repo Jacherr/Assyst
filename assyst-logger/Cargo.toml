@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-twilight-model = "0.5.0"
-twilight-embed-builder = "0.5.0"
+twilight-model = "0.8.3"
+twilight-embed-builder = "0.8.0"
 assyst-common = { path = "../assyst-common" }
-twilight-http = "0.5.0"
+twilight-http = "0.8.3"
