@@ -23,11 +23,11 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .alias("cs")
         .public()
+        .flag("dry", None)
         .arg(Argument::Choice(&[
             "info", "show", "view", "best", "submit"
         ]))
         .arg(Argument::Optional(Box::new(Argument::String))) // id
-        // .arg(Argument::Optional(Box::new(Argument::String))) // language for submit subcommand
         .description("Code competitions")
         .usage("codesprint")
         .example("codesprint")
@@ -121,8 +121,10 @@ async fn run_best_subcommand(
 async fn run_submit_subcommand(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
-    _flags: ParsedFlags,
+    flags: ParsedFlags,
 ) -> CommandResult {
+    let is_dry_run = flags.contains_key("dry");
+
     let id = args[1]
         .maybe_text()
         .ok_or_else(|| "No id provided")?
@@ -166,17 +168,20 @@ async fn run_submit_subcommand(
                 iter
             );
 
-            context
-                .assyst
-                .database
-                .add_codesprint_submission(
-                    id,
-                    context.message.author.id.0 as i64,
-                    mean as u32, // todo: check for overflow!
-                    &code,
-                    language.to_database_id(),
-                )
-                .await?;
+            if !is_dry_run {
+                // only store in database if this is not a dry run
+                context
+                    .assyst
+                    .database
+                    .add_codesprint_submission(
+                        id,
+                        context.message.author.id.0 as i64,
+                        mean as u32, // todo: check for overflow!
+                        &code,
+                        language.to_database_id(),
+                    )
+                    .await?;
+            }
 
             context.reply_with_text(&message).await?;
         }
