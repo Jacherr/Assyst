@@ -467,3 +467,16 @@ pub async fn get_wsi_request_tier(assyst: &Assyst, user_id: UserId) -> Result<us
         Ok(0)
     }
 }
+
+/// Formats a number of nanoseconds to a humanly readable string
+pub fn nanos_to_readable(time: u32) -> String {
+    if time < 1_000 {
+        return format!("{}ns", time);
+    } else if time < 1_000_000 {
+        return format!("{:.2}µs", time / 1_000);
+    } else if time < 1_000_000_000 {
+        return format!("{:.2}ms", time / 1_000_000);
+    } else {
+        return format!("{:.2}s", time / 1_000_000_000);
+    }
+}

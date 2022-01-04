@@ -14,6 +14,7 @@ pub struct Auth {
     pub discords_post_stats: Box<str>,
     pub wsi: Box<str>,
     pub rapidapi: Box<str>,
+    pub codesprint: Box<str>,
 }
 
 #[derive(Clone, Deserialize)]
@@ -54,6 +55,7 @@ pub struct Url {
     pub maryjane: Box<str>,
     pub rule34: Box<str>,
     pub wsi: Box<str>,
+    pub codesprint: Box<str>,
 }
 
 #[derive(Clone, Deserialize)]

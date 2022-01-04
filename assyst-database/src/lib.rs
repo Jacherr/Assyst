@@ -92,6 +92,28 @@ pub struct Voter {
     pub count: i32,
 }
 
+#[derive(sqlx::FromRow, Debug)]
+pub struct CodesprintChallenge {
+    pub id: i32,
+    pub name: String,
+    pub description: String,
+    pub author: i64,
+    pub created_at: i32,
+}
+
+#[derive(sqlx::FromRow, Debug)]
+pub struct CodesprintLanguage {
+    pub id: i32,
+    pub name: String,
+}
+
+#[derive(sqlx::FromRow, Debug)]
+pub struct CodesprintPartialSubmission {
+    pub author: i64,
+    pub mean: i32,
+    pub language: String,
+}
+
 type GuildDisabledCommands = Cache<GuildId, HashSet<String>>;
 
 pub struct DatabaseCache {
@@ -636,5 +658,61 @@ impl Database {
             Err(sqlx::Error::RowNotFound) => Ok(None),
             Err(e) => Err(e),
         }
+    }
+
+    pub async fn get_codesprint_challenge(
+        &self,
+        id: i32,
+    ) -> Result<Option<CodesprintChallenge>, sqlx::Error> {
+        let query = r#"SELECT * FROM challenges WHERE id = $1"#;
+
+        let result = sqlx::query_as(query).bind(id).fetch_one(&self.pool).await;
+
+        match result {
+            Ok(v) => Ok(Some(v)),
+            Err(sqlx::Error::RowNotFound) => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub async fn get_codesprint_best(
+        &self,
+        id: i32,
+    ) -> Result<Vec<CodesprintPartialSubmission>, sqlx::Error> {
+        let query = r#"
+        SELECT submissions.author, submissions.mean, challenge_languages.name AS language
+        FROM submissions
+        INNER JOIN challenge_languages ON submissions.language = challenge_languages.id
+        WHERE submissions.challenge_id = $1
+        ORDER BY submissions.mean ASC
+        LIMIT 10
+        "#;
+
+        sqlx::query_as(query).bind(id).fetch_all(&self.pool).await
+    }
+
+    pub async fn add_codesprint_submission(
+        &self,
+        challenge_id: i32,
+        author: i64,
+        mean: u32,
+        code: &str,
+        language: i16,
+    ) -> Result<(), sqlx::Error> {
+        let query = r#"
+        INSERT INTO submissions
+        VALUES (DEFAULT, $1, $2, $3, $4, $5)
+        "#;
+
+        sqlx::query(query)
+            .bind(challenge_id)
+            .bind(author)
+            .bind(mean)
+            .bind(code)
+            .bind(language)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
     }
 }
