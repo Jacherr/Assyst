@@ -9,6 +9,7 @@ use crate::assyst::Assyst;
 
 pub mod annmarie;
 pub mod bt;
+pub mod codesprint;
 pub mod identify;
 pub mod maryjane;
 pub mod patreon;
@@ -74,7 +75,7 @@ pub struct CoolTextResponse {
 #[derive(Deserialize)]
 pub struct Rule34Result {
     pub url: String,
-    pub score: u32
+    pub score: u32,
 }
 
 pub async fn ocr_image(client: &Client, url: &str) -> Result<String, OcrError> {
@@ -219,7 +220,10 @@ pub async fn convert_lottie_to_gif(assyst: Arc<Assyst>, lottie: &str) -> Result<
         .await?)
 }
 
-pub async fn get_random_rule34(assyst: Arc<Assyst>, tags: &str) -> Result<Vec<Rule34Result>, Error> {
+pub async fn get_random_rule34(
+    assyst: Arc<Assyst>,
+    tags: &str,
+) -> Result<Vec<Rule34Result>, Error> {
     Ok(assyst
         .reqwest_client
         .get(&*assyst.config.url.rule34)
@@ -227,7 +231,7 @@ pub async fn get_random_rule34(assyst: Arc<Assyst>, tags: &str) -> Result<Vec<Ru
             ("tags", tags),
             ("limit", "1"),
             ("rating", "e"),
-            ("formats", "jpeg png gif jpg webm mp4")  
+            ("formats", "jpeg png gif jpg webm mp4"),
         ])
         .send()
         .await?
