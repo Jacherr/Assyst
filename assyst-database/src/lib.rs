@@ -684,17 +684,25 @@ impl Database {
     pub async fn get_codesprint_best(
         &self,
         id: i32,
+        language: Option<i16>,
     ) -> Result<Vec<CodesprintPartialSubmission>, sqlx::Error> {
-        let query = r#"
+        let language = language
+            .map(|l| format!("AND language = {}", l))
+            .unwrap_or_else(String::new);
+
+        let query = format!(
+            r#"
         SELECT submissions.author, submissions.mean, challenge_languages.name AS language
         FROM submissions
         INNER JOIN challenge_languages ON submissions.language = challenge_languages.id
-        WHERE submissions.challenge_id = $1
+        WHERE submissions.challenge_id = $1 {}
         ORDER BY submissions.mean ASC
         LIMIT 10
-        "#;
+        "#,
+            language
+        );
 
-        sqlx::query_as(query).bind(id).fetch_all(&self.pool).await
+        sqlx::query_as(&query).bind(id).fetch_all(&self.pool).await
     }
 
     pub async fn add_codesprint_submission(
@@ -732,6 +740,52 @@ impl Database {
 
         sqlx::query_as(query)
             .bind(challenge_id)
+            .fetch_all(&self.pool)
+            .await
+    }
+
+    pub async fn get_codesprint_user_fastest(
+        &self,
+        challenge_id: i32,
+        user_id: i64,
+        language: i16,
+    ) -> Result<Option<CodesprintPartialSubmission>, sqlx::Error> {
+        let query = r#"
+        SELECT submissions.author, submissions.mean, challenge_languages.name AS language
+        FROM submissions
+        INNER JOIN challenge_languages ON submissions.language = challenge_languages.id
+        WHERE submissions.challenge_id = $1 AND submissions.author = $2 AND submissions.language = $3
+        "#;
+
+        let result = sqlx::query_as(query)
+            .bind(challenge_id)
+            .bind(user_id)
+            .bind(language)
+            .fetch_one(&self.pool)
+            .await;
+
+        match result {
+            Ok(v) => Ok(Some(v)),
+            Err(sqlx::Error::RowNotFound) => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub async fn get_codesprint_challenges(
+        &self,
+        start: i64,
+        limit: i64,
+    ) -> Result<Vec<CodesprintChallenge>, sqlx::Error> {
+        let query = r#"
+        SELECT * FROM challenges
+        WHERE id >= $1
+        ORDER BY id ASC
+        LIMIT $2
+        "#;
+
+        sqlx::query_as(query)
+            .bind(start)
+            .bind(limit)
             .fetch_all(&self.pool)
             .await
     }
