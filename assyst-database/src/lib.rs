@@ -114,6 +114,12 @@ pub struct CodesprintPartialSubmission {
     pub language: String,
 }
 
+#[derive(sqlx::FromRow, Debug)]
+pub struct CodesprintTest {
+    pub input: String,
+    pub expected: String,
+}
+
 type GuildDisabledCommands = Cache<GuildId, HashSet<String>>;
 
 pub struct DatabaseCache {
@@ -714,5 +720,19 @@ impl Database {
             .await?;
 
         Ok(())
+    }
+
+    pub async fn get_codesprint_tests(
+        &self,
+        challenge_id: i32,
+    ) -> Result<Vec<CodesprintTest>, sqlx::Error> {
+        let query = r#"
+        SELECT * FROM tests WHERE challenge_id = $1
+        "#;
+
+        sqlx::query_as(query)
+            .bind(challenge_id)
+            .fetch_all(&self.pool)
+            .await
     }
 }

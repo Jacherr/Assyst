@@ -8,7 +8,7 @@ use crate::{
     },
     rest::{
         self,
-        codesprint::{BenchmarkResponse, Language},
+        codesprint::{BenchmarkResponse, Language, Test},
     },
     util::{codeblock, download_content, nanos_to_readable},
 };
@@ -131,6 +131,15 @@ async fn run_submit_subcommand(
         .parse::<i32>()
         .map_err(|_| "Failed to parse challenge ID as an integer")?;
 
+    let tests = context
+        .assyst
+        .database
+        .get_codesprint_tests(id)
+        .await?
+        .into_iter()
+        .map(Test::from)
+        .collect::<Vec<_>>();
+
     let attachment = context.message.attachments.first().ok_or_else(|| {
         "No attachment provided. Make sure to attach the code you want to submit as an attachment."
     })?;
@@ -155,6 +164,7 @@ async fn run_submit_subcommand(
         language,
         &code,
         context.message.author.id.0,
+        tests,
     )
     .await?;
 
@@ -185,8 +195,11 @@ async fn run_submit_subcommand(
 
             context.reply_with_text(&message).await?;
         }
-        BenchmarkResponse::Error { stderr } => {
+        BenchmarkResponse::InvalidStatus { stderr } => {
             context.reply_with_text(&codeblock(&stderr, "rs")).await?;
+        }
+        BenchmarkResponse::TestFail => {
+            context.reply_with_text("A test case failed.").await?;
         }
     }
     Ok(())
