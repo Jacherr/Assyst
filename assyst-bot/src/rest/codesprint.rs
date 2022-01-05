@@ -8,15 +8,31 @@ pub enum Language {
 }
 
 #[derive(Serialize, Debug)]
+pub struct Test {
+    pub input: String,
+    pub expect: String,
+}
+
+impl From<assyst_database::CodesprintTest> for Test {
+    fn from(test: assyst_database::CodesprintTest) -> Self {
+        Self {
+            input: test.input,
+            expect: test.expected,
+        }
+    }
+}
+
+#[derive(Serialize, Debug)]
 pub struct BenchmarkBody {
     code: String,
-    input: String,
+    tests: Vec<Test>,
 }
 
 #[derive(Deserialize, Debug)]
 pub enum BenchmarkResponse {
     Success { mean: f64, iter: u64 },
-    Error { stderr: String },
+    InvalidStatus { stderr: String },
+    TestFail,
 }
 
 impl Language {
@@ -41,6 +57,7 @@ pub async fn benchmark(
     language: Language,
     code: &str,
     user_id: u64,
+    tests: Vec<Test>,
 ) -> Result<BenchmarkResponse, reqwest::Error> {
     let url = assyst.config.url.codesprint.as_ref();
     let auth = assyst.config.auth.codesprint.as_ref();
@@ -52,7 +69,7 @@ pub async fn benchmark(
         .post(url)
         .json(&BenchmarkBody {
             code: code.to_string(),
-            input: "testing".to_string(),
+            tests,
         })
         .header("Authorization", auth)
         .header("X-User-Id", &user_id.to_string())
