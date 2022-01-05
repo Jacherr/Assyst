@@ -30,19 +30,21 @@ lazy_static! {
         ]))
         .arg(Argument::Optional(Box::new(Argument::String))) // id
         .arg(Argument::Optional(Box::new(Argument::StringRemaining))) // optional codeblock for submit
-        .description("Code competitions")
+        .description("Code competitions. Run `-cs info` for more information.")
         .usage("[info|show|view|best|submit|list] <[challenge id]>")
         .example("info")
         .example("show 1")
         .example("view 1")
         .example("best 1")
+        .example("best 1 -language js")
         .example("submit 1 <file attachment with code>")
         .example("submit 1 -dry <file attachment with code>")
+        .example("submit 1 ```js code ```")
         .example("list")
         .build();
 }
 
-const SUPPORTED_LANGUAGES: &[&str] = &["Rust 1.59 (nightly)", "JavaScript"];
+const SUPPORTED_LANGUAGES: &[&str] = &["Rust 1.59 (nightly)", "JavaScript (V8 9.5)"];
 
 async fn run_info_subcommand(
     context: Arc<Context>,
@@ -63,6 +65,20 @@ Compete for the fastest solutions to programming challenges.
 **Rules**
 This only works with some enforced rules.
 Do not memoize results in globals or hardcode return values. Your code should always do all of the work.
+Not following these rules can result in getting blacklisted from this command.
+
+**JavaScript**
+Your code is parsed as a function (more accurately it is parsed as `Function('input', code)`).
+You can refer to `input` in your code to get the input and you need to return your result. Example:
+```js
+// some computation based on `input`
+return input.length;
+```
+At the moment this does not use Node.js, so you cannot use anything from Node.js.
+
+**Rust**
+Your code needs to have a function of signature `fn run(s: &str) -> i64 {}`.
+Your code is compiled with the latest nightly version, so you can use all of its features.
 
 **Available languages**
 If you would like to have support for a language not listed, message one of the devs.
