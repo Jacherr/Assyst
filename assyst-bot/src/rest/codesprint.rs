@@ -2,9 +2,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::assyst::Assyst;
 
+use super::routes;
+
 #[derive(Debug, Clone, Copy)]
 pub enum Language {
     Rust,
+    JavaScript,
 }
 
 #[derive(Serialize, Debug)]
@@ -40,6 +43,7 @@ impl Language {
     pub fn from_ext(s: &str) -> Option<Self> {
         match s {
             "rs" | "rust" => Some(Self::Rust),
+            "js" | "javascript" => Some(Self::JavaScript),
             _ => None,
         }
     }
@@ -48,6 +52,17 @@ impl Language {
     pub fn to_database_id(&self) -> i16 {
         match self {
             Self::Rust => 1,
+            Self::JavaScript => 2,
+        }
+    }
+
+    pub fn to_request_pair<'a>(&self, assyst: &'a Assyst) -> (String, Option<&'a str>) {
+        match self {
+            Self::Rust => (
+                format!("{}/bench", assyst.config.url.codesprint.as_ref()),
+                Some(assyst.config.auth.codesprint.as_ref()),
+            ),
+            Self::JavaScript => (format!("{}?bench=true", routes::FAKE_EVAL), None),
         }
     }
 }
@@ -59,19 +74,18 @@ pub async fn benchmark(
     user_id: u64,
     tests: Vec<Test>,
 ) -> Result<BenchmarkResponse, reqwest::Error> {
-    let url = assyst.config.url.codesprint.as_ref();
-    let auth = assyst.config.auth.codesprint.as_ref();
+    let (url, auth) = language.to_request_pair(assyst);
 
-    let url = format!("{}/bench", url);
+    let mut re = assyst.reqwest_client.post(url).json(&BenchmarkBody {
+        code: code.to_string(),
+        tests,
+    });
 
-    let re = assyst
-        .reqwest_client
-        .post(url)
-        .json(&BenchmarkBody {
-            code: code.to_string(),
-            tests,
-        })
-        .header("Authorization", auth)
+    if let Some(auth) = auth {
+        re = re.header("Authorization", auth);
+    }
+
+    let re = re
         .header("X-User-Id", &user_id.to_string())
         .send()
         .await?
