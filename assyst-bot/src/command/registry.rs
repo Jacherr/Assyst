@@ -1,6 +1,6 @@
 use super::command::{Command, ParsedArgument, ParsedCommand, ParsedFlags};
 use super::{
-    categories::{fun::*, image_wsi::*, image_annmarie::*, misc::*},
+    categories::{codesprint::*, fun::*, image_annmarie::*, image_wsi::*, misc::*},
     command::CommandAvailability,
 };
 use crate::command::context::Context;
@@ -199,5 +199,6 @@ impl CommandRegistry {
         register_command!(self, QUOTE_COMMAND, run_quote_command);
         register_command!(self, RANDOMIZE_COMMAND, run_randomize_command);
         register_command!(self, TOWAV_COMMAND, run_towav_command);
+        register_command!(self, CODESPRINT_COMMAND, run_codesprint_command);
     }
 }

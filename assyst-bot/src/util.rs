@@ -184,6 +184,20 @@ pub fn parse_codeblock<'a>(text: &'a str, lang: &str) -> &'a str {
     }
 }
 
+/// Parses a codeblock and its language
+pub fn parse_codeblock_with_language(text: &str) -> Option<(&str, &str)> {
+    let text = text.trim();
+
+    let stripped = text.strip_prefix("```")?;
+
+    let lang_end = stripped.chars().position(|x| !x.is_ascii_alphabetic())?;
+
+    let lang = &stripped[..lang_end];
+    let code = stripped.get(lang_end + 1..)?.strip_suffix("```")?;
+
+    Some((lang, code))
+}
+
 /// Attempts to extract memory usage
 ///
 /// Note: this requires the process to run as a systemd service
@@ -465,5 +479,18 @@ pub async fn get_wsi_request_tier(assyst: &Assyst, user_id: UserId) -> Result<us
         Ok(1)
     } else {
         Ok(0)
+    }
+}
+
+/// Formats a number of nanoseconds to a humanly readable string
+pub fn nanos_to_readable(time: u32) -> String {
+    if time < 1_000 {
+        return format!("{}ns", time);
+    } else if time < 1_000_000 {
+        return format!("{:.2}µs", (time as f64) / 1_000f64);
+    } else if time < 1_000_000_000 {
+        return format!("{:.2}ms", (time as f64) / 1_000_000f64);
+    } else {
+        return format!("{:.2}s", (time as f64) / 1_000_000_000f64);
     }
 }
