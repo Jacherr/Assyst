@@ -162,8 +162,8 @@ impl Assyst {
     }
 
     /// Add a guild to cached guild list
-    pub async fn add_guild_to_list(&self, guild: u64) {
-        self.guilds.lock().await.insert(guild);
+    pub async fn add_guild_to_list(&self, guild: u64) -> bool {
+        self.guilds.lock().await.insert(guild)
     }
 
     /// Checks if guild is in cached guild list

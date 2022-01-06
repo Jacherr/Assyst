@@ -48,9 +48,18 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
             }
         }
         Event::Ready(r) => {
+            let mut new_guilds = 0;
             for guild in &r.guilds {
-                assyst.add_guild_to_list(guild.id.0).await;
+                if assyst.add_guild_to_list(guild.id.0).await {
+                    // count the number of new unique guilds,
+                    // so we can add a number of guilds to the metrics in one call
+                    // (one atomic store instead of a lot of them)
+                    new_guilds += 1;
+                }
             }
+
+            assyst.metrics.add_guilds(new_guilds);
+
             assyst
                 .logger
                 .info(
