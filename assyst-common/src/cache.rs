@@ -17,8 +17,8 @@ impl<T: Hash + Eq + Clone, U> Cache<T, U> {
     }
 
     pub fn insert(&mut self, key: T, value: U) {
-        let limit = self.limit.clone();
-        let len = self.cache.len().clone();
+        let limit = self.limit;
+        let len = self.cache.len();
 
         if len == limit {
             let fst = self.cache.iter().next().unwrap().0.clone();

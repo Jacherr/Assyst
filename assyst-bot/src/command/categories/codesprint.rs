@@ -86,7 +86,7 @@ If you would like to have support for a language not listed, message one of the 
     );
     message += &languages;
 
-    context.reply_with_text(&message).await?;
+    context.reply_with_text(message).await?;
     Ok(())
 }
 
@@ -113,7 +113,7 @@ async fn run_show_subcommand(
         challenge.id, challenge.name, challenge.author, challenge.description
     );
 
-    context.reply_with_text(&message).await?;
+    context.reply_with_text(message).await?;
     Ok(())
 }
 
@@ -152,7 +152,7 @@ async fn run_best_subcommand(
         )?;
     }
 
-    context.reply_with_text(&message).await?;
+    context.reply_with_text(message).await?;
     Ok(())
 }
 
@@ -276,10 +276,10 @@ async fn run_submit_subcommand(
                     .await?;
             }
 
-            context.reply_with_text(&message).await?;
+            context.reply_with_text(message).await?;
         }
         BenchmarkResponse::InvalidStatus { stderr } => {
-            context.reply_with_text(&codeblock(&stderr, "rs")).await?;
+            context.reply_with_text(codeblock(&stderr, "rs")).await?;
         }
         BenchmarkResponse::TestFail => {
             context.reply_with_text("Some test cases failed.").await?;
@@ -317,7 +317,7 @@ async fn run_list_subcommand(
 
     message.push_str("\nRun `-cs show 1` to view a challenge");
 
-    context.reply_with_text(&message).await?;
+    context.reply_with_text(message).await?;
 
     Ok(())
 }

@@ -95,9 +95,13 @@ async fn main() {
         }));
     }
 
+    if assyst.badtranslator.should_fetch().await {
+        assyst.initialize_bt().await;
+    }
+
     // Event loop
     while let Some((_, event)) = events.next().await {
-        assyst.metrics.write().await.processing.add_event();
+        assyst.metrics.add_event();
         let assyst_clone = assyst.clone();
         tokio::spawn(async move {
             handle_event(assyst_clone, event).await;

@@ -115,7 +115,7 @@ pub async fn finish_request(
 }
 
 pub async fn request_bytes(
-    assyst: Arc<Assyst>,
+    assyst: &Assyst,
     route: &str,
     image: Bytes,
     query: &[(&str, &str)],
@@ -144,7 +144,7 @@ pub async fn request_bytes(
 }
 
 pub async fn randomize(
-    assyst: Arc<Assyst>,
+    assyst: &Assyst,
     image: Bytes,
     user_id: UserId,
     acceptable_routes: &mut Vec<&'static str>,
@@ -204,7 +204,7 @@ pub async fn billboard(
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
     request_bytes(
-        assyst,
+        &assyst,
         routes::MAKESWEET,
         image,
         &[("template", "billboard-cityscape")],
@@ -218,7 +218,7 @@ pub async fn card(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::CARD, image, &[], user_id).await
+    request_bytes(&assyst, routes::CARD, image, &[], user_id).await
 }
 
 pub async fn circuitboard(
@@ -227,7 +227,7 @@ pub async fn circuitboard(
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
     request_bytes(
-        assyst,
+        &assyst,
         routes::MAKESWEET,
         image,
         &[("template", "circuitboard")],
@@ -241,7 +241,7 @@ pub async fn drip(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::DRIP, image, &[], user_id).await
+    request_bytes(&assyst, routes::DRIP, image, &[], user_id).await
 }
 
 pub async fn fisheye(
@@ -249,7 +249,7 @@ pub async fn fisheye(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::FISHEYE, image, &[], user_id).await
+    request_bytes(&assyst, routes::FISHEYE, image, &[], user_id).await
 }
 
 pub async fn flag(
@@ -258,7 +258,7 @@ pub async fn flag(
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
     request_bytes(
-        assyst,
+        &assyst,
         routes::MAKESWEET,
         image,
         &[("template", "flag")],
@@ -272,7 +272,7 @@ pub async fn femurbreaker(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::FEMURBREAKER, image, &[], user_id).await
+    request_bytes(&assyst, routes::FEMURBREAKER, image, &[], user_id).await
 }
 
 pub async fn fringe(
@@ -280,7 +280,7 @@ pub async fn fringe(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::FRINGE, image, &[], user_id).await
+    request_bytes(&assyst, routes::FRINGE, image, &[], user_id).await
 }
 
 pub async fn f_shift(
@@ -288,7 +288,7 @@ pub async fn f_shift(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::F_SHIFT, image, &[], user_id).await
+    request_bytes(&assyst, routes::F_SHIFT, image, &[], user_id).await
 }
 
 pub async fn globe(
@@ -296,7 +296,7 @@ pub async fn globe(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::GLOBE, image, &[], user_id).await
+    request_bytes(&assyst, routes::GLOBE, image, &[], user_id).await
 }
 
 pub async fn info(assyst: Arc<Assyst>) -> Result<AnnmarieInfo, RequestError> {
@@ -330,7 +330,7 @@ pub async fn neon(
     user_id: UserId,
     radius: &str,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::NEON, image, &[("radius", radius)], user_id).await
+    request_bytes(&assyst, routes::NEON, image, &[("radius", radius)], user_id).await
 }
 
 pub async fn paint(
@@ -338,7 +338,7 @@ pub async fn paint(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::PAINT, image, &[], user_id).await
+    request_bytes(&assyst, routes::PAINT, image, &[], user_id).await
 }
 
 pub async fn siren(
@@ -346,7 +346,7 @@ pub async fn siren(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::SIREN, image, &[], user_id).await
+    request_bytes(&assyst, routes::SIREN, image, &[], user_id).await
 }
 
 pub async fn sketch(
@@ -354,7 +354,7 @@ pub async fn sketch(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::SKETCH, image, &[], user_id).await
+    request_bytes(&assyst, routes::SKETCH, image, &[], user_id).await
 }
 
 pub async fn sweden(
@@ -362,7 +362,7 @@ pub async fn sweden(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(assyst, routes::SWEDEN, image, &[], user_id).await
+    request_bytes(&assyst, routes::SWEDEN, image, &[], user_id).await
 }
 
 pub async fn zoom_blur(
@@ -372,7 +372,7 @@ pub async fn zoom_blur(
     power: &str,
 ) -> Result<Bytes, RequestError> {
     request_bytes(
-        assyst,
+        &assyst,
         routes::ZOOM_BLUR,
         image,
         &[("power", power)],

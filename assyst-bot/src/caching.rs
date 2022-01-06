@@ -63,7 +63,7 @@ impl GuildRatelimits {
         }
     }
     pub fn get_command_expiry(&self, command: &str) -> Option<&u64> {
-        self.cache.get(&box_str!(command))
+        self.cache.get(command)
     }
     pub fn set_command_expiry(&mut self, command: &str, expiry: u64) -> () {
         self.cache.insert(box_str!(command), expiry);
@@ -108,6 +108,7 @@ impl Replies {
         self.cache.len()
     }
 }
+
 pub struct Reply {
     invocation: Arc<Message>,
     pub reply: Option<Arc<Message>>,

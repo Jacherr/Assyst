@@ -14,11 +14,11 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
             message_update::handle(assyst, message).await;
         }
         Event::GuildCreate(guild) => {
-            if !guild.unavailable {
-                assyst.metrics.read().await.processing.add_guild();
-            }
-
             if !assyst.guild_in_list(guild.id.0).await {
+                if !guild.unavailable {
+                    assyst.metrics.add_guild();
+                }
+
                 assyst
                     .logger
                     .guild_add(
@@ -34,8 +34,10 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
             }
         }
         Event::GuildDelete(guild) => {
-            if !guild.unavailable && guild.id.0 != 907706584791150622 /* always get this on startup, no idea */ {
-                assyst.metrics.read().await.processing.delete_guild();
+            if !guild.unavailable && guild.id.0 != 907706584791150622
+            /* always get this on startup, no idea */
+            {
+                assyst.metrics.delete_guild();
 
                 assyst
                     .logger

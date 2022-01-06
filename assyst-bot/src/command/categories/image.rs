@@ -1247,7 +1247,7 @@ pub async fn run_image_info_command(
 
     let table = generate_list("Key", "Value", &table_entries);
 
-    context.reply_with_text(&codeblock(&table, "hs")).await?;
+    context.reply_with_text(codeblock(&table, "hs")).await?;
     Ok(())
 }
 
@@ -1410,7 +1410,7 @@ pub async fn run_ocr_command(
     if result.is_empty() {
         result = "No text detected".to_owned()
     };
-    context.reply_with_text(&codeblock(&result, "")).await?;
+    context.reply_with_text(codeblock(&result, "")).await?;
     Ok(())
 }
 
@@ -1839,7 +1839,7 @@ pub async fn run_identify_command(
         .unwrap_or_else(|| String::from(consts::IDENTIFY_ERROR_MESSAGE));
 
     context
-        .reply_with_text(&caption)
+        .reply_with_text(caption)
         .await
         .map_err(|e| e.to_string())?;
 

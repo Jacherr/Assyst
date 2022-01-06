@@ -456,11 +456,6 @@ pub fn bytes_to_readable(bytes: usize) -> String {
     }
 }
 
-/// Promotes the lifetime of a string to a static string by leaking memory
-pub fn to_static_str(s: &Box<str>) -> &'static mut str {
-    Box::leak(s.clone())
-}
-
 /// This function will remove a free voter request if the user has any
 /// and are not a patron!
 pub async fn get_wsi_request_tier(assyst: &Assyst, user_id: UserId) -> Result<usize, sqlx::Error> {

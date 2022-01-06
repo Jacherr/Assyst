@@ -5,8 +5,8 @@ use crate::{
 };
 use assyst_common::bt::{BadTranslatorEntry, ChannelCache};
 use reqwest::StatusCode;
+use std::collections::HashMap;
 use std::{borrow::Cow, time::Duration};
-use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
 use twilight_http::error::ErrorType;
 use twilight_model::gateway::payload::MessageCreate;
@@ -106,7 +106,7 @@ impl BadTranslator {
 
     pub async fn get_or_fetch_entry(
         &self,
-        assyst: &Arc<Assyst>,
+        assyst: &Assyst,
         id: &ChannelId,
     ) -> Option<(Webhook, Box<str>)> {
         {
@@ -140,7 +140,7 @@ impl BadTranslator {
         self.channels.write().await.remove(&id);
     }
 
-    pub async fn delete_bt_channel(&self, assyst: &Arc<Assyst>, id: &ChannelId) {
+    pub async fn delete_bt_channel(&self, assyst: &Assyst, id: &ChannelId) {
         match assyst.database.delete_bt_channel(id.0).await {
             Err(e) => eprintln!("Deleting BT channel failed: {:?}", e),
             _ => {}
@@ -169,7 +169,7 @@ impl BadTranslator {
         false
     }
 
-    pub async fn handle_message(&self, assyst: &Arc<Assyst>, message: Box<MessageCreate>) {
+    pub async fn handle_message(&self, assyst: &Assyst, message: Box<MessageCreate>) {
         // We're assuming the caller has already made sure this is a valid channel
         // So we don't check if it's a BT channel again
 
@@ -283,7 +283,7 @@ impl BadTranslator {
 
         // Increase metrics counter for this guild
         let guild_id = guild.0;
-        let _ = register_badtranslated_message_to_db(assyst.clone(), guild_id)
+        let _ = register_badtranslated_message_to_db(&assyst, guild_id)
             .await
             .map_err(|e| {
                 eprintln!(
@@ -296,7 +296,7 @@ impl BadTranslator {
 }
 
 async fn register_badtranslated_message_to_db(
-    assyst: Arc<Assyst>,
+    assyst: &Assyst,
     guild_id: u64,
 ) -> Result<(), sqlx::Error> {
     assyst

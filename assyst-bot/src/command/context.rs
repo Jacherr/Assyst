@@ -52,22 +52,27 @@ impl Context {
         message_builder: MessageBuilder,
     ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
         let mut reply_lock = self.reply.lock().await;
+
         if !reply_lock.has_replied() {
             let result = self.create_new_message(message_builder).await?;
             reply_lock.set_reply(result.clone());
             Ok(result)
         } else {
             let reply = reply_lock.reply.as_ref().unwrap();
+
             if reply.attachments.len() > 0 || message_builder.attachment.is_some() {
                 self.http()
                     .delete_message(reply.channel_id, reply.id)
                     .await?;
+
                 let result = self.create_new_message(message_builder).await?;
                 reply_lock.set_reply(result.clone());
+
                 Ok(result)
             } else {
-                let result = self.edit_message(reply.id, message_builder).await?;
+                let result = self.edit_message(reply.id, message_builder).await.unwrap();
                 reply_lock.set_reply(result.clone());
+
                 Ok(result)
             }
         }
@@ -94,42 +99,48 @@ impl Context {
         &self,
         format: &str,
         buffer: Bytes,
-        text: Option<&str>,
+        text: Option<String>,
     ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
         let mut builder = MessageBuilder::new();
-        let real_format = format.split("/").nth(1).unwrap();
+        let real_format = format.split("/").nth(1).ok_or_else(|| "Invalid format")?;
 
         if let Some(text) = text {
-            let text = if text.len() == 0 {
-                "[Empty Response]"
+            let text = if text.is_empty() {
+                String::from("[Empty Response]")
             } else {
                 text
             };
-            builder = builder.content(text);
+
+            builder = builder.content(text.into_boxed_str());
         }
 
         if buffer.len() > consts::WORKING_FILESIZE_LIMIT_BYTES {
             let url =
-                crate::rest::upload_to_filer(&self.assyst.reqwest_client, buffer, format).await?;
-            let builder = builder.content(&url);
+                crate::rest::upload_to_filer(&self.assyst.reqwest_client, buffer, &format).await?;
+            let builder = builder.content(url.into_boxed_str());
             self.reply(builder).await
         } else {
-            let builder =
-                builder.attachment(&format!("attachment.{}", real_format), buffer.to_vec());
+            let builder = builder.attachment(
+                format!("attachment.{}", real_format).into_boxed_str(),
+                buffer.to_vec(),
+            );
             self.reply(builder).await
         }
     }
 
-    pub async fn reply_with_text(
+    pub async fn reply_with_text<S: Into<String>>(
         &self,
-        text: &str,
+        text: S,
     ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
-        let checked_text = if text.len() == 0 {
-            "[Empty Response]"
+        let text: String = text.into();
+
+        let checked_text = if text.is_empty() {
+            String::from("[Empty Response]")
         } else {
             text
         };
-        let builder = MessageBuilder::new().content(checked_text);
+
+        let builder = MessageBuilder::new().content(checked_text.into_boxed_str());
         self.reply(builder).await
     }
 
@@ -144,7 +155,7 @@ impl Context {
             .allowed_mentions(AllowedMentions::default());
 
         if let Some(attachment) = message_builder.attachment {
-            create_message = create_message.files([(attachment.name, attachment.data.to_vec())]);
+            create_message = create_message.files([(attachment.name, attachment.data)]);
         };
         if let Some(content) = message_builder.content {
             create_message = create_message.content(
@@ -157,7 +168,8 @@ impl Context {
         if let Some(embed) = message_builder.embed {
             create_message = create_message.embeds([embed])?;
         };
-        let result = Arc::new(create_message.await?);
+        let message = create_message.await?;
+        let result = Arc::new(message);
         Ok(result)
     }
 
@@ -188,16 +200,14 @@ impl Context {
         Ok(result)
     }
 
-    pub async fn reply_err(
+    pub async fn reply_err<S: Into<String>>(
         &self,
-        content: &str,
+        content: S,
     ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
-        self.reply(
-            MessageBuilder::new()
-                .content(&format!(":warning: `{}`", content.replace("`", "'")))
-                .clone(),
-        )
-        .await
+        let content = format!(":warning: `{}`", content.into().replace("`", "'"));
+
+        self.reply(MessageBuilder::new().content(content.into_boxed_str()))
+            .await
     }
 
     pub fn author_id(&self) -> UserId {

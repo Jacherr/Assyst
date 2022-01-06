@@ -546,7 +546,7 @@ pub async fn run_randomize_command(
     mut flags: ParsedFlags,
 ) -> CommandResult {
     async fn inner_randomize(
-        assyst: Arc<Assyst>,
+        assyst: &Assyst,
         image: Bytes,
         user_id: UserId,
         wsi_routes: &mut Vec<&'static str>,
@@ -621,7 +621,7 @@ pub async fn run_randomize_command(
         let old_image = image.take().unwrap();
 
         let resp = inner_randomize(
-            Arc::clone(&context.assyst),
+            &context.assyst,
             old_image.clone(),
             context.author_id(),
             &mut wsi_routes,
@@ -662,7 +662,7 @@ pub async fn run_randomize_command(
     let format = get_buffer_filetype(&image).unwrap_or("png");
 
     context
-        .reply_with_image_and_text(&format!("image/{}", format), image, Some(&content))
+        .reply_with_image_and_text(&format!("image/{}", format), image, Some(content))
         .await
         .map(|_| ())
 }
@@ -968,7 +968,7 @@ pub async fn run_image_info_command(
 
     let table = generate_list("Key", "Value", &table_entries);
 
-    context.reply_with_text(&codeblock(&table, "hs")).await?;
+    context.reply_with_text(codeblock(&table, "hs")).await?;
     Ok(())
 }
 
@@ -1109,13 +1109,13 @@ pub async fn run_ocr_command(
     _flags: ParsedFlags,
 ) -> CommandResult {
     let image = args[0].as_text();
-    let mut result = rest::ocr_image(&context.assyst.reqwest_client, image)
-        .await
-        .map_err(|e| e.to_string())?;
+    let mut result = rest::ocr_image(&context.assyst.reqwest_client, image).await?;
+
     if result.is_empty() {
         result = "No text detected".to_owned()
     };
-    context.reply_with_text(&codeblock(&result, "")).await?;
+
+    context.reply_with_text(codeblock(&result, "")).await?;
     Ok(())
 }
 
@@ -1512,7 +1512,7 @@ pub async fn run_identify_command(
         .unwrap_or_else(|| String::from(consts::IDENTIFY_ERROR_MESSAGE));
 
     context
-        .reply_with_text(&caption)
+        .reply_with_text(caption)
         .await
         .map_err(|e| e.to_string())?;
 
