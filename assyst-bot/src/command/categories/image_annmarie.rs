@@ -270,7 +270,7 @@ pub async fn run_annmarie_command(
     let endpoint = args[1].as_text();
     context.reply_with_text("processing...").await?;
     let result = annmarie::request_bytes(
-        context.assyst.clone(),
+        &context.assyst,
         &format!("/{}", endpoint),
         image,
         &[],

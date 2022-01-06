@@ -65,7 +65,10 @@ lazy_static! {
         .build();
     pub static ref RULE34_COMMAND: Command = CommandBuilder::new("rule34")
         .alias("r34")
-        .arg(Argument::OptionalWithDefault(Box::new(Argument::StringRemaining), ""))
+        .arg(Argument::OptionalWithDefault(
+            Box::new(Argument::StringRemaining),
+            ""
+        ))
         .public()
         .description("search rule34.xxx with tags")
         .example("anime")
@@ -115,7 +118,7 @@ pub async fn run_bt_command(
         .map_err(|e| e.to_string())?;
 
     let output = format!("**Output**\n{}", translated.result.text);
-    context.reply_with_text(&output).await?;
+    context.reply_with_text(output).await?;
     Ok(())
 }
 
@@ -159,7 +162,7 @@ pub async fn run_btdebug_command(
         "**Output**\n{}\n\n**Language Chain**\n{}",
         translated.result.text, chain
     );
-    context.reply_with_text(&output).await?;
+    context.reply_with_text(output).await?;
     Ok(())
 }
 
@@ -180,9 +183,7 @@ pub async fn run_ocrbt_command(
     _flags: ParsedFlags,
 ) -> CommandResult {
     let image = args[0].as_text();
-    let result = rest::ocr_image(&context.assyst.reqwest_client, image)
-        .await
-        .map_err(|e| e.to_string())?;
+    let result = rest::ocr_image(&context.assyst.reqwest_client, image).await?;
     if result.is_empty() {
         return Err("No text detected".into());
     };
@@ -192,7 +193,7 @@ pub async fn run_ocrbt_command(
         .map_err(|e| e.to_string())?;
 
     context
-        .reply_with_text(&codeblock(&translated.result.text, ""))
+        .reply_with_text(codeblock(&translated.result.text, ""))
         .await?;
     Ok(())
 }
@@ -205,9 +206,7 @@ pub async fn run_ocrtr_command(
     let lang = args[0].as_text();
     let image = args[1].as_text();
 
-    let result = rest::ocr_image(&context.assyst.reqwest_client, image)
-        .await
-        .map_err(|e| e.to_string())?;
+    let result = rest::ocr_image(&context.assyst.reqwest_client, image).await?;
     if result.is_empty() {
         return Err("No text detected".into());
     };
@@ -217,7 +216,7 @@ pub async fn run_ocrtr_command(
         .map_err(|e| e.to_string())?;
 
     context
-        .reply_with_text(&codeblock(&translated.result.text, ""))
+        .reply_with_text(codeblock(&translated.result.text, ""))
         .await?;
     Ok(())
 }
@@ -228,8 +227,7 @@ pub async fn run_rule34_command(
     _flags: ParsedFlags,
 ) -> CommandResult {
     let query = args[0].as_text();
-    let result = rest::get_random_rule34(context.assyst.clone(), query)
-        .await?;
+    let result = rest::get_random_rule34(&context.assyst, query).await?;
 
     let result = if result.len() == 0 {
         "No results found".to_string()
@@ -238,8 +236,7 @@ pub async fn run_rule34_command(
         format!("**Score: {}**\n{}", first.score, first.url)
     };
 
-    context.reply_with_text(&result).await?;
-
+    context.reply_with_text(result).await?;
     Ok(())
 }
 
@@ -310,7 +307,9 @@ pub async fn run_color_command(
                 }
 
                 for role in guild_roles {
-                    let is_color_role = consts::DEFAULT_COLORS.iter().any(|(name, _)| role.name.eq(name));
+                    let is_color_role = consts::DEFAULT_COLORS
+                        .iter()
+                        .any(|(name, _)| role.name.eq(name));
 
                     if is_color_role {
                         roles.push((role.name, role.id.0 as i64));
@@ -326,7 +325,7 @@ pub async fn run_color_command(
                     .await?;
 
                 context
-                    .reply_with_text(&format!(
+                    .reply_with_text(format!(
                         "Successfully created {} new color roles",
                         new_roles
                     ))
@@ -393,7 +392,7 @@ pub async fn run_color_command(
                 .await?;
 
             context
-                .reply_with_text(&format!("Gave you the color role {}", name))
+                .reply_with_text(format!("Gave you the color role {}", name))
                 .await?;
         }
         None => {
@@ -417,7 +416,7 @@ pub async fn run_color_command(
                 context.prefix
             ));
 
-            context.reply_with_text(&content).await?;
+            context.reply_with_text(content).await?;
         }
     };
 

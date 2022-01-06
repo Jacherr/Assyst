@@ -24,7 +24,10 @@ use reqwest::Client as ReqwestClient;
 use std::{
     borrow::{Borrow, Cow},
     collections::{HashMap, HashSet},
-    sync::Arc,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
     time::Instant,
 };
 use tokio::sync::{Mutex, RwLock};
@@ -108,13 +111,13 @@ pub struct Assyst {
     pub database: Arc<Database>,
     pub http: HttpClient,
     pub logger: Logger,
-    pub metrics: RwLock<GlobalMetrics>,
+    pub metrics: GlobalMetrics,
     pub patrons: RwLock<Vec<Patron>>,
     pub registry: CommandRegistry,
     pub replies: RwLock<Replies>,
     pub reqwest_client: ReqwestClient,
     pub started_at: u64,
-    pub commands_executed: Mutex<u64>,
+    pub commands_executed: AtomicU64,
 }
 impl Assyst {
     /// Create a new Assyst instance from a token. This method does NOT
@@ -143,17 +146,17 @@ impl Assyst {
             database,
             http,
             logger: Logger,
-            metrics: RwLock::new(GlobalMetrics::new().expect("Failed to create metric registry")),
+            metrics: GlobalMetrics::new().expect("Failed to create metric registry"),
             patrons: RwLock::new(vec![]),
             registry: CommandRegistry::new(),
             replies: RwLock::new(Replies::new()),
             reqwest_client,
             started_at: get_current_millis(),
-            commands_executed: Mutex::new(0),
+            commands_executed: AtomicU64::new(0),
         };
         if assyst.config.disable_bad_translator {
             assyst.badtranslator.disable().await
-        };
+        }
         assyst.registry.register_commands();
         assyst
     }
@@ -171,14 +174,6 @@ impl Assyst {
     /// Remove a guild from cached guild list
     pub async fn remove_guild_from_list(&self, guild: u64) {
         self.guilds.lock().await.remove(&guild);
-    }
-
-    /// Set the cluster instance that this instance of Assyst receives its events from.
-    ///
-    /// We can't do this in the constructor because it is impossible to have an initialized cluster
-    /// when the instance of Assyst is constructed.
-    pub fn set_cluster(&mut self, cluster: Cluster) {
-        self.cluster = Some(cluster);
     }
 
     /// Handle an incoming message from Discord.
@@ -215,7 +210,7 @@ impl Assyst {
 
         // selecting correct prefix based on the configuration
         // a.k.a prefix override, normal prefix, mention prefix?
-        if self.config.prefix.r#override.len() == 0 {
+        if self.config.prefix.r#override.is_empty() {
             let mention_prefix = message_mention_prefix(&message.content);
 
             match mention_prefix {
@@ -246,9 +241,9 @@ impl Assyst {
             prefix = Cow::Borrowed(&self.config.prefix.r#override);
         };
 
-        if !message.content.starts_with(prefix.borrow() as &str) {
+        if !message.content.starts_with(prefix.as_ref()) {
             return Ok(());
-        };
+        }
 
         // handling replies - set the source message for this command as the invocation
         // for this reply
@@ -289,7 +284,7 @@ impl Assyst {
             self.clone(),
             message.clone(),
             metrics,
-            String::from(display_prefix.clone()),
+            String::from(display_prefix),
             reply.clone(),
         ));
 
@@ -307,20 +302,21 @@ impl Assyst {
             Err(e) => {
                 if e.should_reply {
                     let err = match e.command {
-                        Some(c) => Cow::Owned(format!(
+                        Some(c) => format!(
                             "{}\nUsage: {}{} {}",
                             e.error, prefix, c.name, c.metadata.usage
-                        )),
-                        None => Cow::Borrowed(&e.error),
+                        ),
+                        None => e.error,
                     };
-                    context.reply_err(&err).await.map_err(|e| e.to_string())?;
+
+                    context.reply_err(err).await.map_err(|e| e.to_string())?;
                 }
                 reply.lock().await.in_use = false;
                 return Ok(());
             }
         };
 
-        let command_instance = &self.registry.commands.get(command.calling_name).unwrap();
+        let command_instance = self.registry.commands.get(command.calling_name).unwrap();
 
         // checking if the command is disabled
         let is_guild_disabled = self
@@ -333,7 +329,7 @@ impl Assyst {
                 .await
                 .map_err(|e| e.to_string())?;
 
-            if owner != message.author.id && !self.user_is_admin(&context.author_id().0) {
+            if owner != message.author.id && !self.user_is_admin(context.author_id().0) {
                 return Ok(());
             };
         };
@@ -369,7 +365,7 @@ impl Assyst {
 
         let is_global_disabled = command_instance.disabled;
 
-        if is_global_disabled && !self.user_is_admin(&context.author_id().0) {
+        if is_global_disabled && !self.user_is_admin(context.author_id().0) {
             context
                 .reply_err("This command is globally disabled. :(")
                 .await
@@ -383,11 +379,12 @@ impl Assyst {
         let mut ratelimit_lock = self.command_ratelimits.write().await;
         let command_ratelimit = ratelimit_lock
             .time_until_guild_command_usable(message.guild_id.unwrap(), &command_instance.name);
+
         match command_ratelimit {
             Some(r) => {
                 reply.lock().await.in_use = false;
                 context
-                    .reply_err(&format!(
+                    .reply_err(format!(
                         "This command is on cooldown for {:.2} seconds.",
                         (r as f64 / 1000f64)
                     ))
@@ -400,29 +397,26 @@ impl Assyst {
         ratelimit_lock.set_command_expire_at(message.guild_id.unwrap(), &command_instance);
         drop(ratelimit_lock);
 
-        self.metrics.write().await.processing.add_command();
+        self.metrics.add_command();
         // run the command
         let command_result = self.registry.execute_command(command, context_clone).await;
 
-        self.metrics.write().await.processing.delete_command();
+        self.metrics.delete_command();
 
         reply.lock().await.in_use = false;
         if let Err(err) = command_result {
             let err_dsc = err.to_string().replace("\\n", "\n");
+
             context
-                .reply_err(&err_dsc)
+                .reply_err(err_dsc)
                 .await
                 .map_err(|e| e.to_string())?;
         };
 
         self.metrics
-            .write()
-            .await
-            .processing
-            .add(context.metrics.processing_time_start.elapsed().as_millis() as f64);
+            .add_processing_time(context.metrics.processing_time_start.elapsed().as_millis() as f64);
 
-        let mut lock = self.commands_executed.lock().await;
-        *lock += 1;
+        self.commands_executed.fetch_add(1, Ordering::Relaxed);
 
         Ok(())
     }
@@ -442,12 +436,11 @@ impl Assyst {
         prefix: &str,
     ) -> Result<Option<ParsedCommand>, CommandParseError<'_>> {
         // extract the command name
-        let command = get_command(&context.message.content, prefix).unwrap_or(String::new());
+        let mut command = get_command(&context.message.content, prefix).unwrap_or_else(String::new);
+        command.make_ascii_lowercase();
 
         // check if the command is actually valid
-        let try_command = self
-            .registry
-            .get_command_from_name_or_alias(&command.to_ascii_lowercase());
+        let try_command = self.registry.get_command_from_name_or_alias(&command);
 
         let command = match try_command {
             Some(c) => c,
@@ -471,7 +464,7 @@ impl Assyst {
         let context = Arc::new(context);
 
         // get all other arguments from the fake context we've just created
-        let args = get_raw_args(&context.message.content, prefix, 1).unwrap_or(Vec::new());
+        let args = get_raw_args(&context.message.content, prefix, 1).unwrap_or_else(Vec::new);
 
         let args_refs = args.iter().map(|x| x.as_str()).collect::<Vec<&str>>();
 
@@ -480,7 +473,7 @@ impl Assyst {
             CommandAvailability::Public => Ok(()), // everyone can run
             CommandAvailability::Private => {
                 // bot admins can run (config-defined)
-                if !self.user_is_admin(&context.author_id().0) {
+                if !self.user_is_admin(context.author_id().0) {
                     Err(CommandParseError::without_reply(
                         "Insufficient Permissions".to_owned(),
                         CommandParseErrorType::MissingPermissions,
@@ -498,7 +491,7 @@ impl Assyst {
                 .await
                 .map_err(|_| CommandParseError::permission_validator_failed())?;
 
-                let is_bot_admin = self.user_is_admin(&context.author_id().0);
+                let is_bot_admin = self.user_is_admin(context.author_id().0);
 
                 if is_manager || is_bot_admin {
                     Ok(())
@@ -701,9 +694,27 @@ impl Assyst {
         }
     }
 
+    pub async fn initialize_bt(&self) {
+        match self.database.get_bt_channels().await {
+            Ok(channels) => self.badtranslator.set_channels(channels).await,
+            Err(e) => {
+                self.logger
+                    .fatal(
+                        self,
+                        &format!(
+                            "Fetching BadTranslator channels failed, disabling feature... {:?}",
+                            e
+                        ),
+                    )
+                    .await;
+                self.badtranslator.disable().await;
+            }
+        }
+    }
+
     /// Get the average time to process commands in ms
     pub async fn get_average_processing_time(&self) -> f32 {
-        self.metrics.read().await.processing.avg()
+        self.metrics.avg_processing_time()
     }
 
     /// Get the [`Uptime`] of this instance of Assyst
@@ -711,7 +722,7 @@ impl Assyst {
         Uptime::new(get_current_millis() - self.started_at)
     }
 
-    pub fn user_is_admin(&self, id: &u64) -> bool {
-        self.config.user.admins.contains(id)
+    pub fn user_is_admin(&self, id: u64) -> bool {
+        self.config.user.admins.contains(&id)
     }
 }

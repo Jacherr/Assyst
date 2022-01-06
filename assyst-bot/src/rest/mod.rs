@@ -1,9 +1,11 @@
-use std::sync::Arc;
+use std::fmt::Display;
 
 use bytes::Bytes;
 use reqwest::{Client, ClientBuilder, Error};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+
+use std::error::Error as StdError;
 
 use crate::assyst::Assyst;
 
@@ -39,19 +41,22 @@ mod routes {
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum OcrError {
     NetworkError,
     HtmlResponse,
 }
 
-impl ToString for OcrError {
-    fn to_string(&self) -> String {
+impl Display for OcrError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::NetworkError => "An unknown network error occurred".to_string(),
-            Self::HtmlResponse => "Failed to parse response".to_string(),
+            OcrError::NetworkError => write!(f, "An unknown network error occurred"),
+            OcrError::HtmlResponse => write!(f, "Failed to parse response"),
         }
     }
 }
+
+impl StdError for OcrError {}
 
 #[derive(Serialize)]
 struct FakeEvalBody {
@@ -79,16 +84,17 @@ pub struct Rule34Result {
 }
 
 pub async fn ocr_image(client: &Client, url: &str) -> Result<String, OcrError> {
-    let text = client
-        .get(&format!("{}{}", routes::OCR, url))
+    let mut text = client
+        .get(format!("{}{}", routes::OCR, url))
         .send()
         .await
         .map_err(|_| OcrError::NetworkError)?
         .text()
         .await
         .map_err(|_| OcrError::NetworkError)?;
+    text.make_ascii_lowercase();
 
-    if text.to_ascii_lowercase().starts_with("<!doctype html>") {
+    if text.starts_with("<!doctype html>") {
         return Err(OcrError::HtmlResponse);
     }
 
@@ -204,7 +210,7 @@ pub async fn post_bot_stats(
     Ok(())
 }
 
-pub async fn convert_lottie_to_gif(assyst: Arc<Assyst>, lottie: &str) -> Result<Bytes, Error> {
+pub async fn convert_lottie_to_gif(assyst: &Assyst, lottie: &str) -> Result<Bytes, Error> {
     Ok(assyst
         .reqwest_client
         .post(&assyst.config.url.lottie_render.to_string())
@@ -220,10 +226,7 @@ pub async fn convert_lottie_to_gif(assyst: Arc<Assyst>, lottie: &str) -> Result<
         .await?)
 }
 
-pub async fn get_random_rule34(
-    assyst: Arc<Assyst>,
-    tags: &str,
-) -> Result<Vec<Rule34Result>, Error> {
+pub async fn get_random_rule34(assyst: &Assyst, tags: &str) -> Result<Vec<Rule34Result>, Error> {
     Ok(assyst
         .reqwest_client
         .get(&*assyst.config.url.rule34)

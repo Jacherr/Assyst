@@ -1,5 +1,8 @@
+use std::fmt::Display;
+
 use reqwest::{Client, Error as ReqwestError};
 use serde::Deserialize;
+use std::error::Error;
 
 const API_BASE: &str = "https://bt.y21.workers.dev";
 const MAX_ATTEMPTS: u8 = 5;
@@ -14,14 +17,16 @@ pub enum TranslateError {
     Raw(&'static str),
 }
 
-impl ToString for TranslateError {
-    fn to_string(&self) -> String {
+impl Display for TranslateError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Reqwest(_) => "A network error occurred".to_owned(),
-            Self::Raw(r) => r.to_string(),
+            TranslateError::Reqwest(_) => write!(f, "A network error occurred"),
+            TranslateError::Raw(s) => write!(f, "{}", s),
         }
     }
 }
+
+impl Error for TranslateError {}
 
 #[derive(Deserialize)]
 pub struct Translation {

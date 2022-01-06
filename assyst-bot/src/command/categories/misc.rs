@@ -5,7 +5,6 @@ use crate::{
             ParsedFlags,
         },
         context::Context,
-        messagebuilder::MessageBuilder,
         registry::CommandResult,
     },
     rest::{
@@ -30,7 +29,7 @@ use futures::TryFutureExt;
 use lazy_static::lazy_static;
 use std::{
     collections::HashMap,
-    sync::Arc,
+    sync::{atomic::Ordering, Arc},
     time::{Duration, Instant},
 };
 
@@ -233,24 +232,19 @@ pub async fn run_ping_command(
 ) -> CommandResult {
     let processing_time = context.metrics.processing_time_start.elapsed().as_micros();
     let start = Instant::now();
-    let message = context
-        .reply(MessageBuilder::new().content("pong!").clone())
-        .await
-        .map_err(|e| e.to_string())?;
+    let message = context.reply_with_text("pong!").await?;
 
     context
         .assyst
         .http
         .update_message(message.channel_id, message.id)
         .content(format!(
-            "pong!\nprocessing time: {}µs\nresponse time:{} ms",
+            "pong!\nprocessing time: {} µs\nresponse time: {} ms",
             processing_time,
             start.elapsed().as_millis()
-        ))
-        .map_err(|e| e.to_string())?
+        ))?
         .into_future()
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
     Ok(())
 }
 
@@ -259,7 +253,7 @@ pub async fn run_enlarge_command(
     args: Vec<ParsedArgument>,
     flags: ParsedFlags,
 ) -> CommandResult {
-    let image = args[0].clone().as_bytes();
+    let image = args[0].as_bytes();
     let url = flags.contains_key("url");
 
     if !url {
@@ -274,6 +268,7 @@ pub async fn run_enlarge_command(
         )
         .await
         .map_err(wsi::format_err)?;
+
         let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
         context.reply_with_image(format, result).await?;
     } else {
@@ -319,14 +314,13 @@ pub async fn run_help_command(
         });
 
         context
-            .reply_with_text(&format!(
+            .reply_with_text(format!(
                 "{}\n*Do {}help [command] for more info on a command.*\n{}",
                 &command_help_entries.join("\n"),
                 context.prefix,
                 USEFUL_LINKS_TEXT
             ))
-            .await
-            .map_err(|e| e.to_string())?;
+            .await?;
     } else {
         let command_name = args[0].as_text();
         let command = context
@@ -357,18 +351,18 @@ pub async fn run_help_command(
                 &format!("{} seconds", &*command.cooldown_seconds.to_string()),
             ),
         ]);
-        let help;
-        if command.metadata.examples.len() == 0 {
-            help = codeblock(
+
+        let help = if command.metadata.examples.is_empty() {
+            codeblock(
                 &format!(
                     "{}\nExamples:\n{}",
                     table,
                     format!("{}{}", context.prefix, &*command.name)
                 ),
                 "yaml",
-            );
+            )
         } else {
-            help = codeblock(
+            codeblock(
                 &format!(
                     "{}\nExamples:\n{}",
                     table,
@@ -381,12 +375,10 @@ pub async fn run_help_command(
                         .join("\n")
                 ),
                 "yaml",
-            );
-        }
-        context
-            .reply_with_text(&help)
-            .await
-            .map_err(|e| e.to_string())?;
+            )
+        };
+
+        context.reply_with_text(help).await?;
     }
     Ok(())
 }
@@ -396,10 +388,7 @@ pub async fn run_invite_command(
     _: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    context
-        .reply(MessageBuilder::new().content(USEFUL_LINKS_TEXT).clone())
-        .await
-        .map_err(|e| e.to_string())?;
+    context.reply_with_text(USEFUL_LINKS_TEXT).await?;
     Ok(())
 }
 
@@ -410,12 +399,9 @@ pub async fn run_prefix_command(
 ) -> CommandResult {
     let new_prefix = args[0].as_text();
     if new_prefix.len() > 14 {
-        context
-            .reply_err("Prefixes cannot be longer than 14 characters")
-            .map_err(|e| e.to_string())
-            .await?;
-        return Ok(());
+        return Err("Prefixes cannot be longer than 14 characters".into());
     };
+
     context
         .assyst
         .database
@@ -423,7 +409,7 @@ pub async fn run_prefix_command(
         .await
         .map_err(|e| e.to_string())?;
     context
-        .reply_with_text(&format!("Prefix set to {}", new_prefix))
+        .reply_with_text(format!("Prefix set to {}", new_prefix))
         .await?;
     Ok(())
 }
@@ -449,7 +435,7 @@ pub async fn run_stats_command(
     let memory = get_memory_usage().unwrap_or("Unknown".to_owned());
     let commands = context.assyst.registry.get_command_count().to_string();
     let proc_time = (context.assyst.get_average_processing_time().await / 1e3).to_string();
-    let events = context.assyst.metrics.read().await.processing.events.get();
+    let events = context.assyst.metrics.get_events();
 
     let total_command_calls = context
         .assyst
@@ -462,7 +448,8 @@ pub async fn run_stats_command(
 
     let uptime_minutes = context.assyst.uptime().0 as f32 / 1000f32 / 60f32;
     let commands_per_minute =
-        *context.assyst.commands_executed.lock().await as f32 / uptime_minutes;
+        context.assyst.commands_executed.load(Ordering::Relaxed) as f32 / uptime_minutes;
+    // *context.assyst.commands_executed.lock().await as f32 / uptime_minutes;
 
     let stats_table = generate_table(&[
         ("Guilds", &guild_count),
@@ -506,7 +493,7 @@ pub async fn run_stats_command(
     ]);
 
     context
-        .reply_with_text(&format!(
+        .reply_with_text(format!(
             "**Stats:** {} **Uptimes:** {}",
             codeblock(&stats_table, "hs"),
             codeblock(&uptimes_table, "hs")
@@ -530,8 +517,7 @@ pub async fn run_wsi_stats_command(
         response.current_requests, response.total_workers
     );
 
-    context.reply_with_text(&output).await?;
-
+    context.reply_with_text(output).await?;
     Ok(())
 }
 
@@ -555,10 +541,7 @@ pub async fn run_rust_command(
 
     let formatted = result.format();
 
-    context
-        .reply(MessageBuilder::new().content(&codeblock(formatted, "rs")))
-        .await?;
-
+    context.reply_with_text(codeblock(formatted, "rs")).await?;
     Ok(())
 }
 
@@ -597,7 +580,7 @@ pub async fn run_remind_command(
                 ":calendar: You have no set reminders.".to_owned()
             };
 
-            context.reply_with_text(&output).await.unwrap();
+            context.reply_with_text(output).await.unwrap();
             return Ok(());
         }
         "remove" | "delete" => {
@@ -666,7 +649,7 @@ pub async fn run_remind_command(
         .map_err(|e| e.to_string())?;
 
     context
-        .reply_with_text(&format!("Reminder set for {} from now", ftime))
+        .reply_with_text(format!("Reminder set for {} from now", ftime))
         .await?;
 
     Ok(())
@@ -699,7 +682,7 @@ pub async fn run_top_commands_command(
         let table = generate_list("Command", "Uses", &top_commands_formatted);
 
         context
-            .reply_with_text(&codeblock(&table, "hs"))
+            .reply_with_text(codeblock(&table, "hs"))
             .await
             .map_err(|e| e.to_string())?;
     } else {
@@ -720,7 +703,7 @@ pub async fn run_top_commands_command(
                 .map_err(|e| e.to_string())?;
 
             context
-                .reply_with_text(&format!(
+                .reply_with_text(format!(
                     "Command `{}` been used **{}** times.",
                     cmd_name, data.uses
                 ))
@@ -761,7 +744,7 @@ pub async fn run_top_bt_command(
     let table = generate_list("Guild ID", "Messages", &top_commands_formatted);
 
     context
-        .reply_with_text(&codeblock(&table, "hs"))
+        .reply_with_text(codeblock(&table, "hs"))
         .await
         .map_err(|e| e.to_string())?;
     Ok(())
@@ -864,7 +847,7 @@ pub async fn run_btchannel_command(
                 .await;
 
             context
-                .reply_with_text(&format!("BT Channel language set to `{}`", language))
+                .reply_with_text(format!("BT Channel language set to `{}`", language))
                 .await?
         }
         "remove" => {
@@ -906,7 +889,7 @@ pub async fn run_btchannel_command(
                 .map_err(|e| e.to_string())?;
 
             let message = codeblock(&generate_list("Code", "Language", &languages), "hs");
-            context.reply_with_text(&message).await?
+            context.reply_with_text(message).await?
         }
         _ => unreachable!(),
     };
@@ -935,7 +918,7 @@ pub async fn run_chars_command(
         output.push_str(&format!("`{}` — **{}** ({})\n", ch, title, url));
     }
 
-    context.reply_with_text(&output).await?;
+    context.reply_with_text(output).await?;
 
     Ok(())
 }
@@ -948,11 +931,9 @@ pub async fn run_translate_command(
     let lang = args[0].as_text();
     let text = args[1].as_text();
 
-    let translation = translate_single(&context.assyst.reqwest_client, text, lang)
-        .await
-        .map_err(|e| e.to_string())?;
+    let translation = translate_single(&context.assyst.reqwest_client, text, lang).await?;
 
-    context.reply_with_text(&translation.result.text).await?;
+    context.reply_with_text(translation.result.text).await?;
 
     Ok(())
 }
@@ -964,18 +945,14 @@ pub async fn run_fake_eval_command(
 ) -> CommandResult {
     let code = args[0].as_text();
 
-    let mut response = fake_eval(&context.assyst.reqwest_client, code)
-        .await
-        .map_err(|e| e.to_string())?;
+    let mut response = fake_eval(&context.assyst.reqwest_client, code).await?;
 
     if response.message.trim() == "42" {
-        response.message = "The answer to life, the universe, and everything".to_owned()
-    };
+        response.message = "The answer to life, the universe, and everything".to_owned();
+    }
 
     let codeblocked_input = codeblock(code, "js");
     let codeblocked_output = codeblock(&response.message, "js");
-
-    context.reply_with_text(&codeblocked_output).await?;
 
     context
         .assyst
@@ -988,6 +965,8 @@ pub async fn run_fake_eval_command(
             ),
         )
         .await;
+
+    context.reply_with_text(codeblocked_output).await?;
 
     Ok(())
 }
@@ -1008,7 +987,7 @@ pub async fn run_exec_command(
         output = format!("{}`stderr`: ```{}```", output, result.stderr);
     }
 
-    context.reply_with_text(&output).await?;
+    context.reply_with_text(output).await?;
 
     Ok(())
 }
@@ -1049,7 +1028,7 @@ pub async fn run_command_command(
                     .await
                     .map_err(|e| e.to_string())?;
                 context
-                    .reply_with_text(&format!("Disabled command: `{}`", cmd.name))
+                    .reply_with_text(format!("Disabled command: `{}`", cmd.name))
                     .await
                     .map_err(|e| e.to_string())?;
             } else {
@@ -1060,7 +1039,7 @@ pub async fn run_command_command(
                     .await
                     .map_err(|e| e.to_string())?;
                 context
-                    .reply_with_text(&format!("Enabled command: `{}`", cmd.name))
+                    .reply_with_text(format!("Enabled command: `{}`", cmd.name))
                     .await
                     .map_err(|e| e.to_string())?;
             };
@@ -1126,7 +1105,7 @@ pub async fn run_patron_status_command(
     }
 
     context
-        .reply_with_text(&format!("{}\n{}", patron_text, free_requests_text))
+        .reply_with_text(format!("{}\n{}", patron_text, free_requests_text))
         .await?;
 
     Ok(())
@@ -1140,7 +1119,7 @@ pub async fn run_cache_status_command(
     let replies_size = context.assyst.replies.read().await.size();
     let ratelimits_size = context.assyst.command_ratelimits.read().await.size();
     context
-        .reply_with_text(&format!(
+        .reply_with_text(format!(
             "Replies: {}\nRatelimits: {}",
             replies_size, ratelimits_size
         ))
@@ -1187,7 +1166,7 @@ pub async fn run_top_voters_command(
         codeblock(&table, "hs")
     );
 
-    context.reply_with_text(&response).await?;
+    context.reply_with_text(response).await?;
 
     Ok(())
 }

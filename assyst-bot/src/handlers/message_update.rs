@@ -7,7 +7,9 @@ pub async fn handle(assyst: Arc<Assyst>, message: Box<MessageUpdate>) -> () {
     if !should_handle_message(&message).await {
         return;
     };
-    let converted_message = convert_message_update_to_message(message.as_ref().clone());
+
+    let converted_message = convert_message_update_to_message(*message);
+
     match converted_message {
         Some(c) => {
             if let Err(e) = assyst.handle_command(c, true).await {
