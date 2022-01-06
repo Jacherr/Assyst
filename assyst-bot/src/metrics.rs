@@ -1,15 +1,15 @@
 use std::{collections::HashMap, sync::RwLock};
 
 use prometheus::{
-    register_counter, register_gauge, register_int_counter, Counter, Gauge, IntCounter,
+    register_counter, register_int_counter, register_int_gauge, Counter, IntCounter, IntGauge,
 };
 
 pub struct CountableMetrics {
     pub total_commands: IntCounter,
     pub total_processing_time: Counter,
     pub events: IntCounter,
-    pub guilds: Gauge,
-    pub current_commands: Gauge,
+    pub guilds: IntGauge,
+    pub current_commands: IntGauge,
 }
 
 impl CountableMetrics {
@@ -18,8 +18,8 @@ impl CountableMetrics {
             total_commands: register_int_counter!("commands", "Total number of commands executed")?,
             total_processing_time: register_counter!("processing_time", "Total processing time")?,
             events: register_int_counter!("events", "Total number of events")?,
-            guilds: register_gauge!("guilds", "Total guilds")?,
-            current_commands: register_gauge!(
+            guilds: register_int_gauge!("guilds", "Total guilds")?,
+            current_commands: register_int_gauge!(
                 "current_commands",
                 "Count of currently executing commands"
             )?,
@@ -93,7 +93,7 @@ impl GlobalMetrics {
     }
 
     #[inline]
-    pub fn add_guilds(&self, amount: u64) {
+    pub fn add_guilds(&self, amount: i64) {
         self.processing.guilds.add(amount)
     }
 
