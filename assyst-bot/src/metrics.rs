@@ -93,6 +93,11 @@ impl GlobalMetrics {
     }
 
     #[inline]
+    pub fn add_guilds(&self, amount: u64) {
+        self.processing.guilds.add(amount)
+    }
+
+    #[inline]
     pub fn delete_guild(&self) {
         self.processing.guilds.dec();
     }
