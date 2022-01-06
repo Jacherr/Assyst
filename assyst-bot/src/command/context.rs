@@ -70,7 +70,7 @@ impl Context {
 
                 Ok(result)
             } else {
-                let result = self.edit_message(reply.id, message_builder).await.unwrap();
+                let result = self.edit_message(reply.id, message_builder).await?;
                 reply_lock.set_reply(result.clone());
 
                 Ok(result)
