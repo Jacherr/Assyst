@@ -33,3 +33,4 @@ assyst-webserver = { path = "../assyst-webserver" }
 assyst-database = { path = "../assyst-database" }
 assyst-common = { path = "../assyst-common" }
 assyst-logger = { path = "../assyst-logger" }
+jemallocator = "0.3.0"
