@@ -151,6 +151,7 @@ impl CommandRegistry {
         register_command!(self, INVERT_COMMAND, run_invert_command);
         register_command!(self, INVITE_COMMAND, run_invite_command);
         register_command!(self, JPEG_COMMAND, run_jpeg_command);
+        register_command!(self, LABELS_COMMAND, run_labels_command);
         register_command!(self, MAGIK_COMMAND, run_magik_command);
         register_command!(self, MEME_COMMAND, run_meme_command);
         register_command!(self, MONEY_COMMAND, run_money_command);
