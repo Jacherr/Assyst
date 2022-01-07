@@ -43,6 +43,7 @@ lazy_static! {
         .usage("[image] [endoint]?[query params]")
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
+        .flag("json", None)
         .build();
     pub static ref BILLBOARD_COMMAND: Command = CommandBuilder::new("billboard")
         .arg(Argument::ImageBuffer)
@@ -264,7 +265,7 @@ pub async fn run_quote_command(
 pub async fn run_annmarie_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
-    _flags: ParsedFlags,
+    flags: ParsedFlags,
 ) -> CommandResult {
     let image = args[0].as_bytes();
     let endpoint = args[1].as_text();
@@ -278,7 +279,12 @@ pub async fn run_annmarie_command(
     )
     .await
     .map_err(annmarie::format_err)?;
-    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+
+    let format = if flags.contains_key("json") {
+        "json"
+    } else {
+        get_buffer_filetype(&result).unwrap_or_else(|| "png")
+    };
     context.reply_with_image(format, result).await?;
     Ok(())
 }
