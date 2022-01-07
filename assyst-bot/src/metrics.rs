@@ -103,6 +103,11 @@ impl GlobalMetrics {
     }
 
     #[inline]
+    pub fn get_guild_count(&self) -> i64 {
+        self.processing.guilds.get()
+    }
+
+    #[inline]
     pub fn avg_processing_time(&self) -> f32 {
         let processing_time = self.processing.total_processing_time.get();
         let commands = self.processing.total_commands.get();
