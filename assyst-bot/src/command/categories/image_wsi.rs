@@ -289,16 +289,6 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
-    pub static ref OCR_COMMAND: Command = CommandBuilder::new("ocr")
-        .alias("read")
-        .arg(Argument::ImageUrl)
-        .public()
-        .description("read the text on an image")
-        .example(consts::Y21)
-        .usage("[image]")
-        .cooldown(Duration::from_secs(4))
-        .category(CATEGORY_NAME)
-        .build();
     pub static ref OVERLAY_COMMAND: Command = CommandBuilder::new("overlay")
         .arg(Argument::ImageBuffer)
         .arg(Argument::String)
@@ -1100,22 +1090,6 @@ pub async fn run_motivate_command(
     .map_err(wsi::format_err)?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
-    Ok(())
-}
-
-pub async fn run_ocr_command(
-    context: Arc<Context>,
-    args: Vec<ParsedArgument>,
-    _flags: ParsedFlags,
-) -> CommandResult {
-    let image = args[0].as_text();
-    let mut result = rest::ocr_image(&context.assyst.reqwest_client, image).await?;
-
-    if result.is_empty() {
-        result = "No text detected".to_owned()
-    };
-
-    context.reply_with_text(codeblock(&result, "")).await?;
     Ok(())
 }
 

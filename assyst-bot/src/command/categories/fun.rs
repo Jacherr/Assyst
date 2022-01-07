@@ -94,6 +94,26 @@ lazy_static! {
         .cooldown(Duration::from_secs(10))
         .category(CATEGORY_NAME)
         .build();
+    pub static ref LABELS_COMMAND: Command = CommandBuilder::new("labels")
+        .alias("read")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("create labels from image")
+        .example(consts::Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref OCR_COMMAND: Command = CommandBuilder::new("ocr")
+        .alias("read")
+        .arg(Argument::ImageUrl)
+        .public()
+        .description("read the text on an image")
+        .example(consts::Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref TOWAV_COMMAND: Command = CommandBuilder::new("towav")
         .alias("wavify")
         .arg(Argument::ImageBuffer)
@@ -420,6 +440,41 @@ pub async fn run_color_command(
         }
     };
 
+    Ok(())
+}
+
+pub async fn run_labels_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    let image = args[0].as_bytes();
+    let result = rest::annmarie::labels(context.assyst.clone(), image, context.author_id()).await?;
+
+    let output = if result.is_empty() {
+        "No text detected".to_owned()
+    } else {
+        let x = result.iter().take(15).map(|x| format!("{:.2}% - {}", x.score * 100.0, x.description)).collect::<Vec<_>>();
+        x.join("\n")
+    };
+    
+    context.reply_with_text(codeblock(&output, "")).await?;
+    Ok(())
+}
+
+pub async fn run_ocr_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    let image = args[0].as_text();
+    let mut result = rest::ocr_image(&context.assyst.reqwest_client, image).await?;
+
+    if result.is_empty() {
+        result = "No text detected".to_owned()
+    };
+
+    context.reply_with_text(codeblock(&result, "")).await?;
     Ok(())
 }
 

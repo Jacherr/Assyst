@@ -5,7 +5,7 @@ use futures::Future;
 use rand::Rng;
 use reqwest::{RequestBuilder, StatusCode};
 use serde::{Deserialize, Serialize};
-use std::{pin::Pin, sync::Arc};
+use std::{error::Error as StdError, fmt::Display, pin::Pin, sync::Arc};
 use twilight_model::{channel::Message, guild::Guild, id::UserId};
 
 pub type NoArgFunction = Box<
@@ -34,6 +34,7 @@ pub mod routes {
     pub const F_SHIFT: &str = "/fshift";
     pub const GLOBE: &str = "/globe";
     pub const INFO: &str = "/info";
+    pub const LABELS: &str = "/labels";
     pub const MAKESWEET: &str = "/makesweet";
     pub const NEON: &str = "/neon";
     pub const PAINT: &str = "/paint";
@@ -73,6 +74,12 @@ pub struct AnnmarieQuote<'a> {
     white: bool,
 }
 
+#[derive(Deserialize, Debug)]
+pub struct AnnmarieLabels {
+    pub description: String,
+    pub score: f32,
+}
+
 #[derive(Debug)]
 pub enum RequestError {
     Reqwest(String),
@@ -80,6 +87,19 @@ pub enum RequestError {
     InvalidStatus(reqwest::StatusCode),
     Wsi(crate::rest::wsi::RequestError),
 }
+
+impl Display for RequestError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RequestError::Reqwest(x) => write!(f, "{}", &format!("A request error occurred: {}", x)),
+            RequestError::Annmarie(_, y) => write!(f, "{}", &format!("Invalid response status code: {:?}", y)),
+            RequestError::InvalidStatus(x) => write!(f, "{}", &format!("Invalid response status code: {:?}", x)),
+            RequestError::Wsi(x) => write!(f, "{}", &format!("WSI error: {:?}", x))
+        }
+    }
+}
+
+impl StdError for RequestError {}
 
 /// Takes a partially built request, attaches the Authorization header
 /// and sends the request, returning any errors
@@ -96,7 +116,7 @@ pub async fn finish_request(
         .header("premium_level", premium_level)
         .send()
         .await
-        .map_err(|_| RequestError::Reqwest("A network error occurred".to_owned()))?;
+        .map_err(|x| RequestError::Reqwest(format!("{}", x)))?;
 
     let status = result.status();
 
@@ -322,6 +342,18 @@ pub async fn info(assyst: Arc<Assyst>) -> Result<AnnmarieInfo, RequestError> {
             .map_err(|err| RequestError::Reqwest(err.to_string()))?;
         Ok(json)
     };
+}
+
+pub async fn labels(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Vec<AnnmarieLabels>, RequestError> {
+    let bytes = request_bytes(&assyst, routes::LABELS, image, &[], user_id).await?;
+    let string = String::from_utf8_lossy(&bytes).to_string();
+    let json = serde_json::from_str::<Vec<AnnmarieLabels>>(&string)
+        .map_err(|err| RequestError::Reqwest(format!("{}", err)))?;
+    Ok(json)
 }
 
 pub async fn neon(
