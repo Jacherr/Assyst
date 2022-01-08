@@ -31,8 +31,10 @@ pub fn init_metrics_collect_loop(
             for shard in cluster.shards() {
                 match shard.info() {
                     Ok(info) => {
-                        let lat =
-                            info.latency().average().map(|d| d.as_millis()).unwrap_or(0) as i64;
+                        let lat = match info.latency().average().map(|d| d.as_millis()) {
+                            Some(x) => x as i64,
+                            None => continue,
+                        };
 
                         let id = info.id().to_string();
 
