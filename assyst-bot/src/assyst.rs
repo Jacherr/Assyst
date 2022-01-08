@@ -23,7 +23,7 @@ use regex::Captures;
 use reqwest::Client as ReqwestClient;
 use std::{
     borrow::{Borrow, Cow},
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc,
@@ -31,7 +31,6 @@ use std::{
     time::Instant,
 };
 use tokio::sync::{Mutex, RwLock};
-use twilight_gateway::Cluster;
 use twilight_http::Client as HttpClient;
 use twilight_model::channel::{Channel, GuildChannel, Message};
 
@@ -103,7 +102,7 @@ fn message_mention_prefix(content: &str) -> Option<String> {
 ///
 /// apina
 pub struct Assyst {
-    pub guilds: Mutex<HashSet<u64>>,
+    pub guilds: Mutex<HashMap<u64, Option<(String, u64)>>>,
     pub badtranslator: BadTranslator,
     pub command_ratelimits: RwLock<Ratelimits>,
     pub config: Arc<Config>,
@@ -136,7 +135,7 @@ impl Assyst {
             .unwrap();
 
         let mut assyst = Assyst {
-            guilds: Mutex::new(HashSet::new()),
+            guilds: Mutex::new(HashMap::new()),
             badtranslator: BadTranslator::new(),
             command_ratelimits: RwLock::new(Ratelimits::new()),
             config,
@@ -159,12 +158,17 @@ impl Assyst {
 
     /// Add a guild to cached guild list
     pub async fn add_guild_to_list(&self, guild: u64) -> bool {
-        self.guilds.lock().await.insert(guild)
+        self.guilds.lock().await.insert(guild, None).is_none()
+    }
+
+    /// Sets the member count and name of a cached guild
+    pub async fn set_guild_name_and_members(&self, guild: u64, name: String, members: u64) {
+        self.guilds.lock().await.insert(guild, Some((name, members)));
     }
 
     /// Checks if guild is in cached guild list
     pub async fn guild_in_list(&self, guild: u64) -> bool {
-        self.guilds.lock().await.contains(&guild)
+        self.guilds.lock().await.contains_key(&guild)
     }
 
     /// Remove a guild from cached guild list

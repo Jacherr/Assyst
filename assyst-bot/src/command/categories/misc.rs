@@ -217,10 +217,10 @@ lazy_static! {
         .cooldown(Duration::from_secs(1))
         .category(CATEGORY_NAME)
         .build();
-    pub static ref TOP_VOTERS_COMMAND: Command = CommandBuilder::new("topvoters")
-        .alias("topvotes")
+    pub static ref TOP_GUILDS_COMMAND: Command = CommandBuilder::new("topguilds")
+        .alias("tgs")
         .availability(CommandAvailability::Private)
-        .description("get top voter information")
+        .description("get top guild information")
         .cooldown(Duration::from_secs(2))
         .category(CATEGORY_NAME)
         .build();
@@ -1116,46 +1116,44 @@ pub async fn run_cache_status_command(
     Ok(())
 }
 
-pub async fn run_top_voters_command(
+pub async fn run_top_guilds_command(
     context: Arc<Context>,
     _: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    let top_voters = context.assyst.database.get_voters().await;
+    let lock = context.assyst.guilds.lock().await;
 
-    let top_voters_formatted_raw: Vec<(String, String)> = top_voters
+    let mut top_guilds = lock.iter().collect::<Vec<_>>();
+
+    top_guilds.sort_by(|a, b| {
+        let b_members = b.1.as_ref().unwrap_or(&(String::new(), 0)).1;
+        let a_members = a.1.as_ref().unwrap_or(&(String::new(), 0)).1;
+        b_members.cmp(&a_members)
+    });
+
+    let top_15 = top_guilds
         .iter()
-        .take(30)
-        .map(|t| {
-            (
-                format!("{}#{}", t.username, t.discriminator),
-                t.count.to_string(),
+        .filter(|x| x.1.is_some())
+        .take(15)
+        .collect::<Vec<_>>();
+
+    let formatted_top_15 = top_15
+        .iter()
+        .map(|x| {
+            let (name, members) = x.1.as_ref().unwrap();
+            format!(
+                "({}) {} - {} members",
+                x.0,
+                name,
+                members
             )
         })
-        .collect::<Vec<_>>();
+        .collect::<Vec<_>>()
+        .join("\n");
 
-    let top_commands_formatted = top_voters_formatted_raw
-        .iter()
-        .map(|(a, b)| (&a[..], &b[..]))
-        .collect::<Vec<_>>();
-
-    let table = generate_list("User", "Total Votes", &top_commands_formatted);
-
-    let user = top_voters
-        .iter()
-        .find(|x| x.user_id == (context.author_id().0 as i64));
-    let count = match user {
-        Some(u) => u.count,
-        None => 0,
-    };
-
-    let response = format!(
-        "You have voted {} times.\n{}",
-        count,
-        codeblock(&table, "hs")
-    );
-
-    context.reply_with_text(response).await?;
+    context
+        .reply_with_text(&codeblock(&formatted_top_15, "hs"))
+        .await?;
 
     Ok(())
 }
