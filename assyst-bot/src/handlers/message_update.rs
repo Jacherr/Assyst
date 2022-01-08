@@ -1,4 +1,4 @@
-use crate::Assyst;
+use crate::{Assyst, logger};
 use std::sync::Arc;
 use twilight_model::channel::message::Message;
 use twilight_model::{channel::message::MessageType, gateway::payload::MessageUpdate};
@@ -13,10 +13,7 @@ pub async fn handle(assyst: Arc<Assyst>, message: Box<MessageUpdate>) -> () {
     match converted_message {
         Some(c) => {
             if let Err(e) = assyst.handle_command(c, true).await {
-                assyst
-                    .logger
-                    .fatal(&assyst, &format!("Command execution failed: {:?}", e))
-                    .await;
+                logger::fatal(&assyst, &format!("Command execution failed: {:?}", e)).await;
             }
         }
         _ => {}

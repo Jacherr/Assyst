@@ -1,4 +1,4 @@
-use crate::Assyst;
+use crate::{logger, Assyst};
 use std::sync::Arc;
 use twilight_model::gateway::payload::MessageCreate;
 
@@ -15,10 +15,7 @@ pub async fn handle(assyst: Arc<Assyst>, message: Box<MessageCreate>) {
     }
 
     if let Err(e) = assyst.handle_command(message.0, false).await {
-        assyst
-            .logger
-            .fatal(&assyst, &format!("Command execution failed: {:?}", e))
-            .await;
+        logger::fatal(&assyst, &format!("Command execution failed: {:?}", e)).await;
     }
 }
 

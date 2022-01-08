@@ -8,7 +8,7 @@ mod command;
 mod filetype;
 mod handler;
 mod handlers;
-mod logging;
+mod logger;
 mod metrics;
 mod rest;
 mod tasks;
@@ -75,6 +75,8 @@ async fn main() {
     tasks::init_reminder_loop(assyst.clone());
     tasks::init_caching_gc_loop(assyst.clone());
     tasks::update_patrons(assyst.clone());
+    tasks::init_metrics_collect_loop(cluster, assyst.clone())
+        .expect("Failed to initialize metrics collect loop");
 
     // Bot list webhooks and metrics
     webserver_run(
@@ -94,7 +96,7 @@ async fn main() {
             let assyst = assyst.clone();
             let msg = format!("a thread has panicked: {}", info);
 
-            handle.spawn(async move { assyst.logger.panic(&assyst, &msg).await });
+            handle.spawn(async move { logger::panic(&assyst, &msg).await });
         }));
     }
 

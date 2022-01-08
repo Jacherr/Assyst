@@ -1,9 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use crate::{
-    assyst::Assyst,
-    rest::post_bot_stats,
-};
+use crate::{assyst::Assyst, logger, rest::post_bot_stats};
 
 use tokio::time::sleep;
 
@@ -26,13 +23,11 @@ pub fn init_bot_list_posting_loop(assyst: Arc<Assyst>) {
             match result {
                 Ok(()) => {}
                 Err(e) => {
-                    assyst
-                        .logger
-                        .fatal(
-                            &assyst,
-                            &format!("Error POSTing bot list stats: {}", e.to_string()),
-                        )
-                        .await;
+                    logger::fatal(
+                        &assyst,
+                        &format!("Error POSTing bot list stats: {}", e.to_string()),
+                    )
+                    .await;
                 }
             }
 

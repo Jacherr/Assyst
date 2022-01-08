@@ -10,7 +10,7 @@ use crate::{
         parse,
         registry::CommandRegistry,
     },
-    logging::Logger,
+    logger,
     metrics::GlobalMetrics,
     rest::patreon::Patron,
     util::{get_current_millis, get_guild_owner, is_guild_manager, regexes, Uptime},
@@ -103,14 +103,12 @@ fn message_mention_prefix(content: &str) -> Option<String> {
 ///
 /// apina
 pub struct Assyst {
-    guilds: Mutex<HashSet<u64>>,
+    pub guilds: Mutex<HashSet<u64>>,
     pub badtranslator: BadTranslator,
-    pub cluster: Option<Cluster>,
     pub command_ratelimits: RwLock<Ratelimits>,
     pub config: Arc<Config>,
     pub database: Arc<Database>,
     pub http: HttpClient,
-    pub logger: Logger,
     pub metrics: GlobalMetrics,
     pub patrons: RwLock<Vec<Patron>>,
     pub registry: CommandRegistry,
@@ -140,12 +138,10 @@ impl Assyst {
         let mut assyst = Assyst {
             guilds: Mutex::new(HashSet::new()),
             badtranslator: BadTranslator::new(),
-            cluster: None,
             command_ratelimits: RwLock::new(Ratelimits::new()),
             config,
             database,
             http,
-            logger: Logger,
             metrics: GlobalMetrics::new().expect("Failed to create metric registry"),
             patrons: RwLock::new(vec![]),
             registry: CommandRegistry::new(),
@@ -698,15 +694,14 @@ impl Assyst {
         match self.database.get_bt_channels().await {
             Ok(channels) => self.badtranslator.set_channels(channels).await,
             Err(e) => {
-                self.logger
-                    .fatal(
-                        self,
-                        &format!(
-                            "Fetching BadTranslator channels failed, disabling feature... {:?}",
-                            e
-                        ),
-                    )
-                    .await;
+                logger::fatal(
+                    self,
+                    &format!(
+                        "Fetching BadTranslator channels failed, disabling feature... {:?}",
+                        e
+                    ),
+                )
+                .await;
                 self.badtranslator.disable().await;
             }
         }
