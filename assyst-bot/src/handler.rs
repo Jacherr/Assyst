@@ -1,4 +1,4 @@
-use crate::{handlers::*, Assyst};
+use crate::{handlers::*, logger, Assyst};
 use std::sync::Arc;
 use twilight_gateway::Event;
 
@@ -19,18 +19,16 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
                     assyst.metrics.add_guild();
                 }
 
-                assyst
-                    .logger
-                    .guild_add(
-                        &assyst,
-                        &format!(
-                            "{} ({}) ({} members)",
-                            guild.name,
-                            guild.id,
-                            guild.member_count.unwrap_or(0)
-                        ),
-                    )
-                    .await;
+                logger::guild_add(
+                    &assyst,
+                    &format!(
+                        "{} ({}) ({} members)",
+                        guild.name,
+                        guild.id,
+                        guild.member_count.unwrap_or(0)
+                    ),
+                )
+                .await;
             }
         }
         Event::GuildDelete(guild) => {
@@ -39,10 +37,7 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
             {
                 assyst.metrics.delete_guild();
 
-                assyst
-                    .logger
-                    .info(&assyst, &format!("Removed from guild: {}", guild.id))
-                    .await;
+                logger::info(&assyst, &format!("Removed from guild: {}", guild.id)).await;
 
                 assyst.remove_guild_from_list(guild.id.0).await;
             }
@@ -60,17 +55,15 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
 
             assyst.metrics.add_guilds(new_guilds);
 
-            assyst
-                .logger
-                .info(
-                    &assyst,
-                    &format!(
-                        "Shard {}: READY in {} guilds",
-                        r.shard.unwrap_or_default()[0],
-                        r.guilds.len()
-                    ),
-                )
-                .await;
+            logger::info(
+                &assyst,
+                &format!(
+                    "Shard {}: READY in {} guilds",
+                    r.shard.unwrap_or_default()[0],
+                    r.guilds.len()
+                ),
+            )
+            .await;
         }
         Event::ShardConnected(_d) => {
             /*

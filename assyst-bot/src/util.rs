@@ -219,6 +219,21 @@ pub fn get_memory_usage() -> Option<String> {
     None
 }
 
+// Get memory usage in MB
+pub fn get_memory_usage_num() -> Option<f32> {
+    let memory = get_memory_usage()?;
+
+    let multiplier = match memory.as_bytes().last()? {
+        b'M' => 1f32,
+        b'G' => 1000f32,
+        _ => return None,
+    };
+
+    let num = memory.get(0..memory.len() - 1)?.parse::<f32>().ok()?;
+
+    Some(num * multiplier)
+}
+
 /// Attempts to download the content of a url
 pub async fn download_content(
     client: &reqwest::Client,

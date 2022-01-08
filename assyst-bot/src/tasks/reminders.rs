@@ -1,4 +1,4 @@
-use crate::{assyst::Assyst, util::message_link};
+use crate::{assyst::Assyst, logger, util::message_link};
 use assyst_database::DatabaseReminder;
 use std::{sync::Arc, time::Duration};
 use tokio::time::sleep;
@@ -65,19 +65,15 @@ pub fn init_reminder_loop(assyst: Arc<Assyst>) {
                 match reminders {
                     Ok(reminders) => {
                         if let Err(e) = process_reminders(&assyst, reminders).await {
-                            assyst
-                                .logger
-                                .fatal(
-                                    &assyst,
-                                    &format!("Processing reminder queue failed: {:?}", e),
-                                )
-                                .await;
+                            logger::fatal(
+                                &assyst,
+                                &format!("Processing reminder queue failed: {:?}", e),
+                            )
+                            .await;
                         }
                     }
                     Err(e) => {
-                        assyst
-                            .logger
-                            .fatal(&assyst, &format!("Fetching reminders failed: {:?}", e))
+                        logger::fatal(&assyst, &format!("Fetching reminders failed: {:?}", e))
                             .await;
                     }
                 }

@@ -7,6 +7,7 @@ use crate::{
         context::Context,
         registry::CommandResult,
     },
+    logger,
     rest::{
         annmarie::{self, info},
         bt::{get_languages, validate_language},
@@ -945,17 +946,14 @@ pub async fn run_fake_eval_command(
     let codeblocked_input = codeblock(code, "js");
     let codeblocked_output = codeblock(&response.message, "js");
 
-    context
-        .assyst
-        .logger
-        .info(
-            &context.assyst,
-            &format!(
-                "User Evaled: {} Output: {}",
-                codeblocked_input, codeblocked_output
-            ),
-        )
-        .await;
+    logger::info(
+        &context.assyst,
+        &format!(
+            "User Evaled: {} Output: {}",
+            codeblocked_input, codeblocked_output
+        ),
+    )
+    .await;
 
     context.reply_with_text(codeblocked_output).await?;
 
