@@ -437,7 +437,7 @@ pub mod subsections {
 
             // now we need to upload it to filer so that we have a url to work with
             // since this is how the parser works... pretty inefficient but yeah stfu
-            url = upload_to_filer(&context.assyst.reqwest_client, gif, "image/gif")
+            url = upload_to_filer(context.assyst.clone(), gif, "image/gif")
                 .await
                 .map(Cow::Owned)
                 .map_err(|e| {

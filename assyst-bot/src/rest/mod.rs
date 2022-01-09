@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, sync::Arc};
 
 use bytes::Bytes;
 use reqwest::{Client, ClientBuilder, Error};
@@ -22,7 +22,6 @@ mod routes {
     use assyst_common::consts::BOT_ID;
 
     pub const COOL_TEXT: &str = "https://cooltext.com/PostChange";
-    pub const CDN: &str = "https://cdn.jacher.io";
     pub const OCR: &str = "http://ocr.y21_.repl.co/?url=";
     pub const CHARINFO: &str = "https://www.fileformat.info/info/unicode/char/";
     pub const FAKE_EVAL: &str = "https://jacher.io/eval";
@@ -102,14 +101,14 @@ pub async fn ocr_image(client: &Client, url: &str) -> Result<String, OcrError> {
 }
 
 pub async fn upload_to_filer(
-    client: &Client,
+    assyst: Arc<Assyst>,
     data: Bytes,
     content_type: &str,
 ) -> Result<String, Error> {
-    client
-        .post(routes::CDN)
+    assyst.reqwest_client
+        .post(assyst.config.url.cdn.to_string())
         .header(reqwest::header::CONTENT_TYPE, content_type)
-        .header(reqwest::header::AUTHORIZATION, "0192837465")
+        .header(reqwest::header::AUTHORIZATION, assyst.config.auth.cdn.to_string())
         .body(data)
         .send()
         .await?

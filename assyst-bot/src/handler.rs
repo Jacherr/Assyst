@@ -14,12 +14,6 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
             message_update::handle(assyst, message).await;
         }
         Event::GuildCreate(guild) => {
-            assyst.set_guild_name_and_members(
-                guild.id.0,
-                guild.name.clone(),
-                guild.member_count.unwrap_or(0),
-            ).await;
-
             if !assyst.guild_in_list(guild.id.0).await {
                 if !guild.unavailable {
                     assyst.metrics.add_guild();
@@ -36,6 +30,12 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
                 )
                 .await;
             }
+
+            assyst.set_guild_name_and_members(
+                guild.id.0,
+                guild.name.clone(),
+                guild.member_count.unwrap_or(0),
+            ).await;
         }
         Event::GuildDelete(guild) => {
             if !guild.unavailable {

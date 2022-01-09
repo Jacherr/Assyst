@@ -1131,13 +1131,13 @@ pub async fn run_top_guilds_command(
         b_members.cmp(&a_members)
     });
 
-    let top_15 = top_guilds
+    let top_30 = top_guilds
         .iter()
         .filter(|x| x.1.is_some())
-        .take(15)
+        .take(30)
         .collect::<Vec<_>>();
 
-    let formatted_top_15 = top_15
+    let formatted_top_30 = top_30
         .iter()
         .map(|x| {
             let (name, members) = x.1.as_ref().unwrap();
@@ -1152,7 +1152,7 @@ pub async fn run_top_guilds_command(
         .join("\n");
 
     context
-        .reply_with_text(&codeblock(&formatted_top_15, "hs"))
+        .reply_with_text(&codeblock(&formatted_top_30, "hs"))
         .await?;
 
     Ok(())
