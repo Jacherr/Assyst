@@ -116,7 +116,7 @@ impl Context {
 
         if buffer.len() > consts::WORKING_FILESIZE_LIMIT_BYTES {
             let url =
-                crate::rest::upload_to_filer(&self.assyst.reqwest_client, buffer, &format).await?;
+                crate::rest::upload_to_filer(self.assyst.clone(), buffer, &format).await?;
             let builder = builder.content(url.into_boxed_str());
             self.reply(builder).await
         } else {
