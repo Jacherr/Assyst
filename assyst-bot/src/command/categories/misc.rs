@@ -17,7 +17,7 @@ use crate::{
     util::{
         codeblock, ensure_same_guild, exec_sync, extract_page_title, format_discord_timestamp,
         format_time, generate_list, generate_table, get_buffer_filetype, get_memory_usage,
-        parse_codeblock,
+        parse_codeblock, bytes_to_readable,
     },
 };
 use crate::{
@@ -215,13 +215,6 @@ lazy_static! {
         .availability(CommandAvailability::Private)
         .description("Get your patron status")
         .cooldown(Duration::from_secs(1))
-        .category(CATEGORY_NAME)
-        .build();
-    pub static ref TOP_GUILDS_COMMAND: Command = CommandBuilder::new("topguilds")
-        .alias("tgs")
-        .availability(CommandAvailability::Private)
-        .description("get top guild information")
-        .cooldown(Duration::from_secs(2))
         .category(CATEGORY_NAME)
         .build();
 }
@@ -424,7 +417,7 @@ pub async fn run_stats_command(
 
     let guild_id = context.message.guild_id.unwrap().0;
 
-    let memory = get_memory_usage().unwrap_or("Unknown".to_owned());
+    let memory = bytes_to_readable(get_memory_usage().unwrap_or(0));
     let commands = context.assyst.registry.get_command_count().to_string();
     let proc_time = (context.assyst.get_average_processing_time().await / 1e3).to_string();
     let events = context.assyst.metrics.get_events();
@@ -1113,47 +1106,5 @@ pub async fn run_cache_status_command(
             replies_size, ratelimits_size
         ))
         .await?;
-    Ok(())
-}
-
-pub async fn run_top_guilds_command(
-    context: Arc<Context>,
-    _: Vec<ParsedArgument>,
-    _flags: ParsedFlags,
-) -> CommandResult {
-    let lock = context.assyst.guilds.lock().await;
-
-    let mut top_guilds = lock.iter().collect::<Vec<_>>();
-
-    top_guilds.sort_by(|a, b| {
-        let b_members = b.1.as_ref().unwrap_or(&(String::new(), 0)).1;
-        let a_members = a.1.as_ref().unwrap_or(&(String::new(), 0)).1;
-        b_members.cmp(&a_members)
-    });
-
-    let top_30 = top_guilds
-        .iter()
-        .filter(|x| x.1.is_some())
-        .take(30)
-        .collect::<Vec<_>>();
-
-    let formatted_top_30 = top_30
-        .iter()
-        .map(|x| {
-            let (name, members) = x.1.as_ref().unwrap();
-            format!(
-                "({}) {} - {} members",
-                x.0,
-                name,
-                members
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-
-    context
-        .reply_with_text(&codeblock(&formatted_top_30, "hs"))
-        .await?;
-
     Ok(())
 }

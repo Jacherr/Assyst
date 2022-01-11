@@ -199,39 +199,27 @@ pub fn parse_codeblock_with_language(text: &str) -> Option<(&str, &str)> {
 }
 
 /// Attempts to extract memory usage
-///
-/// Note: this requires the process to run as a systemd service
 #[cfg(target_os = "linux")]
-pub fn get_memory_usage() -> Option<String> {
-    let mut command = Command::new("systemctl");
-    command.args(vec!["status", "assyst"]);
-    let result = command.output().ok()?;
-    let stdout = String::from_utf8_lossy(&result.stdout);
-    let memory_line = stdout
-        .split("\n")
-        .find(|line| line.trim().starts_with("Memory"))?;
-    let memory_usage = memory_line.split(":").collect::<Vec<&str>>()[1];
-    Some(memory_usage.trim().to_owned())
+pub fn get_memory_usage() -> Option<usize> {
+    use std::fs;
+    let field = 1;
+    let contents = fs::read("/proc/self/statm").ok()?;
+    let contents = String::from_utf8(contents).ok()?;
+    let s = contents.split_whitespace().nth(field)?;
+    let npages = s.parse::<usize>().ok()?;
+    Some(npages * 4096)
 }
 
 #[cfg(not(target_os = "linux"))]
-pub fn get_memory_usage() -> Option<String> {
+pub fn get_memory_usage() -> Option<usize> {
     None
 }
 
 // Get memory usage in MB
 pub fn get_memory_usage_num() -> Option<f32> {
-    let memory = get_memory_usage()?;
+    let memory = get_memory_usage()? as f32/1000f32/1000f32;
 
-    let multiplier = match memory.as_bytes().last()? {
-        b'M' => 1f32,
-        b'G' => 1000f32,
-        _ => return None,
-    };
-
-    let num = memory.get(0..memory.len() - 1)?.parse::<f32>().ok()?;
-
-    Some(num * multiplier)
+    Some(memory)
 }
 
 /// Attempts to download the content of a url

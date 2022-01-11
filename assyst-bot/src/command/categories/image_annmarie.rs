@@ -168,6 +168,16 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
+    pub static ref SOFTGLOW_COMMAND: Command = CommandBuilder::new("bloom")
+        .alias("softglow")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("bloom an image")
+        .example(consts::Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref ZOOM_BLUR_COMMAND: Command = CommandBuilder::new("zoomblur")
         .alias("zb")
         .arg(Argument::ImageBuffer)
@@ -400,6 +410,14 @@ pub async fn run_sketch_command(
     _flags: ParsedFlags,
 ) -> CommandResult {
     run_annmarie_noarg_command!(annmarie::sketch, args, context)
+}
+
+pub async fn run_softglow_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    run_annmarie_noarg_command!(annmarie::softglow, args, context)
 }
 
 pub async fn run_zoom_blur_command(

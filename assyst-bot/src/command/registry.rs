@@ -123,13 +123,15 @@ impl CommandRegistry {
         register_command!(self, CARD_COMMAND, run_card_command);
         register_command!(self, CHARS_COMMAND, run_chars_command);
         register_command!(self, CIRCUITBOARD_COMMAND, run_circuitboard_command);
+        register_command!(self, CODESPRINT_COMMAND, run_codesprint_command);
+        register_command!(self, COLOR_COMMAND, run_color_command);
         register_command!(self, COMMAND_COMMAND, run_command_command);
         register_command!(self, DRIP_COMMAND, run_drip_command);
         register_command!(self, ENLARGE_COMMAND, run_enlarge_command);
         register_command!(self, EXEC_COMMAND, run_exec_command);
         register_command!(self, F_SHIFT_COMMAND, run_f_shift_command);
-        register_command!(self, FEMURBREAKER_COMMAND, run_femurbreaker_command);
         register_command!(self, FAKE_EVAL_COMMAND, run_fake_eval_command);
+        register_command!(self, FEMURBREAKER_COMMAND, run_femurbreaker_command);
         register_command!(self, FISHEYE_COMMAND, run_fisheye_command);
         register_command!(self, FIX_TRANSPARENCY_COMMAND, run_fix_transparency_command);
         register_command!(self, FLAG_COMMAND, run_flag_command);
@@ -146,6 +148,7 @@ impl CommandRegistry {
         register_command!(self, GRAYSCALE_COMMAND, run_grayscale_command);
         register_command!(self, HEART_LOCKET_COMMAND, run_heart_locket_command);
         register_command!(self, HELP_COMMAND, run_help_command);
+        register_command!(self, IDENTIFY_COMMAND, run_identify_command);
         register_command!(self, IMAGE_INFO_COMMAND, run_image_info_command);
         register_command!(self, IMAGEMAGICK_EVAL_COMMAND, run_imagemagick_eval_command);
         register_command!(self, INVERT_COMMAND, run_invert_command);
@@ -167,7 +170,9 @@ impl CommandRegistry {
         register_command!(self, PIXELATE_COMMAND, run_pixelate_command);
         register_command!(self, PREFIX_COMMAND, run_prefix_command);
         register_command!(self, PRINTER_COMMAND, run_printer_command);
+        register_command!(self, QUOTE_COMMAND, run_quote_command);
         register_command!(self, RAINBOW_COMMAND, run_rainbow_command);
+        register_command!(self, RANDOMIZE_COMMAND, run_randomize_command);
         register_command!(self, REMINDER_COMMAND, run_remind_command);
         register_command!(self, RESIZE_COMMAND, run_resize_command);
         register_command!(self, REVERSE_COMMAND, run_reverse_command);
@@ -177,6 +182,7 @@ impl CommandRegistry {
         register_command!(self, SET_LOOP_COMMAND, run_set_loop_command);
         register_command!(self, SIREN_COMMAND, run_siren_command);
         register_command!(self, SKETCH_COMMAND, run_sketch_command);
+        register_command!(self, SOFTGLOW_COMMAND, run_softglow_command);
         register_command!(self, SPIN_COMMAND, run_spin_command);
         register_command!(self, SPREAD_COMMAND, run_spread_command);
         register_command!(self, STATS_COMMAND, run_stats_command);
@@ -186,7 +192,7 @@ impl CommandRegistry {
         register_command!(self, TERRARIA_COMMAND, run_terraria_command);
         register_command!(self, TOP_BT_COMMAND, run_top_bt_command);
         register_command!(self, TOP_COMMANDS_COMMAND, run_top_commands_command);
-        register_command!(self, TOP_GUILDS_COMMAND, run_top_guilds_command);
+        register_command!(self, TOWAV_COMMAND, run_towav_command);
         register_command!(self, TRANSLATE_COMMAND, run_translate_command);
         register_command!(self, WALL_COMMAND, run_wall_command);
         register_command!(self, WAVE_COMMAND, run_wave_command);
@@ -195,11 +201,5 @@ impl CommandRegistry {
         register_command!(self, WSI_STATS_COMMAND, run_wsi_stats_command);
         register_command!(self, ZOOM_BLUR_COMMAND, run_zoom_blur_command);
         register_command!(self, ZOOM_COMMAND, run_zoom_command);
-        register_command!(self, IDENTIFY_COMMAND, run_identify_command);
-        register_command!(self, COLOR_COMMAND, run_color_command);
-        register_command!(self, QUOTE_COMMAND, run_quote_command);
-        register_command!(self, RANDOMIZE_COMMAND, run_randomize_command);
-        register_command!(self, TOWAV_COMMAND, run_towav_command);
-        register_command!(self, CODESPRINT_COMMAND, run_codesprint_command);
     }
 }
