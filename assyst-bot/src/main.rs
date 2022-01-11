@@ -13,6 +13,7 @@ mod metrics;
 mod rest;
 mod tasks;
 mod util;
+mod ansi;
 
 use assyst::Assyst;
 use assyst_webserver::run as webserver_run;

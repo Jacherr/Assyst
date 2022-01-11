@@ -230,6 +230,12 @@ pub mod image_lookups {
                     .thumbnail
                     .as_ref()
                     .and_then(|thumbnail| Some(thumbnail.url.as_deref()?))
+                    .or_else(|| {
+                        embed
+                            .video
+                            .as_ref()
+                            .and_then(|video| Some(video.url.as_deref()?))
+                    })
             })
     }
 

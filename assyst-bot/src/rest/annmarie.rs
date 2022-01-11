@@ -40,6 +40,7 @@ pub mod routes {
     pub const PAINT: &str = "/paint";
     pub const SIREN: &str = "/siren";
     pub const SKETCH: &str = "/sketch";
+    pub const SOFTGLOW: &str = "/softglow";
     pub const SWEDEN: &str = "/sweden";
     pub const ZOOM_BLUR: &str = "/zoom-blur";
     pub const QUOTE: &str = "/discord";
@@ -387,6 +388,14 @@ pub async fn sketch(
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
     request_bytes(&assyst, routes::SKETCH, image, &[], user_id).await
+}
+
+pub async fn softglow(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    request_bytes(&assyst, routes::SOFTGLOW, image, &[], user_id).await
 }
 
 pub async fn sweden(
