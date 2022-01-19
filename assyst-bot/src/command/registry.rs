@@ -197,7 +197,6 @@ impl CommandRegistry {
         register_command!(self, WALL_COMMAND, run_wall_command);
         register_command!(self, WAVE_COMMAND, run_wave_command);
         register_command!(self, WORMHOLE_COMMAND, run_wormhole_command);
-        register_command!(self, WSI_RESTART_COMMAND, run_wsi_restart_command);
         register_command!(self, WSI_STATS_COMMAND, run_wsi_stats_command);
         register_command!(self, ZOOM_BLUR_COMMAND, run_zoom_blur_command);
         register_command!(self, ZOOM_COMMAND, run_zoom_command);

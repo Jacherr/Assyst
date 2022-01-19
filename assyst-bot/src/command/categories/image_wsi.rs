@@ -1,16 +1,14 @@
 use crate::{
-    assyst::Assyst,
     command::{
         command::{
             Argument, Command, CommandAvailability, CommandBuilder, FlagKind, ParsedArgument,
-            ParsedFlagKind, ParsedFlags,
+            ParsedFlags,
         },
         context::Context,
         registry::CommandResult,
     },
     rest::{
-        annmarie,
-        wsi::{self, ResizeMethod},
+        wsi
     },
     util::{bytes_to_readable, generate_list},
 };
@@ -23,7 +21,7 @@ use bytes::Bytes;
 use lazy_static::lazy_static;
 use std::time::Duration;
 use std::{borrow::Cow, sync::Arc};
-use twilight_model::id::UserId;
+use shared::query_params::ResizeMethod;
 
 const CATEGORY_NAME: &str = "image (wsi)";
 
@@ -535,6 +533,7 @@ pub async fn run_randomize_command(
     args: Vec<ParsedArgument>,
     mut flags: ParsedFlags,
 ) -> CommandResult {
+    /*
     async fn inner_randomize(
         assyst: &Assyst,
         image: Bytes,
@@ -655,6 +654,8 @@ pub async fn run_randomize_command(
         .reply_with_image_and_text(&format!("image/{}", format), image, Some(content))
         .await
         .map(|_| ())
+        */
+    todo!()
 }
 
 pub async fn run_aprilfools_command(

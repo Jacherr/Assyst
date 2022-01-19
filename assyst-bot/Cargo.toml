@@ -33,4 +33,7 @@ assyst-webserver = { path = "../assyst-webserver" }
 assyst-database = { path = "../assyst-database" }
 assyst-common = { path = "../assyst-common" }
 assyst-logger = { path = "../assyst-logger" }
+shared = { git = "https://github.com/jacherr/wsi-shared" }
+
+[target.'cfg(unix)'.dependencies]
 jemallocator = "0.3.0"
