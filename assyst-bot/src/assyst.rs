@@ -12,7 +12,7 @@ use crate::{
     },
     logger,
     metrics::GlobalMetrics,
-    rest::patreon::Patron,
+    rest::{patreon::Patron, wsi::wsi_listen},
     util::{get_current_millis, get_guild_owner, is_guild_manager, regexes, Uptime},
 };
 
@@ -21,6 +21,7 @@ use assyst_database::Database;
 use async_recursion::async_recursion;
 use regex::Captures;
 use reqwest::Client as ReqwestClient;
+use shared::{job::JobResult, fifo::FifoSend};
 use std::{
     borrow::{Borrow, Cow},
     collections::{HashSet, HashMap},
@@ -30,7 +31,7 @@ use std::{
     },
     time::Instant,
 };
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::{Mutex, RwLock, mpsc::UnboundedSender, oneshot::Sender};
 use twilight_http::Client as HttpClient;
 use twilight_model::channel::{Channel, GuildChannel, Message};
 
@@ -115,6 +116,7 @@ pub struct Assyst {
     pub reqwest_client: ReqwestClient,
     pub started_at: u64,
     pub commands_executed: AtomicU64,
+    wsi_tx: UnboundedSender<(Sender<JobResult>, FifoSend, usize)>
 }
 impl Assyst {
     /// Create a new Assyst instance from a token. This method does NOT
@@ -133,6 +135,9 @@ impl Assyst {
             .await
             .map(Arc::new)
             .unwrap();
+        
+        let config_clone = config.clone();
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<(Sender<JobResult>, FifoSend, usize)>();
 
         let mut assyst = Assyst {
             guilds: Mutex::new(HashSet::new()),
@@ -148,12 +153,22 @@ impl Assyst {
             reqwest_client,
             started_at: get_current_millis(),
             commands_executed: AtomicU64::new(0),
+            wsi_tx: tx
         };
         if assyst.config.disable_bad_translator {
             assyst.badtranslator.disable().await
         }
+
+        tokio::spawn(async move {
+            wsi_listen(rx,&config_clone.url.wsi.to_string()).await;
+        });
+
         assyst.registry.register_commands();
         assyst
+    }
+
+    pub fn send_to_wsi(&self, sender: Sender<JobResult>, job: FifoSend, premium_level: usize) {
+        self.wsi_tx.send((sender, job, premium_level)).unwrap();
     }
 
     /// Add a guild to cached guild list

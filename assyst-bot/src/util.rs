@@ -1,8 +1,9 @@
-use crate::{assyst::Assyst, command::context::Context, filetype};
+use crate::{assyst::Assyst, command::context::Context, filetype, rest::wsi::RequestError};
 use assyst_common::consts;
 use bytes::Bytes;
 use futures_util::StreamExt;
 use regex::Captures;
+use shared::job::JobResult;
 
 use std::{
     borrow::Cow,
@@ -212,7 +213,7 @@ pub fn get_memory_usage() -> Option<usize> {
 
 #[cfg(not(target_os = "linux"))]
 pub fn get_memory_usage() -> Option<usize> {
-    None
+    Some(0)
 }
 
 // Get memory usage in MB
@@ -490,5 +491,12 @@ pub fn nanos_to_readable(time: u32) -> String {
         return format!("{:.2}ms", (time as f64) / 1_000_000f64);
     } else {
         return format!("{:.2}s", (time as f64) / 1_000_000_000f64);
+    }
+}
+
+pub fn handle_job_result(result: JobResult) -> Result<Bytes, RequestError> {
+    match result {
+        JobResult::Image(data) => Ok(Bytes::from(data.1)),
+        JobResult::Error(err) => Err(RequestError::from(err.1)),
     }
 }

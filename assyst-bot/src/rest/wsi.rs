@@ -1,10 +1,15 @@
-use crate::assyst::Assyst;
+use crate::{assyst::Assyst, util::handle_job_result};
 use crate::util::get_wsi_request_tier;
+use bincode::{deserialize, serialize};
 use bytes::Bytes;
 use rand::Rng;
 use reqwest::Error;
-use serde::{Deserialize, Serialize};
-use std::{future::Future, pin::Pin, sync::Arc};
+use serde::Deserialize;
+use shared::errors::ProcessingError;
+use shared::response_data::ImageInfo;
+use shared::{job::JobResult, fifo::{FifoSend, WsiRequest, FifoData}, query_params::*};
+use tokio::{sync::{oneshot::{Sender, self}, Mutex, mpsc::UnboundedReceiver}, net::TcpStream, time::sleep, io::{AsyncReadExt, AsyncWriteExt}};
+use std::{future::Future, pin::Pin, sync::{Arc, atomic::{Ordering, AtomicUsize}}, collections::HashMap, time::Duration};
 use twilight_model::id::UserId;
 
 pub type NoArgFunction = Box<
@@ -17,75 +22,97 @@ pub type NoArgFunction = Box<
         + Sync,
 >;
 
-pub mod routes {
-    pub const _3D_ROTATE: &str = "/3d_rotate";
-    pub const AHSHIT: &str = "/ahshit";
-    pub const APRILFOOLS: &str = "/aprilfools";
-    pub const AUDIO: &str = "/audio";
-    pub const BLUR: &str = "/blur";
-    pub const CAPTION: &str = "/caption";
-    pub const COMPRESS: &str = "/compress";
-    pub const CONVERT_PNG: &str = "/convert_png";
-    pub const FIX_TRANSPARENCY: &str = "/fix_transparency";
-    pub const FLASH: &str = "/flash";
-    pub const FLIP: &str = "/flip";
-    pub const FLOP: &str = "/flop";
-    pub const FRAMES: &str = "/frames";
-    pub const GHOST: &str = "/ghost";
-    pub const GIF_LOOP: &str = "/gif_loop";
-    pub const GIF_MAGIK: &str = "/gif_magik";
-    pub const GIF_SCRAMBLE: &str = "/gif_scramble";
-    pub const GIF_SPEED: &str = "/gif_speed";
-    pub const GRAYSCALE: &str = "/grayscale";
-    pub const HEART_LOCKET: &str = "/heart_locket";
-    pub const IMAGE_INFO: &str = "/image_info";
-    pub const IMAGEMAGICK_EVAL: &str = "/imagemagick_eval";
-    pub const INVERT: &str = "/invert";
-    pub const JPEG: &str = "/jpeg";
-    pub const MAGIK: &str = "/magik";
-    pub const MEME: &str = "/meme";
-    pub const MOTIVATE: &str = "/motivate";
-    pub const OVERLAY: &str = "/overlay";
-    pub const PIXELATE: &str = "/pixelate";
-    pub const PREPROCESS: &str = "/preprocess";
-    pub const PRINTER: &str = "/printer";
-    pub const RAINBOW: &str = "/rainbow";
-    pub const RESIZE: &str = "/resize";
-    pub const RESTART: &str = "/restart";
-    pub const REVERSE: &str = "/reverse";
-    pub const ROTATE: &str = "/rotate";
-    pub const SET_LOOP: &str = "/set_loop";
-    pub const SPIN: &str = "/spin";
-    pub const SPREAD: &str = "/spread";
-    pub const STATS: &str = "/stats";
-    pub const SWIRL: &str = "/swirl";
-    pub const TEHI: &str = "/tehi";
-    pub const WALL: &str = "/wall";
-    pub const WAVE: &str = "/wave";
-    pub const WORMHOLE: &str = "/wormhole";
-    pub const ZOOM: &str = "/zoom";
+pub async fn wsi_listen(job_rx: UnboundedReceiver<(Sender<JobResult>, FifoSend, usize)>, socket: &str) {
+    let job_rx = Arc::new(Mutex::new(job_rx));
 
-    pub const RANDOMIZABLE_ROUTES: &[&str] = &[
-        FLIP, FLOP, GIF_MAGIK, GRAYSCALE, INVERT, JPEG, MAGIK, RAINBOW, REVERSE, SPIN, SWIRL, TEHI,
-    ];
+    loop {
+        let stream = match TcpStream::connect(socket).await {
+            Ok(stream) => stream,
+            Err(e) => {
+                eprintln!("Failed to connect to WSI: {} (retrying in 30 seconds)", e);
+                sleep(Duration::from_secs(30)).await;
+                continue;
+            }
+        };
 
-    pub fn command_name_to_route(command: &str) -> Option<&'static str> {
-        match command {
-            "flip" => Some(FLIP),
-            "flop" => Some(FLOP),
-            "gifmagik" | "gifmagick" | "gcas" | "gmagik" => Some(GIF_MAGIK),
-            "grayscale" | "gray" => Some(GRAYSCALE),
-            "invert" => Some(INVERT),
-            "jpeg" => Some(JPEG),
-            "magik" => Some(MAGIK),
-            "rainbow" => Some(RAINBOW),
-            "reverse" => Some(REVERSE),
-            "spin" => Some(SPIN),
-            "swirl" => Some(SWIRL),
-            "tehi" => Some(TEHI),
-            _ => None,
-        }
+        let (mut reader, mut writer) = stream.into_split();
+        
+        let jobs = Arc::new(Mutex::new(HashMap::<usize, Sender<JobResult>>::new()));
+        let jobs_clone = jobs.clone();
+    
+        let r = tokio::spawn(async move {
+            loop {
+                let length = match reader.read_u32().await {
+                    Err(_) => {
+                        break;
+                    },
+                    Ok(x) => x
+                };
+    
+                let mut buf = vec![0; length as usize];
+                if reader.read_exact(&mut buf).await.is_err() {
+                    break;
+                }
+                
+                let deserialized = deserialize::<JobResult>(&buf).unwrap();
+                let job_id = deserialized.id();
+                let mut job_lock = jobs_clone.lock().await;
+                let tx = job_lock.remove(&job_id);
+                drop(job_lock);
+    
+                if let Some(tx) = tx {
+                    tx.send(deserialized).unwrap();
+                }
+            }
+        });
+    
+        let job_rx_clone = job_rx.clone();
+
+        let w = tokio::spawn(async move {
+            let next_job_id = AtomicUsize::new(0);
+    
+            loop {
+                let (tx, job, premium_level) = match job_rx_clone.lock().await.recv().await {
+                    Some(x) => x,
+                    None => break
+                };
+    
+                let id = next_job_id.fetch_add(1, Ordering::Relaxed);
+    
+                let wsi_request = WsiRequest::new(id, premium_level, job);
+                let job = serialize(&wsi_request).unwrap();
+    
+                let mut job_lock = jobs.lock().await;
+                job_lock.insert(id, tx);
+                drop(job_lock);
+
+                if writer.write_u32(job.len() as u32).await.is_err() {
+                    break;
+                }
+    
+                if writer.write_all(&job).await.is_err() {
+                    break;
+                }
+            }
+        });
+    
+        r.await.unwrap();
+        w.abort();
+
+        eprintln!("Lost connection to WSI server, attempting reconnection...");
     }
+}
+
+async fn run_wsi_job(assyst: Arc<Assyst>, job: FifoSend, user_id: UserId) -> Result<Bytes, RequestError> {
+    let premium_level = get_wsi_request_tier(&assyst.clone(), user_id)
+        .await
+        .map_err(RequestError::Sqlx)?;
+
+    let (tx, rx) = oneshot::channel::<JobResult>();
+    assyst.send_to_wsi(tx, job, premium_level);
+    let result = rx.await.unwrap();
+
+    handle_job_result(result)
 }
 
 #[derive(Deserialize)]
@@ -100,17 +127,6 @@ pub struct WsiError {
     pub code: u16,
     pub message: Box<str>,
 }
-#[derive(Deserialize)]
-pub struct ImageInfo {
-    pub file_size_bytes: usize,
-    pub mime_type: String,
-    pub dimensions: (u32, u32),
-    pub colour_space: String,
-    pub frames: Option<usize>,
-    pub frame_delays: Option<Vec<usize>>,
-    pub repeat: Option<isize>,
-    pub comments: Vec<String>,
-}
 
 #[derive(Debug)]
 pub enum RequestError {
@@ -119,25 +135,12 @@ pub enum RequestError {
     Wsi(WsiError),
     Sqlx(sqlx::Error),
 }
-
-#[derive(Debug, Serialize)]
-pub enum ResizeMethod {
-    Nearest,
-    Gaussian,
-}
-
-impl ResizeMethod {
-    pub fn from_str(input: &str) -> Option<Self> {
-        match input {
-            "nearest" => Some(Self::Nearest),
-            "gaussian" => Some(Self::Gaussian),
-            _ => None,
-        }
-    }
-
-    pub fn to_string(&self) -> Result<String, serde_json::Error> {
-        let s = serde_json::to_string(self)?;
-        Ok(String::from(&s[1..s.len() - 1]))
+impl From<ProcessingError> for RequestError {
+    fn from(e: ProcessingError) -> Self {
+        RequestError::Wsi(WsiError {
+            code: 0,
+            message: e.to_string().into()
+        })
     }
 }
 
@@ -147,6 +150,9 @@ pub async fn randomize(
     user_id: UserId,
     acceptable_routes: &mut Vec<&'static str>,
 ) -> (&'static str, Result<Bytes, RequestError>) {
+    todo!()
+
+    /* 
     let index = rand::thread_rng().gen_range(0..acceptable_routes.len());
     let route = acceptable_routes.remove(index);
 
@@ -155,44 +161,7 @@ pub async fn randomize(
     match bytes {
         Ok(bytes) => (route, Ok(bytes)),
         Err(e) => (route, Err(e)),
-    }
-}
-
-pub async fn request_bytes(
-    assyst: &Assyst,
-    route: &str,
-    image: Bytes,
-    query: &[(&str, &str)],
-    user_id: UserId,
-) -> Result<Bytes, RequestError> {
-    let premium_level = get_wsi_request_tier(&assyst, user_id)
-        .await
-        .map_err(RequestError::Sqlx)?;
-
-    let result = assyst
-        .reqwest_client
-        .post(&format!("{}{}", assyst.config.url.wsi, route))
-        .header(
-            reqwest::header::AUTHORIZATION,
-            assyst.config.auth.wsi.as_ref(),
-        )
-        .header("premium_level", premium_level)
-        .query(query)
-        .body(image)
-        .send()
-        .await
-        .map_err(|e| RequestError::Reqwest(e))?;
-    return if result.status() != reqwest::StatusCode::OK {
-        let json = result
-            .json::<WsiError>()
-            .await
-            .map_err(|err| RequestError::Reqwest(err))?;
-
-        Err(RequestError::Wsi(json))
-    } else {
-        let bytes = result.bytes().await.map_err(|e| RequestError::Reqwest(e))?;
-        Ok(bytes)
-    };
+    }*/
 }
 
 pub async fn _3d_rotate(
@@ -200,7 +169,11 @@ pub async fn _3d_rotate(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::_3D_ROTATE, image, &[], user_id).await
+    let job = FifoSend::_3dRotate(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn ahshit(
@@ -208,7 +181,11 @@ pub async fn ahshit(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::AHSHIT, image, &[], user_id).await
+    let job = FifoSend::AhShit(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn aprilfools(
@@ -216,7 +193,11 @@ pub async fn aprilfools(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::APRILFOOLS, image, &[], user_id).await
+    let job = FifoSend::AprilFools(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn audio(
@@ -225,14 +206,11 @@ pub async fn audio(
     effect: &str,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(
-        &assyst,
-        routes::AUDIO,
-        image,
-        &[("effect", effect)],
-        user_id,
-    )
-    .await
+    let job = FifoSend::Audio(
+        FifoData::new(image.to_vec(), AudioQueryParams { effect: effect.to_string() })
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn blur(
@@ -241,7 +219,11 @@ pub async fn blur(
     user_id: UserId,
     power: &str,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::BLUR, image, &[("power", power)], user_id).await
+    let job = FifoSend::Blur(
+        FifoData::new(image.to_vec(), BlurQueryParams { power: power.parse::<f32>().unwrap() })
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn caption(
@@ -250,7 +232,11 @@ pub async fn caption(
     user_id: UserId,
     text: &str,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::CAPTION, image, &[("text", text)], user_id).await
+    let job = FifoSend::Caption(
+        FifoData::new(image.to_vec(), CaptionQueryParams { text: text.to_string() })
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn convert_png(
@@ -258,23 +244,11 @@ pub async fn convert_png(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::CONVERT_PNG, image, &[], user_id).await
-}
+    let job = FifoSend::ConvertPng(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
 
-pub async fn compress(
-    assyst: Arc<Assyst>,
-    image: Bytes,
-    user_id: UserId,
-    level: usize,
-) -> Result<Bytes, RequestError> {
-    request_bytes(
-        &assyst,
-        routes::COMPRESS,
-        image,
-        &[("level", &level.to_string())],
-        user_id,
-    )
-    .await
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn fix_transparency(
@@ -282,7 +256,11 @@ pub async fn fix_transparency(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::FIX_TRANSPARENCY, image, &[], user_id).await
+    let job = FifoSend::FixTransparency(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn flash(
@@ -290,14 +268,22 @@ pub async fn flash(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::FLASH, image, &[], user_id).await
+    let job = FifoSend::Flash(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 pub async fn flip(
     assyst: Arc<Assyst>,
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::FLIP, image, &[], user_id).await
+    let job = FifoSend::Flip(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn flop(
@@ -305,7 +291,11 @@ pub async fn flop(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::FLOP, image, &[], user_id).await
+    let job = FifoSend::Flop(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn motivate(
@@ -315,14 +305,14 @@ pub async fn motivate(
     top_text: &str,
     bottom_text: &str,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(
-        &assyst,
-        routes::MOTIVATE,
-        image,
-        &[("top", top_text), ("bottom", bottom_text)],
-        user_id,
-    )
-    .await
+    let job = FifoSend::Motivate(
+        FifoData::new(image.to_vec(), MotivateQueryParams {
+            top: top_text.to_string(),
+            bottom: Some(bottom_text.to_string()),
+        })
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn frames(
@@ -330,7 +320,11 @@ pub async fn frames(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::FRAMES, image, &[], user_id).await
+    let job = FifoSend::Frames(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn ghost(
@@ -339,7 +333,13 @@ pub async fn ghost(
     user_id: UserId,
     depth: &str,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::GHOST, image, &[("depth", depth)], user_id).await
+    let job = FifoSend::Ghost(
+        FifoData::new(image.to_vec(), GhostQueryParams {
+            depth: Some(depth.parse::<usize>().unwrap()),
+        })
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn gif_loop(
@@ -347,7 +347,11 @@ pub async fn gif_loop(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::GIF_LOOP, image, &[], user_id).await
+    let job = FifoSend::GifLoop(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn gif_magik(
@@ -355,7 +359,11 @@ pub async fn gif_magik(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::GIF_MAGIK, image, &[], user_id).await
+    let job = FifoSend::GifMagik(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn gif_scramble(
@@ -363,7 +371,11 @@ pub async fn gif_scramble(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::GIF_SCRAMBLE, image, &[], user_id).await
+    let job = FifoSend::GifScramble(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn grayscale(
@@ -371,7 +383,11 @@ pub async fn grayscale(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::GRAYSCALE, image, &[], user_id).await
+    let job = FifoSend::Grayscale(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn heart_locket(
@@ -380,14 +396,7 @@ pub async fn heart_locket(
     text: &str,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(
-        &assyst,
-        routes::HEART_LOCKET,
-        image,
-        &[("text", text)],
-        user_id,
-    )
-    .await
+    todo!()
 }
 
 pub async fn gif_speed(
@@ -396,41 +405,25 @@ pub async fn gif_speed(
     user_id: UserId,
     delay: Option<&str>,
 ) -> Result<Bytes, RequestError> {
-    let query = match delay {
-        Some(d) => vec![("delay", d)],
-        None => vec![],
-    };
+    let job = FifoSend::GifSpeed(
+        FifoData::new(image.to_vec(), GifSpeedQueryParams {
+            delay: delay.map(|s| s.parse::<usize>().unwrap()),
+        })
+    );
 
-    request_bytes(&assyst, routes::GIF_SPEED, image, &query, user_id).await
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn image_info(assyst: Arc<Assyst>, image: Bytes) -> Result<ImageInfo, RequestError> {
-    let result = assyst
-        .reqwest_client
-        .post(&format!("{}{}", assyst.config.url.wsi, routes::IMAGE_INFO))
-        .header(
-            reqwest::header::AUTHORIZATION,
-            assyst.config.auth.wsi.as_ref(),
-        )
-        .header("premium_level", 0)
-        .body(image)
-        .send()
-        .await
-        .map_err(|e| RequestError::Reqwest(e))?;
+    let job = FifoSend::ImageInfo(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
 
-    return if result.status() != reqwest::StatusCode::OK {
-        let json = result
-            .json::<WsiError>()
-            .await
-            .map_err(|err| RequestError::Reqwest(err))?;
-        Err(RequestError::Wsi(json))
-    } else {
-        let json = result
-            .json::<ImageInfo>()
-            .await
-            .map_err(|err| RequestError::Reqwest(err))?;
-        Ok(json)
-    };
+    let result = run_wsi_job(assyst, job, UserId::from(0)).await?;
+    let v = result.to_vec();
+    let de = deserialize::<ImageInfo>(&v).unwrap().clone();
+
+    Ok(de)
 }
 
 pub async fn imagemagick_eval(
@@ -439,14 +432,13 @@ pub async fn imagemagick_eval(
     user_id: UserId,
     script: &str,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(
-        &assyst,
-        routes::IMAGEMAGICK_EVAL,
-        image,
-        &[("script", script)],
-        user_id,
-    )
-    .await
+    let job = FifoSend::ImageMagickEval(
+        FifoData::new(image.to_vec(), ImageMagickEvalQueryParams {
+            script: script.to_string()
+        })
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn invert(
@@ -454,7 +446,11 @@ pub async fn invert(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::INVERT, image, &[], user_id).await
+    let job = FifoSend::Invert(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn jpeg(
@@ -462,7 +458,11 @@ pub async fn jpeg(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::JPEG, image, &[], user_id).await
+    let job = FifoSend::Jpeg(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn magik(
@@ -470,7 +470,11 @@ pub async fn magik(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::MAGIK, image, &[], user_id).await
+    let job = FifoSend::Magik(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn meme(
@@ -480,14 +484,14 @@ pub async fn meme(
     top: &str,
     bottom: &str,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(
-        &assyst,
-        routes::MEME,
-        image,
-        &[("top", top), ("bottom", bottom)],
-        user_id,
-    )
-    .await
+    let job = FifoSend::Meme(
+        FifoData::new(image.to_vec(), MemeQueryParams {
+            top: top.to_string(),
+            bottom: Some(bottom.to_string()),
+        })
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn pixelate(
@@ -496,19 +500,13 @@ pub async fn pixelate(
     user_id: UserId,
     downscaled_height: Option<&str>,
 ) -> Result<Bytes, RequestError> {
-    match downscaled_height {
-        Some(d) => {
-            request_bytes(
-                &assyst,
-                routes::PIXELATE,
-                image,
-                &[("downscaled_height", d)],
-                user_id,
-            )
-            .await
-        }
-        None => request_bytes(&assyst, routes::PIXELATE, image, &[], user_id).await,
-    }
+    let job = FifoSend::Pixelate(
+        FifoData::new(image.to_vec(), PixelateQueryParams {
+            downscaled_height: downscaled_height.map(|s| s.parse::<usize>().unwrap()),
+        })
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn preprocess(
@@ -516,7 +514,11 @@ pub async fn preprocess(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::PREPROCESS, image, &[], user_id).await
+    let job = FifoSend::Preprocess(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn printer(
@@ -524,7 +526,11 @@ pub async fn printer(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::PRINTER, image, &[], user_id).await
+    let job = FifoSend::Printer(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn rainbow(
@@ -532,7 +538,11 @@ pub async fn rainbow(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::RAINBOW, image, &[], user_id).await
+    let job = FifoSend::Rainbow(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn resize(
@@ -541,16 +551,16 @@ pub async fn resize(
     user_id: UserId,
     method: ResizeMethod,
 ) -> Result<Bytes, RequestError> {
-    let method = method.to_string().map_err(RequestError::Serde)?;
+    let job = FifoSend::Resize(
+        FifoData::new(image.to_vec(), ResizeQueryParams {
+            method: Some(method),
+            width: None,
+            height: None,
+            scale: None
+        })
+    );
 
-    request_bytes(
-        &assyst,
-        routes::RESIZE,
-        image,
-        &[("method", &method)],
-        user_id,
-    )
-    .await
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn resize_scale(
@@ -560,16 +570,16 @@ pub async fn resize_scale(
     scale: f32,
     method: ResizeMethod,
 ) -> Result<Bytes, RequestError> {
-    let method = method.to_string().map_err(RequestError::Serde)?;
+    let job = FifoSend::Resize(
+        FifoData::new(image.to_vec(), ResizeQueryParams {
+            method: Some(method),
+            width: None,
+            height: None,
+            scale: Some(scale)
+        })
+    );
 
-    request_bytes(
-        &assyst,
-        routes::RESIZE,
-        image,
-        &[("scale", &scale.to_string()), ("method", &method)],
-        user_id,
-    )
-    .await
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn resize_width_height(
@@ -580,20 +590,16 @@ pub async fn resize_width_height(
     height: usize,
     method: ResizeMethod,
 ) -> Result<Bytes, RequestError> {
-    let method = method.to_string().map_err(RequestError::Serde)?;
+    let job = FifoSend::Resize(
+        FifoData::new(image.to_vec(), ResizeQueryParams {
+            method: Some(method),
+            width: Some(width as u32),
+            height: Some(height as u32),
+            scale: None
+        })
+    );
 
-    request_bytes(
-        &assyst,
-        routes::RESIZE,
-        image,
-        &[
-            ("width", &width.to_string()),
-            ("height", &height.to_string()),
-            ("method", &method),
-        ],
-        user_id,
-    )
-    .await
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn overlay(
@@ -602,37 +608,13 @@ pub async fn overlay(
     user_id: UserId,
     overlay: &str,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(
-        &assyst,
-        routes::OVERLAY,
-        image,
-        &[("overlay", overlay)],
-        user_id,
-    )
-    .await
-}
+    let job = FifoSend::Overlay(
+        FifoData::new(image.to_vec(), OverlayQueryParams {
+            overlay: overlay.to_string(),
+        })
+    );
 
-pub async fn restart(assyst: Arc<Assyst>) -> Result<(), RequestError> {
-    let result = assyst
-        .reqwest_client
-        .get(&format!("{}{}", assyst.config.url.wsi, routes::RESTART))
-        .header(
-            reqwest::header::AUTHORIZATION,
-            assyst.config.auth.wsi.as_ref(),
-        )
-        .send()
-        .await
-        .map_err(|e| RequestError::Reqwest(e))?;
-
-    return if result.status() != reqwest::StatusCode::OK {
-        let json = result
-            .json::<WsiError>()
-            .await
-            .map_err(|err| RequestError::Reqwest(err))?;
-        Err(RequestError::Wsi(json))
-    } else {
-        Ok(())
-    };
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn reverse(
@@ -640,7 +622,11 @@ pub async fn reverse(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::REVERSE, image, &[], user_id).await
+    let job = FifoSend::Reverse(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn rotate(
@@ -649,14 +635,13 @@ pub async fn rotate(
     user_id: UserId,
     degrees: &str,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(
-        &assyst,
-        routes::ROTATE,
-        image,
-        &[("degrees", degrees)],
-        user_id,
-    )
-    .await
+    let job = FifoSend::Rotate(
+        FifoData::new(image.to_vec(), RotateQueryParams {
+            degrees: degrees.parse::<usize>().unwrap(),
+        })
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn set_loop(
@@ -665,14 +650,13 @@ pub async fn set_loop(
     user_id: UserId,
     looping: bool,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(
-        &assyst,
-        routes::SET_LOOP,
-        image,
-        &[("loop", &looping.to_string())],
-        user_id,
-    )
-    .await
+    let job = FifoSend::SetLoop(
+        FifoData::new(image.to_vec(), SetLoopQueryParams {
+            r#loop: looping,
+        })
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn spin(
@@ -680,7 +664,11 @@ pub async fn spin(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::SPIN, image, &[], user_id).await
+    let job = FifoSend::Spin(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn spread(
@@ -688,10 +676,17 @@ pub async fn spread(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::SPREAD, image, &[], user_id).await
+    let job = FifoSend::Spread(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn stats(assyst: Arc<Assyst>) -> Result<Stats, RequestError> {
+    todo!()
+    
+    /* 
     let result = assyst
         .reqwest_client
         .get(&format!("{}{}", assyst.config.url.wsi, routes::STATS))
@@ -711,7 +706,7 @@ pub async fn stats(assyst: Arc<Assyst>) -> Result<Stats, RequestError> {
             .await
             .map_err(|err| RequestError::Reqwest(err))?;
         Ok(json)
-    };
+    };*/
 }
 
 pub async fn swirl(
@@ -719,7 +714,11 @@ pub async fn swirl(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::SWIRL, image, &[], user_id).await
+    let job = FifoSend::Swirl(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn tehi(
@@ -727,7 +726,11 @@ pub async fn tehi(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::TEHI, image, &[], user_id).await
+    let job = FifoSend::Tehi(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn wall(
@@ -735,7 +738,11 @@ pub async fn wall(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::WALL, image, &[], user_id).await
+    let job = FifoSend::Wall(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn wave(
@@ -743,7 +750,11 @@ pub async fn wave(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::WAVE, image, &[], user_id).await
+    let job = FifoSend::Wave(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn wormhole(
@@ -751,7 +762,11 @@ pub async fn wormhole(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::WORMHOLE, image, &[], user_id).await
+    let job = FifoSend::Wormhole(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn zoom(
@@ -759,7 +774,11 @@ pub async fn zoom(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::ZOOM, image, &[], user_id).await
+    let job = FifoSend::Zoom(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub fn format_err(err: RequestError) -> String {

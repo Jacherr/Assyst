@@ -9,6 +9,8 @@ const FETCH_INTERVAL: u64 = 60000 * 60; // 1 hour
 pub fn init_bot_list_posting_loop(assyst: Arc<Assyst>) {
     tokio::spawn(async move {
         loop {
+            sleep(Duration::from_millis(FETCH_INTERVAL)).await;
+
             let guild_count = assyst.metrics.get_guild_count();
 
             let result = post_bot_stats(
@@ -30,8 +32,6 @@ pub fn init_bot_list_posting_loop(assyst: Arc<Assyst>) {
                     .await;
                 }
             }
-
-            sleep(Duration::from_millis(FETCH_INTERVAL)).await;
         }
     });
 }

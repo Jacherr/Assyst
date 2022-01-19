@@ -12,7 +12,7 @@ use crate::{
         annmarie::{self, info},
         bt::{get_languages, validate_language},
         fake_eval,
-        wsi::{self, ResizeMethod},
+        wsi,
     },
     util::{
         codeblock, ensure_same_guild, exec_sync, extract_page_title, format_discord_timestamp,
@@ -33,6 +33,7 @@ use std::{
     sync::{atomic::Ordering, Arc},
     time::{Duration, Instant},
 };
+use shared::query_params::ResizeMethod;
 
 const USEFUL_LINKS_TEXT: &str = "Invite the bot: <https://jacher.io/assyst>\nSupport server: <https://discord.gg/VRPGgMEhGk>\nVote for Assyst for some sweet perks! <https://vote.jacher.io/topgg> & <https://vote.jacher.io/dbl>";
 
@@ -196,12 +197,6 @@ lazy_static! {
         .description("Evaluate javascript code")
         .example("41 + 1 /* what is it */")
         .usage("[code]")
-        .cooldown(Duration::from_secs(1))
-        .category(CATEGORY_NAME)
-        .build();
-    pub static ref WSI_RESTART_COMMAND: Command = CommandBuilder::new("wsirestart")
-        .availability(CommandAvailability::Private)
-        .description("Schedule a wsi restart for when no jobs are active")
         .cooldown(Duration::from_secs(1))
         .category(CATEGORY_NAME)
         .build();
@@ -1033,20 +1028,6 @@ pub async fn run_command_command(
         }
     };
 
-    Ok(())
-}
-
-pub async fn run_wsi_restart_command(
-    context: Arc<Context>,
-    _: Vec<ParsedArgument>,
-    _flags: ParsedFlags,
-) -> CommandResult {
-    wsi::restart(context.assyst.clone())
-        .await
-        .map_err(wsi::format_err)?;
-    context
-        .reply_with_text("Restart scheduled for when api is idle")
-        .await?;
     Ok(())
 }
 

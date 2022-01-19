@@ -29,6 +29,7 @@ use twilight_model::gateway::{
     Intents,
 };
 
+#[cfg(target_os = "linux")]
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
