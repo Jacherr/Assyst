@@ -5,8 +5,14 @@ use futures::Future;
 use rand::Rng;
 use reqwest::{RequestBuilder, StatusCode};
 use serde::{Deserialize, Serialize};
+use shared::{
+    fifo::{FifoData, FifoSend},
+    query_params::AnnmarieQueryParams,
+};
 use std::{error::Error as StdError, fmt::Display, pin::Pin, sync::Arc};
 use twilight_model::{channel::Message, guild::Guild, id::UserId};
+
+use super::wsi::run_wsi_job;
 
 pub type NoArgFunction = Box<
     dyn Fn(
@@ -88,84 +94,33 @@ pub enum RequestError {
     InvalidStatus(reqwest::StatusCode),
     Wsi(crate::rest::wsi::RequestError),
 }
+impl From<crate::rest::wsi::RequestError> for RequestError {
+    fn from(e: crate::rest::wsi::RequestError) -> Self {
+        RequestError::Wsi(e)
+    }
+}
 
 impl Display for RequestError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RequestError::Reqwest(x) => write!(f, "{}", &format!("A request error occurred: {}", x)),
-            RequestError::Annmarie(_, y) => write!(f, "{}", &format!("Invalid response status code: {:?}", y)),
-            RequestError::InvalidStatus(x) => write!(f, "{}", &format!("Invalid response status code: {:?}", x)),
-            RequestError::Wsi(x) => write!(f, "{}", &format!("WSI error: {:?}", x))
+            RequestError::Reqwest(x) => {
+                write!(f, "{}", &format!("A request error occurred: {}", x))
+            }
+            RequestError::Annmarie(_, y) => {
+                write!(f, "{}", &format!("Invalid response status code: {:?}", y))
+            }
+            RequestError::InvalidStatus(x) => {
+                write!(f, "{}", &format!("Invalid response status code: {:?}", x))
+            }
+            RequestError::Wsi(x) => write!(f, "{}", &format!("WSI error: {:?}", x)),
         }
     }
 }
 
 impl StdError for RequestError {}
 
-/// Takes a partially built request, attaches the Authorization header
-/// and sends the request, returning any errors
-pub async fn finish_request(
-    assyst: &Assyst,
-    req: RequestBuilder,
-    premium_level: usize,
-) -> Result<Bytes, RequestError> {
-    let result = req
-        .header(
-            reqwest::header::AUTHORIZATION,
-            assyst.config.auth.wsi.as_ref(),
-        )
-        .header("premium_level", premium_level)
-        .send()
-        .await
-        .map_err(|x| RequestError::Reqwest(format!("{}", x)))?;
-
-    let status = result.status();
-
-    return if status != reqwest::StatusCode::OK {
-        let json = result.json::<AnnmarieError>().await.map_err(|_| {
-            RequestError::Reqwest("There was an error decoding the response".to_owned())
-        })?;
-        Err(RequestError::Annmarie(json, status))
-    } else {
-        let bytes = result
-            .bytes()
-            .await
-            .map_err(|e| RequestError::Reqwest(e.to_string()))?;
-        Ok(bytes)
-    };
-}
-
-pub async fn request_bytes(
-    assyst: &Assyst,
-    route: &str,
-    image: Bytes,
-    query: &[(&str, &str)],
-    user_id: UserId,
-) -> Result<Bytes, RequestError> {
-    let body = AnnmarieBody {
-        images: vec![image.to_vec()],
-        query_params: query
-            .iter()
-            .map(|x| (x.0.to_owned(), x.1.to_owned()))
-            .collect::<Vec<_>>(),
-        route: route.to_owned(),
-    };
-
-    let premium_level = get_wsi_request_tier(&assyst.clone(), user_id)
-        .await
-        .unwrap();
-
-    let req = assyst
-        .reqwest_client
-        .post(&format!("{}/annmarie", assyst.config.url.wsi))
-        .query(query)
-        .body(serialize(&body).unwrap());
-
-    finish_request(&assyst, req, premium_level).await
-}
-
 pub async fn randomize(
-    assyst: &Assyst,
+    assyst: Arc<Assyst>,
     image: Bytes,
     user_id: UserId,
     acceptable_routes: &mut Vec<&'static str>,
@@ -173,12 +128,26 @@ pub async fn randomize(
     let index = rand::thread_rng().gen_range(0..acceptable_routes.len());
     let route = acceptable_routes.remove(index);
 
-    let bytes = request_bytes(assyst, route, image, &[], user_id).await;
+    let job = FifoSend::Annmarie(FifoData::new(
+        image.to_vec(),
+        AnnmarieQueryParams {
+            preprocess: true,
+            query_params: vec![("template".to_owned(), "flag".to_owned())],
+            route: routes::MAKESWEET.to_owned(),
+            images: vec![],
+        },
+    ));
 
-    match bytes {
-        Ok(bytes) => (route, Ok(bytes)),
-        Err(e) => (route, Err(e)),
-    }
+    let x = run_wsi_job(assyst, job, user_id).await;
+    (route, {
+        if let Ok(bytes) = x {
+            Ok(bytes)
+        } else if let Err(y) = x{
+            Err(RequestError::from(y))
+        } else {
+            unreachable!()
+        }
+    })
 }
 
 pub async fn quote(
@@ -224,14 +193,17 @@ pub async fn billboard(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(
-        &assyst,
-        routes::MAKESWEET,
-        image,
-        &[("template", "billboard-cityscape")],
-        user_id,
-    )
-    .await
+    let job = FifoSend::Annmarie(FifoData::new(
+        image.to_vec(),
+        AnnmarieQueryParams {
+            preprocess: true,
+            query_params: vec![("template".to_owned(), "billboard-cityscape".to_owned())],
+            route: routes::MAKESWEET.to_owned(),
+            images: vec![],
+        },
+    ));
+
+    Ok(run_wsi_job(assyst, job, user_id).await?)
 }
 
 pub async fn card(
@@ -239,7 +211,17 @@ pub async fn card(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::CARD, image, &[], user_id).await
+    let job = FifoSend::Annmarie(FifoData::new(
+        image.to_vec(),
+        AnnmarieQueryParams {
+            preprocess: true,
+            query_params: vec![],
+            route: routes::CARD.to_owned(),
+            images: vec![],
+        },
+    ));
+
+    Ok(run_wsi_job(assyst, job, user_id).await?)
 }
 
 pub async fn circuitboard(
@@ -247,22 +229,17 @@ pub async fn circuitboard(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(
-        &assyst,
-        routes::MAKESWEET,
-        image,
-        &[("template", "circuitboard")],
-        user_id,
-    )
-    .await
-}
+    let job = FifoSend::Annmarie(FifoData::new(
+        image.to_vec(),
+        AnnmarieQueryParams {
+            preprocess: true,
+            query_params: vec![("template".to_owned(), "circuitboard".to_owned())],
+            route: routes::MAKESWEET.to_owned(),
+            images: vec![],
+        },
+    ));
 
-pub async fn drip(
-    assyst: Arc<Assyst>,
-    image: Bytes,
-    user_id: UserId,
-) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::DRIP, image, &[], user_id).await
+    Ok(run_wsi_job(assyst, job, user_id).await?)
 }
 
 pub async fn fisheye(
@@ -270,7 +247,17 @@ pub async fn fisheye(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::FISHEYE, image, &[], user_id).await
+    let job = FifoSend::Annmarie(FifoData::new(
+        image.to_vec(),
+        AnnmarieQueryParams {
+            preprocess: true,
+            query_params: vec![],
+            route: routes::FISHEYE.to_owned(),
+            images: vec![],
+        },
+    ));
+
+    Ok(run_wsi_job(assyst, job, user_id).await?)
 }
 
 pub async fn flag(
@@ -278,22 +265,17 @@ pub async fn flag(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(
-        &assyst,
-        routes::MAKESWEET,
-        image,
-        &[("template", "flag")],
-        user_id,
-    )
-    .await
-}
+    let job = FifoSend::Annmarie(FifoData::new(
+        image.to_vec(),
+        AnnmarieQueryParams {
+            preprocess: true,
+            query_params: vec![("template".to_owned(), "flag".to_owned())],
+            route: routes::MAKESWEET.to_owned(),
+            images: vec![],
+        },
+    ));
 
-pub async fn femurbreaker(
-    assyst: Arc<Assyst>,
-    image: Bytes,
-    user_id: UserId,
-) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::FEMURBREAKER, image, &[], user_id).await
+    Ok(run_wsi_job(assyst, job, user_id).await?)
 }
 
 pub async fn fringe(
@@ -301,7 +283,17 @@ pub async fn fringe(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::FRINGE, image, &[], user_id).await
+    let job = FifoSend::Annmarie(FifoData::new(
+        image.to_vec(),
+        AnnmarieQueryParams {
+            preprocess: true,
+            query_params: vec![],
+            route: routes::FRINGE.to_owned(),
+            images: vec![],
+        },
+    ));
+
+    Ok(run_wsi_job(assyst, job, user_id).await?)
 }
 
 pub async fn f_shift(
@@ -309,7 +301,17 @@ pub async fn f_shift(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::F_SHIFT, image, &[], user_id).await
+    let job = FifoSend::Annmarie(FifoData::new(
+        image.to_vec(),
+        AnnmarieQueryParams {
+            preprocess: true,
+            query_params: vec![],
+            route: routes::F_SHIFT.to_owned(),
+            images: vec![],
+        },
+    ));
+
+    Ok(run_wsi_job(assyst, job, user_id).await?)
 }
 
 pub async fn globe(
@@ -317,7 +319,17 @@ pub async fn globe(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::GLOBE, image, &[], user_id).await
+    let job = FifoSend::Annmarie(FifoData::new(
+        image.to_vec(),
+        AnnmarieQueryParams {
+            preprocess: true,
+            query_params: vec![],
+            route: routes::GLOBE.to_owned(),
+            images: vec![],
+        },
+    ));
+
+    Ok(run_wsi_job(assyst, job, user_id).await?)
 }
 
 pub async fn info(assyst: Arc<Assyst>) -> Result<AnnmarieInfo, RequestError> {
@@ -350,7 +362,17 @@ pub async fn labels(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Vec<AnnmarieLabels>, RequestError> {
-    let bytes = request_bytes(&assyst, routes::LABELS, image, &[], user_id).await?;
+    let job = FifoSend::Annmarie(FifoData::new(
+        image.to_vec(),
+        AnnmarieQueryParams {
+            preprocess: true,
+            query_params: vec![],
+            route: routes::LABELS.to_owned(),
+            images: vec![],
+        },
+    ));
+
+    let bytes = run_wsi_job(assyst, job, user_id).await?;
     let string = String::from_utf8_lossy(&bytes).to_string();
     let json = serde_json::from_str::<Vec<AnnmarieLabels>>(&string)
         .map_err(|err| RequestError::Reqwest(format!("{}", err)))?;
@@ -363,7 +385,17 @@ pub async fn neon(
     user_id: UserId,
     radius: &str,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::NEON, image, &[("radius", radius)], user_id).await
+    let job = FifoSend::Annmarie(FifoData::new(
+        image.to_vec(),
+        AnnmarieQueryParams {
+            preprocess: true,
+            query_params: vec![("radius".to_owned(), radius.to_owned())],
+            route: routes::NEON.to_owned(),
+            images: vec![],
+        },
+    ));
+
+    Ok(run_wsi_job(assyst, job, user_id).await?)
 }
 
 pub async fn paint(
@@ -371,15 +403,17 @@ pub async fn paint(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::PAINT, image, &[], user_id).await
-}
+    let job = FifoSend::Annmarie(FifoData::new(
+        image.to_vec(),
+        AnnmarieQueryParams {
+            preprocess: true,
+            query_params: vec![],
+            route: routes::PAINT.to_owned(),
+            images: vec![],
+        },
+    ));
 
-pub async fn siren(
-    assyst: Arc<Assyst>,
-    image: Bytes,
-    user_id: UserId,
-) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::SIREN, image, &[], user_id).await
+    Ok(run_wsi_job(assyst, job, user_id).await?)
 }
 
 pub async fn sketch(
@@ -387,7 +421,17 @@ pub async fn sketch(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::SKETCH, image, &[], user_id).await
+    let job = FifoSend::Annmarie(FifoData::new(
+        image.to_vec(),
+        AnnmarieQueryParams {
+            preprocess: true,
+            query_params: vec![],
+            route: routes::SKETCH.to_owned(),
+            images: vec![],
+        },
+    ));
+
+    Ok(run_wsi_job(assyst, job, user_id).await?)
 }
 
 pub async fn softglow(
@@ -395,15 +439,17 @@ pub async fn softglow(
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::SOFTGLOW, image, &[], user_id).await
-}
+    let job = FifoSend::Annmarie(FifoData::new(
+        image.to_vec(),
+        AnnmarieQueryParams {
+            preprocess: true,
+            query_params: vec![],
+            route: routes::SOFTGLOW.to_owned(),
+            images: vec![],
+        },
+    ));
 
-pub async fn sweden(
-    assyst: Arc<Assyst>,
-    image: Bytes,
-    user_id: UserId,
-) -> Result<Bytes, RequestError> {
-    request_bytes(&assyst, routes::SWEDEN, image, &[], user_id).await
+    Ok(run_wsi_job(assyst, job, user_id).await?)
 }
 
 pub async fn zoom_blur(
@@ -412,14 +458,17 @@ pub async fn zoom_blur(
     user_id: UserId,
     power: &str,
 ) -> Result<Bytes, RequestError> {
-    request_bytes(
-        &assyst,
-        routes::ZOOM_BLUR,
-        image,
-        &[("power", power)],
-        user_id,
-    )
-    .await
+    let job = FifoSend::Annmarie(FifoData::new(
+        image.to_vec(),
+        AnnmarieQueryParams {
+            preprocess: true,
+            query_params: vec![("power".to_owned(), power.to_owned())],
+            route: routes::ZOOM_BLUR.to_owned(),
+            images: vec![],
+        },
+    ));
+
+    Ok(run_wsi_job(assyst, job, user_id).await?)
 }
 
 pub fn format_err(err: RequestError) -> String {

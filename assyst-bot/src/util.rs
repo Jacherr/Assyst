@@ -202,18 +202,60 @@ pub fn parse_codeblock_with_language(text: &str) -> Option<(&str, &str)> {
 /// Attempts to extract memory usage
 #[cfg(target_os = "linux")]
 pub fn get_memory_usage() -> Option<usize> {
-    use std::fs;
-    let field = 1;
-    let contents = fs::read("/proc/self/statm").ok()?;
-    let contents = String::from_utf8(contents).ok()?;
-    let s = contents.split_whitespace().nth(field)?;
-    let npages = s.parse::<usize>().ok()?;
-    Some(npages * 4096)
+    use std::{ffi::{CStr, c_void}, os::raw::c_char};
+
+    use serde::Deserialize;
+
+    unsafe {
+        use jemalloc_sys::malloc_stats_print;
+        let mut output = String::new();
+
+        unsafe extern "C" fn write_cb(output: *mut c_void, buf: *const c_char) {
+            let buf = CStr::from_ptr(buf).to_str().unwrap();
+            let output = &mut *output.cast::<String>();
+            output.push_str(buf);
+        }
+        
+        let opts = b"Jgmdablx\0".as_ptr().cast::<i8>();
+
+        malloc_stats_print(Some(write_cb), &mut output as *mut String as *mut c_void, opts);
+
+        #[derive(Deserialize)]
+        struct Stats {
+            pub resident: usize
+        }
+        #[derive(Deserialize)]
+        struct Jemalloc {
+            pub stats: Stats
+        }
+        #[derive(Deserialize)]
+        struct JemallocStats {
+            pub jemalloc: Jemalloc
+        }
+
+        let json: JemallocStats = serde_json::from_str(&output).unwrap();
+
+        Some(json.jemalloc.stats.resident)
+    }
 }
 
 #[cfg(not(target_os = "linux"))]
 pub fn get_memory_usage() -> Option<usize> {
-    Some(0)
+    use std::mem::{self, MaybeUninit};
+    use winapi::shared::minwindef::DWORD;
+    use winapi::um::processthreadsapi::GetCurrentProcess;
+    use winapi::um::psapi::{GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS};
+
+    let mut pmc = MaybeUninit::<PROCESS_MEMORY_COUNTERS>::uninit();
+    match unsafe {
+        GetProcessMemoryInfo(GetCurrentProcess(), pmc.as_mut_ptr(), mem::size_of_val(&pmc) as DWORD)
+    } {
+        0 => None,
+        _ => {
+            let pmc = unsafe { pmc.assume_init() };
+            Some(pmc.WorkingSetSize as usize)
+        }
+    }
 }
 
 // Get memory usage in MB

@@ -35,5 +35,9 @@ assyst-common = { path = "../assyst-common" }
 assyst-logger = { path = "../assyst-logger" }
 shared = { git = "https://github.com/jacherr/wsi-shared" }
 
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3.9", features = ["psapi"] }
+
 [target.'cfg(unix)'.dependencies]
 jemallocator = "0.3.0"
+jemalloc-sys = { version = "0.3.2", features = ["stats"] }

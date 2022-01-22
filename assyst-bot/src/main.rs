@@ -5,6 +5,7 @@ mod badtranslator;
 mod caching;
 mod command;
 // mod consts;
+mod ansi;
 mod filetype;
 mod handler;
 mod handlers;
@@ -13,7 +14,6 @@ mod metrics;
 mod rest;
 mod tasks;
 mod util;
-mod ansi;
 
 use assyst::Assyst;
 use assyst_webserver::run as webserver_run;
@@ -37,6 +37,10 @@ static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 async fn main() {
     dotenv().ok();
     let token = env::var("DISCORD_TOKEN").unwrap();
+
+    //let y = Vec::<u8>::with_capacity(5_000_000_000);
+    //unsafe { std::ptr::read_volatile(y.as_ptr()) };
+    //drop(y);
 
     let assyst = Arc::new(Assyst::new(&token).await);
     let activity = Activity {

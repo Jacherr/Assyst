@@ -1,3 +1,4 @@
+use crate::rest::wsi::run_wsi_job;
 use crate::util::get_buffer_filetype;
 use crate::{
     command::{
@@ -14,6 +15,8 @@ use crate::{
 use assyst_common::consts;
 use bytes::Bytes;
 use lazy_static::lazy_static;
+use shared::fifo::{FifoSend, FifoData};
+use shared::query_params::AnnmarieQueryParams;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -280,15 +283,19 @@ pub async fn run_annmarie_command(
     let image = args[0].as_bytes();
     let endpoint = args[1].as_text();
     context.reply_with_text("processing...").await?;
-    let result = annmarie::request_bytes(
-        &context.assyst,
-        &format!("/{}", endpoint),
-        image,
-        &[],
-        context.author_id(),
-    )
-    .await
-    .map_err(annmarie::format_err)?;
+
+    let job = FifoSend::Annmarie(FifoData::new(
+        image.to_vec(),
+        AnnmarieQueryParams {
+            preprocess: true,
+            query_params: vec![],
+            route: format!("/{}", endpoint),
+            images: vec![],
+        },
+    ));
+
+    let result = run_wsi_job(context.assyst.clone(), job, context.author_id()).await
+        .map_err(|x| x.to_string())?;
 
     let format = if flags.contains_key("json") {
         "json"

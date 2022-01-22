@@ -2,13 +2,15 @@ use crate::{assyst::Assyst, util::handle_job_result};
 use crate::util::get_wsi_request_tier;
 use bincode::{deserialize, serialize};
 use bytes::Bytes;
-use rand::Rng;
 use reqwest::Error;
 use serde::Deserialize;
 use shared::errors::ProcessingError;
-use shared::response_data::ImageInfo;
+use shared::response_data::{ImageInfo, Stats};
+use shared::util::encode_frames;
 use shared::{job::JobResult, fifo::{FifoSend, WsiRequest, FifoData}, query_params::*};
+use tokio::time::timeout;
 use tokio::{sync::{oneshot::{Sender, self}, Mutex, mpsc::UnboundedReceiver}, net::TcpStream, time::sleep, io::{AsyncReadExt, AsyncWriteExt}};
+use std::sync::atomic::AtomicBool;
 use std::{future::Future, pin::Pin, sync::{Arc, atomic::{Ordering, AtomicUsize}}, collections::HashMap, time::Duration};
 use twilight_model::id::UserId;
 
@@ -22,6 +24,8 @@ pub type NoArgFunction = Box<
         + Sync,
 >;
 
+static CONNECTED: AtomicBool = AtomicBool::new(false);
+
 pub async fn wsi_listen(job_rx: UnboundedReceiver<(Sender<JobResult>, FifoSend, usize)>, socket: &str) {
     let job_rx = Arc::new(Mutex::new(job_rx));
 
@@ -34,6 +38,8 @@ pub async fn wsi_listen(job_rx: UnboundedReceiver<(Sender<JobResult>, FifoSend, 
                 continue;
             }
         };
+
+        CONNECTED.store(true, Ordering::Relaxed);
 
         let (mut reader, mut writer) = stream.into_split();
         
@@ -96,30 +102,45 @@ pub async fn wsi_listen(job_rx: UnboundedReceiver<(Sender<JobResult>, FifoSend, 
             }
         });
     
-        r.await.unwrap();
+        let _ = r.await;
         w.abort();
 
-        eprintln!("Lost connection to WSI server, attempting reconnection...");
+        CONNECTED.store(false, Ordering::Relaxed);
+
+        eprintln!("Lost connection to WSI server, attempting reconnection in 10 sec...");
+        sleep(Duration::from_secs(10)).await;
     }
 }
 
-async fn run_wsi_job(assyst: Arc<Assyst>, job: FifoSend, user_id: UserId) -> Result<Bytes, RequestError> {
+pub async fn run_wsi_job(assyst: Arc<Assyst>, job: FifoSend, user_id: UserId) -> Result<Bytes, RequestError> {
+    if !CONNECTED.load(Ordering::Relaxed) {
+        return Err(RequestError::Wsi(
+            WsiError {
+                message: "Assyst cannot establish a connection to the image server at this time. Try again in a few minutes.".to_string().into(),
+                code: 0,
+            }
+        ))
+    }
+
     let premium_level = get_wsi_request_tier(&assyst.clone(), user_id)
         .await
         .map_err(RequestError::Sqlx)?;
 
+    // 3 minute timeout
+    const MAX_TIME_LIMIT: Duration = Duration::from_secs(60 * 3);
+
     let (tx, rx) = oneshot::channel::<JobResult>();
     assyst.send_to_wsi(tx, job, premium_level);
-    let result = rx.await.unwrap();
+
+    let res = timeout(MAX_TIME_LIMIT, rx).await;
+    let result = match res {
+        Err(_) => JobResult::Error((0, ProcessingError::Timeout)),
+        Ok(x) => {
+            x.unwrap()
+        }
+    };
 
     handle_job_result(result)
-}
-
-#[derive(Deserialize)]
-pub struct Stats {
-    pub current_requests: usize,
-    pub total_workers: usize,
-    pub uptime_ms: usize,
 }
 
 #[derive(Deserialize, Debug)]
@@ -141,6 +162,24 @@ impl From<ProcessingError> for RequestError {
             code: 0,
             message: e.to_string().into()
         })
+    }
+}
+impl From<crate::rest::annmarie::RequestError> for RequestError {
+    fn from(e: crate::rest::annmarie::RequestError) -> Self {
+        RequestError::Wsi(WsiError {
+            code: 0,
+            message: e.to_string().into()
+        })
+    }
+}
+impl ToString for RequestError {
+    fn to_string(&self) -> String {
+        match self {
+            RequestError::Reqwest(e) => e.to_string(),
+            RequestError::Serde(e) => e.to_string(),
+            RequestError::Wsi(e) => e.message.to_string(),
+            RequestError::Sqlx(e) => e.to_string(),
+        }
     }
 }
 
@@ -396,7 +435,44 @@ pub async fn heart_locket(
     text: &str,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    todo!()
+    let text_job = FifoSend::HeartLocketText(
+        FifoData::new(vec![], HeartLocketTextQueryParams { text: text.to_string() })
+    );
+    let text = run_wsi_job(assyst.clone(), text_job, user_id).await?;
+
+    let resized = FifoSend::Resize(
+        FifoData::new(image.to_vec(), ResizeQueryParams {
+            width: Some(250),
+            height: Some(250),
+            method: Some(ResizeMethod::Nearest),
+            scale: None
+        })
+    );
+    let resized = run_wsi_job(assyst.clone(), resized, user_id).await?;
+
+    let ann_buffer = encode_frames(vec![text.to_vec(), resized.to_vec()]);
+
+    let gif_job = FifoSend::ConstructGif(
+        FifoData::new(ann_buffer, ConstructGifQueryParams {
+            delays: vec![],
+            repeat: -1,
+            audio: None
+        })
+    );
+    let gif = run_wsi_job(assyst.clone(), gif_job, user_id).await?;
+
+    let job = FifoSend::Annmarie(
+        FifoData::new(gif.to_vec(), AnnmarieQueryParams { 
+            route: crate::rest::annmarie::routes::MAKESWEET.to_string(),
+            query_params: vec![
+                ("template".to_string(), "heart-locket".to_string()),
+            ],
+            images: vec![],
+            preprocess: true
+         })
+    );
+
+    run_wsi_job(assyst, job, user_id).await
 }
 
 pub async fn gif_speed(
@@ -684,29 +760,12 @@ pub async fn spread(
 }
 
 pub async fn stats(assyst: Arc<Assyst>) -> Result<Stats, RequestError> {
-    todo!()
-    
-    /* 
-    let result = assyst
-        .reqwest_client
-        .get(&format!("{}{}", assyst.config.url.wsi, routes::STATS))
-        .send()
-        .await
-        .map_err(|e| RequestError::Reqwest(e))?;
+    let job = FifoSend::Stats(
+        FifoData::new(vec![], NoneQuery {})
+    );
 
-    return if result.status() != reqwest::StatusCode::OK {
-        let json = result
-            .json::<WsiError>()
-            .await
-            .map_err(|err| RequestError::Reqwest(err))?;
-        Err(RequestError::Wsi(json))
-    } else {
-        let json = result
-            .json::<Stats>()
-            .await
-            .map_err(|err| RequestError::Reqwest(err))?;
-        Ok(json)
-    };*/
+    let result = run_wsi_job(assyst, job, UserId::from(0)).await?;
+    Ok(deserialize::<Stats>(&result).unwrap())
 }
 
 pub async fn swirl(
