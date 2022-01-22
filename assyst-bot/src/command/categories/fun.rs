@@ -34,14 +34,6 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
-    pub static ref MONEY_COMMAND: Command = CommandBuilder::new("money")
-        .public()
-        .description("money")
-        .example("money")
-        .usage("money")
-        .cooldown(Duration::from_secs(4))
-        .category(CATEGORY_NAME)
-        .build();
     pub static ref OCRBT_COMMAND: Command = CommandBuilder::new("ocrbadtranslate")
         .alias("ocrbt")
         .arg(Argument::ImageUrl)
@@ -183,17 +175,6 @@ pub async fn run_btdebug_command(
         translated.result.text, chain
     );
     context.reply_with_text(output).await?;
-    Ok(())
-}
-
-pub async fn run_money_command(
-    context: Arc<Context>,
-    _: Vec<ParsedArgument>,
-    _flags: ParsedFlags,
-) -> CommandResult {
-    context
-        .reply_with_text("https://media.discordapp.net/stickers/874300577180418068.png")
-        .await?;
     Ok(())
 }
 

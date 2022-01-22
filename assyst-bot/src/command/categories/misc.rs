@@ -433,7 +433,7 @@ pub async fn run_stats_command(
 
     let stats_table = generate_table(&[
         ("Guilds", &guild_count.to_string()),
-        ("Memory", &memory),
+        ("Resident Memory Usage", &memory),
         ("Commands", &commands),
         ("Avg Processing Time", &format!("{:.4}s", proc_time)),
         ("Commands Ran", &total_command_calls),
