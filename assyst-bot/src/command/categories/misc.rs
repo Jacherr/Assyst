@@ -12,7 +12,7 @@ use crate::{
         annmarie::{self, info},
         bt::{get_languages, validate_language},
         fake_eval,
-        wsi,
+        wsi, healthcheck,
     },
     util::{
         codeblock, ensure_same_guild, exec_sync, extract_page_title, format_discord_timestamp,
@@ -56,6 +56,12 @@ lazy_static! {
         .usage("[image]")
         .example(consts::Y21) // you
         .cooldown(Duration::from_secs(2))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref HEALTHCHECK_COMMAND: Command = CommandBuilder::new("healthcheck")
+        .availability(CommandAvailability::GuildOwner)
+        .description("check health of apis assyst uses")
+        .cooldown(Duration::from_secs(5))
         .category(CATEGORY_NAME)
         .build();
     pub static ref HELP_COMMAND: Command = CommandBuilder::new("help")
@@ -1087,5 +1093,30 @@ pub async fn run_cache_status_command(
             replies_size, ratelimits_size
         ))
         .await?;
+    Ok(())
+}
+
+pub async fn run_healthcheck_command(
+    context: Arc<Context>,
+    _: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    let healthcheck = context.assyst.healthcheck_result.lock().await;
+    let elapsed = healthcheck.0.elapsed().as_secs();
+    let healthcheck = healthcheck.1.clone();
+    if healthcheck.is_empty() {
+        context
+            .reply_with_text(format!("No healthcheck results found.\nElapsed: {} seconds", elapsed))
+            .await?;
+
+        return Ok(());
+    }
+
+    let fmt = healthcheck.iter().map(|x| (x.service.clone(), x.status.to_string())).collect::<Vec<_>>();
+
+    let output = generate_table(&fmt.iter().map(|x| (&x.0[..], &x.1[..])).collect::<Vec<_>>());
+
+    context.reply_with_text(format!("Updated {} seconds ago\n{}", elapsed, codeblock(&output, "ansi"))).await?;
+
     Ok(())
 }

@@ -1,9 +1,8 @@
-use crate::{assyst::Assyst, util::get_wsi_request_tier};
-use bincode::serialize;
+use crate::assyst::Assyst;
 use bytes::Bytes;
 use futures::Future;
 use rand::Rng;
-use reqwest::{RequestBuilder, StatusCode};
+use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use shared::{
     fifo::{FifoData, FifoSend},

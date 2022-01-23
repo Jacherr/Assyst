@@ -39,6 +39,8 @@ pub async fn wsi_listen(job_rx: UnboundedReceiver<(Sender<JobResult>, FifoSend, 
             }
         };
 
+        println!("Connected to WSI");
+
         CONNECTED.store(true, Ordering::Relaxed);
 
         let (mut reader, mut writer) = stream.into_split();

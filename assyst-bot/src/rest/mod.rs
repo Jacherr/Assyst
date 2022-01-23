@@ -4,10 +4,13 @@ use bytes::Bytes;
 use reqwest::{Client, ClientBuilder, Error};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use shared::{fifo::{FifoData, FifoSend}, query_params::NoneQuery};
+use tokio::time::Instant;
+use twilight_model::id::UserId;
 
 use std::error::Error as StdError;
 
-use crate::assyst::Assyst;
+use crate::{assyst::Assyst, rest::{wsi::run_wsi_job, annmarie::info}, ansi::Ansi};
 
 pub mod annmarie;
 pub mod bt;
@@ -87,6 +90,8 @@ pub async fn ocr_image(client: &Client, url: &str) -> Result<String, OcrError> {
         .get(format!("{}{}", routes::OCR, url))
         .send()
         .await
+        .map_err(|_| OcrError::NetworkError)?
+        .error_for_status()
         .map_err(|_| OcrError::NetworkError)?
         .text()
         .await
@@ -240,4 +245,126 @@ pub async fn get_random_rule34(assyst: &Assyst, tags: &str) -> Result<Vec<Rule34
         .error_for_status()?
         .json::<Vec<Rule34Result>>()
         .await?)
+}
+
+#[derive(Clone, Eq, PartialEq)]
+pub enum ServiceStatus {
+    Online(usize /* time to respond */),
+    Offline
+}
+impl ToString for ServiceStatus {
+    fn to_string(&self) -> String {
+        match self {
+            ServiceStatus::Online(time) => format!("{} ({}ms)","Online".fg_green(), time),
+            ServiceStatus::Offline => "Offline".fg_red()
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct HealthcheckResult {
+    pub service: String,
+    pub status: ServiceStatus
+}
+impl HealthcheckResult {
+    pub fn new(service: String, status: ServiceStatus) -> Self {
+        Self {
+            service,
+            status
+        }
+    }
+
+    pub fn new_from_result<T, E>(service: &str, result: Result<T, E>, time: usize) -> Self {
+        match result {
+            Ok(_) => Self::new(service.to_string(), ServiceStatus::Online(time)),
+            Err(_) => Self::new(service.to_string(), ServiceStatus::Offline)
+        }
+    }
+}
+
+pub async fn healthcheck(assyst: Arc<Assyst>) -> Vec<HealthcheckResult> {
+    let mut results = Vec::<HealthcheckResult>::new();
+
+    let timer = Instant::now();
+
+    let wsi_result = run_wsi_job(assyst.clone(), FifoSend::Stats(
+        FifoData::new(vec![], NoneQuery {})
+    ), UserId::from(0)).await;
+    results.push(
+        HealthcheckResult::new_from_result("WSI", wsi_result, timer.elapsed().as_millis() as _)
+    );
+
+    let timer = Instant::now();
+    let annmarie_result = info(assyst.clone()).await;
+    results.push(
+        HealthcheckResult::new_from_result("Annmarie", annmarie_result, timer.elapsed().as_millis() as _)
+    );
+
+    let timer = Instant::now();
+    let rule34_result = get_random_rule34(&*assyst, "").await;
+    results.push(
+        HealthcheckResult::new_from_result("Rule 34", rule34_result, timer.elapsed().as_millis() as _)
+    );
+
+    let timer = Instant::now();
+    let burntext_result = burning_text("a").await;
+    results.push(
+        HealthcheckResult::new_from_result("Burntext", burntext_result, timer.elapsed().as_millis() as _)
+    );
+
+    let timer = Instant::now();
+    let fake_eval_result = fake_eval(&assyst.reqwest_client, "1").await;
+    results.push(
+        HealthcheckResult::new_from_result("Eval", fake_eval_result, timer.elapsed().as_millis() as _)
+    );
+
+    let timer = Instant::now();
+    let rust_result = rust::run_binary(&assyst.reqwest_client, "1", "stable").await;
+    results.push(
+        HealthcheckResult::new_from_result("Rust", rust_result, timer.elapsed().as_millis() as _)
+    );
+
+    let timer = Instant::now();
+    let ocr_result = ocr_image(&assyst.reqwest_client, "https://i.jacher.io/ab.png").await;
+    results.push(
+        HealthcheckResult::new_from_result("OCR", ocr_result, timer.elapsed().as_millis() as _)
+    );
+
+    let timer = Instant::now();
+    let identify_result = identify::identify_image(&assyst.reqwest_client, "https://i.jacher.io/ab.png", "").await;
+    results.push(
+        HealthcheckResult::new_from_result("Identify", identify_result, timer.elapsed().as_millis() as _)
+    );
+
+    let timer = Instant::now();
+    let patreon_result = patreon::get_patrons(assyst.clone(), &assyst.config.auth.patreon).await;
+    results.push(
+        HealthcheckResult::new_from_result("Patreon", patreon_result, timer.elapsed().as_millis() as _)
+    );
+
+    let timer = Instant::now();
+    let filer_result = upload_to_filer(assyst.clone(), Bytes::from(vec![1]), "text/plain").await;
+    results.push(
+        HealthcheckResult::new_from_result("Filer", filer_result, timer.elapsed().as_millis() as _)
+    );
+
+    let timer = Instant::now();
+    let char_result = get_char_info(&assyst.reqwest_client, 'a').await;
+    results.push(
+        HealthcheckResult::new_from_result("Char Info", char_result, timer.elapsed().as_millis() as _)
+    );
+
+    let timer = Instant::now();
+    let bt_result = bt::bad_translate(&assyst.reqwest_client, "a").await;
+    results.push(
+        HealthcheckResult::new_from_result("Bad Translate", bt_result, timer.elapsed().as_millis() as _)
+    );
+
+    let timer = Instant::now();
+    let database_result = assyst.database.get_command_usage_stats().await;
+    results.push(
+        HealthcheckResult::new_from_result("Database", database_result, timer.elapsed().as_millis() as _)
+    );
+
+    results
 }

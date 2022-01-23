@@ -12,7 +12,7 @@ use crate::{
     },
     logger,
     metrics::GlobalMetrics,
-    rest::{patreon::Patron, wsi::wsi_listen},
+    rest::{patreon::Patron, wsi::wsi_listen, HealthcheckResult},
     util::{get_current_millis, get_guild_owner, is_guild_manager, regexes, Uptime},
 };
 
@@ -116,6 +116,7 @@ pub struct Assyst {
     pub reqwest_client: ReqwestClient,
     pub started_at: u64,
     pub commands_executed: AtomicU64,
+    pub healthcheck_result: Mutex<(Instant, Vec<HealthcheckResult>)>,
     wsi_tx: UnboundedSender<(Sender<JobResult>, FifoSend, usize)>
 }
 impl Assyst {
@@ -153,6 +154,7 @@ impl Assyst {
             reqwest_client,
             started_at: get_current_millis(),
             commands_executed: AtomicU64::new(0),
+            healthcheck_result: Mutex::new((Instant::now(), vec![])),
             wsi_tx: tx
         };
         if assyst.config.disable_bad_translator {
