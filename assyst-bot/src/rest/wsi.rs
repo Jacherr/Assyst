@@ -138,7 +138,7 @@ pub async fn run_wsi_job(assyst: Arc<Assyst>, job: FifoSend, user_id: UserId) ->
     let result = match res {
         Err(_) => JobResult::Error((0, ProcessingError::Timeout)),
         Ok(x) => {
-            x.unwrap()
+            x.unwrap_or(JobResult::Error((0, ProcessingError::Other("The image server died. Try again in a couple of minutes.".to_string()))))
         }
     };
 

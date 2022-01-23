@@ -495,6 +495,7 @@ lazy_static! {
         .usage(r#"[image] -exclude "command1 command2""#)
         .cooldown(Duration::from_secs(5))
         .category(CATEGORY_NAME)
+        .disable()
         .build();
 }
 
