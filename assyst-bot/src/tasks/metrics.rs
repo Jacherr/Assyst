@@ -14,10 +14,10 @@ pub fn init_metrics_collect_loop(
     let latency = register_int_gauge_vec!("latency", "Gateway latency", &["shard"])?;
 
     tokio::spawn(async move {
-        // gives time for shards to start before collecting info about them
-        sleep(Duration::from_secs(30)).await;
-
         loop {
+            // gives time for shards to start before collecting info about them
+            sleep(Duration::from_secs(15)).await;
+
             // collect memory usage
             match util::get_memory_usage_num() {
                 Some(memory) => memory_counter.set(memory as f64),

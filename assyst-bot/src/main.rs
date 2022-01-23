@@ -83,6 +83,7 @@ async fn main() {
     tasks::update_patrons(assyst.clone());
     tasks::init_metrics_collect_loop(cluster, assyst.clone())
         .expect("Failed to initialize metrics collect loop");
+    tasks::init_healthcheck(assyst.clone());
 
     // Bot list webhooks and metrics
     webserver_run(
