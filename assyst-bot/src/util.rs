@@ -202,6 +202,16 @@ pub fn parse_codeblock_with_language(text: &str) -> Option<(&str, &str)> {
 /// Attempts to extract memory usage
 #[cfg(target_os = "linux")]
 pub fn get_memory_usage() -> Option<usize> {
+    use std::fs;
+
+    let field = 1;
+    let contents = fs::read("/proc/self/statm").ok()?;
+    let contents = String::from_utf8(contents).ok()?;
+    let s = contents.split_whitespace().nth(field)?;
+    let npages = s.parse::<usize>().ok()?;
+    Some(npages * 4096)
+
+    /*
     use std::{ffi::{CStr, c_void}, os::raw::c_char};
 
     use serde::Deserialize;
@@ -236,7 +246,7 @@ pub fn get_memory_usage() -> Option<usize> {
         let json: JemallocStats = serde_json::from_str(&output).unwrap();
 
         Some(json.jemalloc.stats.resident)
-    }
+    }*/
 }
 
 #[cfg(not(target_os = "linux"))]
