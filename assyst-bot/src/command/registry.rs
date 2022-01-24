@@ -200,5 +200,6 @@ impl CommandRegistry {
         register_command!(self, ZOOM_BLUR_COMMAND, run_zoom_blur_command);
         register_command!(self, ZOOM_COMMAND, run_zoom_command);
         register_command!(self, HEALTHCHECK_COMMAND, run_healthcheck_command);
+        register_command!(self, UNCAPTION_COMMAND, run_uncaption_command);
     }
 }

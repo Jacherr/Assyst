@@ -411,6 +411,15 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
+    pub static ref UNCAPTION_COMMAND: Command = CommandBuilder::new("uncaption")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("Remove a caption from an image")
+        .example(consts::Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref SWEDEN_COMMAND: Command = CommandBuilder::new("sweden")
         .alias("minecraft")
         .arg(Argument::ImageBuffer)
@@ -1355,6 +1364,21 @@ pub async fn run_tehi_command(
 ) -> CommandResult {
     let raw_image = args[0].as_bytes();
     let wsi_fn = wsi::tehi;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes, user_id| Box::pin(wsi_fn(assyst, bytes, user_id))),
+    )
+    .await
+}
+
+pub async fn run_uncaption_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    let raw_image = args[0].as_bytes();
+    let wsi_fn = wsi::uncaption;
     run_wsi_noarg_command(
         context,
         raw_image,

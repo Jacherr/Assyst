@@ -32,9 +32,8 @@ pub async fn wsi_listen(job_rx: UnboundedReceiver<(Sender<JobResult>, FifoSend, 
     loop {
         let stream = match TcpStream::connect(socket).await {
             Ok(stream) => stream,
-            Err(e) => {
-                eprintln!("Failed to connect to WSI: {} (retrying in 30 seconds)", e);
-                sleep(Duration::from_secs(30)).await;
+            Err(_) => {
+                sleep(Duration::from_secs(10)).await;
                 continue;
             }
         };
@@ -788,6 +787,18 @@ pub async fn tehi(
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
     let job = FifoSend::Tehi(
+        FifoData::new(image.to_vec(), NoneQuery {})
+    );
+
+    run_wsi_job(assyst, job, user_id).await
+}
+
+pub async fn uncaption(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    let job = FifoSend::Uncaption(
         FifoData::new(image.to_vec(), NoneQuery {})
     );
 
