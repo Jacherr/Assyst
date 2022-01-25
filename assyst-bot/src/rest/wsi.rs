@@ -485,7 +485,7 @@ pub async fn gif_speed(
 ) -> Result<Bytes, RequestError> {
     let job = FifoSend::GifSpeed(
         FifoData::new(image.to_vec(), GifSpeedQueryParams {
-            delay: delay.map(|s| s.parse::<usize>().unwrap()),
+            delay: delay.map(|s| s.parse::<usize>().unwrap_or(2)),
         })
     );
 
