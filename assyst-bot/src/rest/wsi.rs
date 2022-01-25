@@ -68,7 +68,8 @@ pub async fn wsi_listen(job_rx: UnboundedReceiver<(Sender<JobResult>, FifoSend, 
                 drop(job_lock);
     
                 if let Some(tx) = tx {
-                    tx.send(deserialized).unwrap();
+                    // if this fails it means it timed out
+                    let _ = tx.send(deserialized);
                 }
             }
         });

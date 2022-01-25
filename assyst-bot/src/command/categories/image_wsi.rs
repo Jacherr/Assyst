@@ -144,7 +144,7 @@ lazy_static! {
     pub static ref GHOST_COMMAND: Command = CommandBuilder::new("ghost")
         .arg(Argument::ImageBuffer)
         .arg(Argument::OptionalWithDefault(
-            Box::new(Argument::String),
+            Box::new(Argument::Integer),
             "10"
         ))
         .public()
