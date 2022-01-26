@@ -24,7 +24,7 @@ pub type NoArgFunction = Box<
         + Sync,
 >;
 
-static CONNECTED: AtomicBool = AtomicBool::new(false);
+// static CONNECTED: AtomicBool = AtomicBool::new(false);
 static NEW_NEXT_JOB_ID: AtomicUsize = AtomicUsize::new(0);
 
 /*
