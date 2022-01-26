@@ -95,7 +95,16 @@ pub async fn wsi_listen(
                 }
                 println!("Read data, decoding...");
 
-                let deserialized = deserialize::<JobResult>(&buf).unwrap();
+                let deserialized = match deserialize::<JobResult>(&buf) {
+                    Ok(x) => x,
+                    Err(e) => {
+                        eprintln!("Failed to deserialize WSI data: {:?}", e);
+                        continue;
+                    }
+                };
+
+                println!("got id: {}", deserialized.id());
+
                 let job_id = deserialized.id();
                 let tx = jobs_clone.lock().await.remove(&job_id);
 
@@ -123,6 +132,8 @@ pub async fn wsi_listen(
                 };
 
                 let id = next_job_id.fetch_add(1, Ordering::Relaxed);
+
+                println!("sending id: {}", id);
 
                 let wsi_request = WsiRequest::new(id, premium_level, job);
                 let job = serialize(&wsi_request).unwrap();
