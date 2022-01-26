@@ -8,10 +8,10 @@ use shared::errors::ProcessingError;
 use shared::response_data::{ImageInfo, Stats};
 use shared::util::encode_frames;
 use shared::{job::JobResult, fifo::{FifoSend, WsiRequest, FifoData}, query_params::*};
-use tokio::time::timeout;
-use tokio::{sync::{oneshot::{Sender, self}, Mutex, mpsc::UnboundedReceiver}, net::TcpStream, time::sleep, io::{AsyncReadExt, AsyncWriteExt}};
+// use tokio::time::timeout;
+use tokio::{/*sync::{oneshot::{Sender, self}, Mutex, mpsc::UnboundedReceiver}, */net::TcpStream, /*time::sleep,*/ io::{AsyncReadExt, AsyncWriteExt}};
 use std::sync::atomic::AtomicBool;
-use std::{future::Future, pin::Pin, sync::{Arc, atomic::{Ordering, AtomicUsize}}, collections::HashMap, time::Duration};
+use std::{future::Future, pin::Pin, sync::{Arc, atomic::{Ordering, AtomicUsize}}/*, collections::HashMap, time::Duration*/};
 use twilight_model::id::UserId;
 
 pub type NoArgFunction = Box<
@@ -25,7 +25,9 @@ pub type NoArgFunction = Box<
 >;
 
 static CONNECTED: AtomicBool = AtomicBool::new(false);
+static NEW_NEXT_JOB_ID: AtomicUsize = AtomicUsize::new(0);
 
+/*
 pub async fn wsi_listen(job_rx: UnboundedReceiver<(Sender<JobResult>, FifoSend, usize)>, socket: &str) {
     let job_rx = Arc::new(Mutex::new(job_rx));
 
@@ -112,9 +114,74 @@ pub async fn wsi_listen(job_rx: UnboundedReceiver<(Sender<JobResult>, FifoSend, 
         eprintln!("Lost connection to WSI server, attempting reconnection in 10 sec...");
         sleep(Duration::from_secs(10)).await;
     }
-}
+}*/
 
 pub async fn run_wsi_job(assyst: Arc<Assyst>, job: FifoSend, user_id: UserId) -> Result<Bytes, RequestError> {
+    let premium_level = get_wsi_request_tier(&assyst.clone(), user_id)
+        .await
+        .map_err(RequestError::Sqlx)?;
+
+    let mut stream = match TcpStream::connect(assyst.config.url.wsi.to_string()).await {
+        Ok(stream) => stream,
+        Err(_) => {
+            return Err(RequestError::Wsi(
+                WsiError {
+                    message: "Assyst cannot establish a connection to the image server at this time. Try again in a few minutes.".to_string().into(),
+                    code: 0,
+                }
+            ))
+        }
+    };
+
+    let job_id = NEW_NEXT_JOB_ID.fetch_add(1, Ordering::Relaxed);
+    let request = WsiRequest::new(job_id, premium_level, job);
+    let job = serialize(&request).unwrap();
+
+    match stream.write_u32(job.len() as u32).await {
+        Err(e) => return Err(RequestError::Wsi(
+            WsiError {
+                message: format!("Error writing to WSI: {}", e.to_string()).into(),
+                code: 0,
+            }
+        )),
+        _ => {}
+    }
+
+    match stream.write_all(&job).await {
+        Err(e) => return Err(RequestError::Wsi(
+            WsiError {
+                message: format!("Error writing to WSI: {}", e.to_string()).into(),
+                code: 0,
+            }
+        )),
+        _ => {}
+    }
+
+    let response_len = match stream.read_u32().await {
+        Err(e) => return Err(RequestError::Wsi(
+            WsiError {
+                message: format!("Error reading from WSI: {}", e.to_string()).into(),
+                code: 0,
+            }
+        )),
+        Ok(x) => x
+    };
+
+    let mut response = vec![0; response_len as usize];
+    match stream.read_exact(&mut response).await {
+        Err(e) => return Err(RequestError::Wsi(
+            WsiError {
+                message: format!("Error reading from WSI: {}", e.to_string()).into(),
+                code: 0,
+            }
+        )),
+        _ => {}
+    }
+
+    let result = deserialize::<JobResult>(&response).unwrap();
+    handle_job_result(result)
+
+    /*
     if !CONNECTED.load(Ordering::Relaxed) {
         return Err(RequestError::Wsi(
             WsiError {
@@ -143,6 +210,7 @@ pub async fn run_wsi_job(assyst: Arc<Assyst>, job: FifoSend, user_id: UserId) ->
     };
 
     handle_job_result(result)
+    */
 }
 
 #[derive(Deserialize, Debug)]
