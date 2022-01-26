@@ -131,13 +131,10 @@ pub async fn wsi_listen(
 
                 match writer.write_u32(job.len() as u32).await {
                     Err(e) => {
-                        tx.send(JobResult::Error((
-                            id,
-                            ProcessingError::Other(format!(
-                                "Failed to write to WSI: {:?}",
-                                e.to_string()
-                            )),
-                        )));
+                        println!(
+                            "Failed to write to WSI: {:?}",
+                            e.to_string()
+                        );
                         break;
                     }
                     _ => {}
@@ -145,13 +142,10 @@ pub async fn wsi_listen(
 
                 match writer.write_all(&job).await {
                     Err(e) => {
-                        tx.send(JobResult::Error((
-                            id,
-                            ProcessingError::Other(format!(
-                                "Failed to write to WSI: {:?}",
-                                e.to_string()
-                            )),
-                        )));
+                        println!(
+                            "Failed to write to WSI: {:?}",
+                            e.to_string()
+                        );
                         break;
                     }
                     _ => {}
