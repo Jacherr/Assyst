@@ -127,6 +127,8 @@ pub async fn wsi_listen(
                 let wsi_request = WsiRequest::new(id, premium_level, job);
                 let job = serialize(&wsi_request).unwrap();
 
+                jobs.lock().await.insert(id, tx);
+
                 match writer.write_u32(job.len() as u32).await {
                     Err(e) => {
                         tx.send(JobResult::Error((
@@ -154,8 +156,6 @@ pub async fn wsi_listen(
                     }
                     _ => {}
                 }
-
-                jobs.lock().await.insert(id, tx);
             }
         });
 
