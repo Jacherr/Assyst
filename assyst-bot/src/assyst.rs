@@ -12,7 +12,7 @@ use crate::{
     },
     logger,
     metrics::GlobalMetrics,
-    rest::{patreon::Patron, wsi::wsi_listen, HealthcheckResult},
+    rest::{patreon::Patron, /*wsi::wsi_listen, */HealthcheckResult},
     util::{get_current_millis, get_guild_owner, is_guild_manager, regexes, Uptime},
 };
 
@@ -161,9 +161,11 @@ impl Assyst {
             assyst.badtranslator.disable().await
         }
 
+        /*
         tokio::spawn(async move {
             wsi_listen(rx,&config_clone.url.wsi.to_string()).await;
         });
+        */
 
         assyst.registry.register_commands();
         assyst
