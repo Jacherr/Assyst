@@ -1,7 +1,12 @@
-use crate::{assyst::Assyst, command::context::Context, filetype, rest::wsi::RequestError};
+use crate::{
+    assyst::Assyst,
+    command::context::Context,
+    downloader::{self, DownloadError},
+    filetype,
+    rest::wsi::RequestError,
+};
 use assyst_common::consts;
 use bytes::Bytes;
-use futures_util::StreamExt;
 use regex::Captures;
 use shared::job::JobResult;
 
@@ -43,7 +48,7 @@ pub mod regexes {
 
 /// Returns the file type given [`Bytes`]
 pub fn get_buffer_filetype(buffer: &Bytes) -> Option<&'static str> {
-    Some(filetype::get_sig(&buffer.to_vec())?.as_str())
+    Some(filetype::get_sig(&buffer)?.as_str())
 }
 
 /// Returns the current timestamp in milliseconds
@@ -210,43 +215,6 @@ pub fn get_memory_usage() -> Option<usize> {
     let s = contents.split_whitespace().nth(field)?;
     let npages = s.parse::<usize>().ok()?;
     Some(npages * 4096)
-
-    /*
-    use std::{ffi::{CStr, c_void}, os::raw::c_char};
-
-    use serde::Deserialize;
-
-    unsafe {
-        use jemalloc_sys::malloc_stats_print;
-        let mut output = String::new();
-
-        unsafe extern "C" fn write_cb(output: *mut c_void, buf: *const c_char) {
-            let buf = CStr::from_ptr(buf).to_str().unwrap();
-            let output = &mut *output.cast::<String>();
-            output.push_str(buf);
-        }
-        
-        let opts = b"Jgmdablx\0".as_ptr().cast::<i8>();
-
-        malloc_stats_print(Some(write_cb), &mut output as *mut String as *mut c_void, opts);
-
-        #[derive(Deserialize)]
-        struct Stats {
-            pub resident: usize
-        }
-        #[derive(Deserialize)]
-        struct Jemalloc {
-            pub stats: Stats
-        }
-        #[derive(Deserialize)]
-        struct JemallocStats {
-            pub jemalloc: Jemalloc
-        }
-
-        let json: JemallocStats = serde_json::from_str(&output).unwrap();
-
-        Some(json.jemalloc.stats.resident)
-    }*/
 }
 
 #[cfg(not(target_os = "linux"))]
@@ -258,7 +226,11 @@ pub fn get_memory_usage() -> Option<usize> {
 
     let mut pmc = MaybeUninit::<PROCESS_MEMORY_COUNTERS>::uninit();
     match unsafe {
-        GetProcessMemoryInfo(GetCurrentProcess(), pmc.as_mut_ptr(), mem::size_of_val(&pmc) as DWORD)
+        GetProcessMemoryInfo(
+            GetCurrentProcess(),
+            pmc.as_mut_ptr(),
+            mem::size_of_val(&pmc) as DWORD,
+        )
     } {
         0 => None,
         _ => {
@@ -270,45 +242,9 @@ pub fn get_memory_usage() -> Option<usize> {
 
 // Get memory usage in MB
 pub fn get_memory_usage_num() -> Option<f32> {
-    let memory = get_memory_usage()? as f32/1000f32/1000f32;
+    let memory = get_memory_usage()? as f32 / 1000f32 / 1000f32;
 
     Some(memory)
-}
-
-/// Attempts to download the content of a url
-pub async fn download_content(
-    client: &reqwest::Client,
-    url: &str,
-    limit_bytes: usize,
-) -> Result<Vec<u8>, String> {
-    let request = client
-        .get(url)
-        .header(reqwest::header::USER_AGENT, "Assyst Content Downloader")
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-
-    let status = request.status();
-    if status != reqwest::StatusCode::OK {
-        return Err(format!("Download failed: {}", status));
-    }
-
-    let mut stream = request.bytes_stream();
-
-    let mut data = Vec::with_capacity(limit_bytes);
-    while let Some(chunk) = stream.next().await.and_then(|x| x.ok()) {
-        for byte in chunk {
-            if data.len() > limit_bytes {
-                return Err(format!(
-                    "The download exceeded the specified limit of {}MB",
-                    limit_bytes / 1000usize.pow(2)
-                ));
-            }
-            data.push(byte);
-        }
-    }
-
-    Ok(data)
 }
 
 mod units {
