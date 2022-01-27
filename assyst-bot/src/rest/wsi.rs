@@ -74,7 +74,7 @@ pub async fn wsi_listen(
         let jobs_clone = jobs.clone();
         let jobs_clone_2 = jobs.clone();
 
-        let r = tokio::spawn(async move {
+        let mut r = tokio::spawn(async move {
             loop {
                 println!("Awaiting WSI read...");
                 let length = match reader.read_u32().await {
@@ -122,7 +122,7 @@ pub async fn wsi_listen(
 
         let job_rx_clone = job_rx.clone();
 
-        let w = tokio::spawn(async move {
+        let mut w = tokio::spawn(async move {
             let next_job_id = AtomicUsize::new(0);
 
             loop {
@@ -133,13 +133,14 @@ pub async fn wsi_listen(
 
                 let id = next_job_id.fetch_add(1, Ordering::Relaxed);
 
-                println!("sending id: {}", id);
+                println!("process id: {}", id);
 
                 let wsi_request = WsiRequest::new(id, premium_level, job);
                 let job = serialize(&wsi_request).unwrap();
 
                 jobs.lock().await.insert(id, tx);
 
+                println!("sending id: {}", id);
                 match writer.write_u32(job.len() as u32).await {
                     Err(e) => {
                         println!(
@@ -151,6 +152,7 @@ pub async fn wsi_listen(
                     _ => {}
                 }
 
+                println!("sending data for: {}", id);
                 match writer.write_all(&job).await {
                     Err(e) => {
                         println!(
@@ -161,10 +163,15 @@ pub async fn wsi_listen(
                     }
                     _ => {}
                 }
+
+                println!("sent data for: {}", id);
             }
         });
 
-        let _ = select(r, w).await;
+        let _ = tokio::select! {
+            output = &mut r => { w.abort(); output },
+            output = &mut w => { r.abort(); output },
+        };
 
         CONNECTED.store(false, Ordering::Relaxed);
         let mut lock = jobs_clone_2.lock().await;
