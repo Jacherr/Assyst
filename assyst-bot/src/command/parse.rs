@@ -295,14 +295,17 @@ pub mod subsections {
     use twilight_model::channel::Message;
 
     use super::image_lookups;
-    use crate::command::{
-        command::{Argument, ParsedArgumentResult},
-        context::Context,
-    };
     use crate::{
         command::command::{CommandParseError, CommandParseErrorType, ParsedArgument},
         rest::{convert_lottie_to_gif, upload_to_filer},
-        util::{download_content, regexes},
+        util::regexes,
+    };
+    use crate::{
+        command::{
+            command::{Argument, ParsedArgumentResult},
+            context::Context,
+        },
+        downloader,
     };
 
     pub async fn parse_image_argument<'a>(
@@ -416,8 +419,8 @@ pub mod subsections {
                     )
                 })?;
 
-            let content: Vec<u8> = download_content(
-                &context.assyst.reqwest_client,
+            let content: Vec<u8> = downloader::download_content(
+                &context.assyst,
                 &url,
                 consts::ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES,
             )
@@ -457,14 +460,18 @@ pub mod subsections {
 
         match return_as {
             Argument::ImageBuffer => {
-                let result = download_content(
-                    &context.assyst.reqwest_client,
+                let result = downloader::download_content(
+                    &context.assyst,
                     &url,
                     consts::ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES,
                 )
                 .await
                 .map_err(|e| {
-                    CommandParseError::with_reply(e, None, CommandParseErrorType::MediaDownloadFail)
+                    CommandParseError::with_reply(
+                        e.to_string(),
+                        None,
+                        CommandParseErrorType::MediaDownloadFail,
+                    )
                 })?;
 
                 let parsed_argument_result = match should_increment {

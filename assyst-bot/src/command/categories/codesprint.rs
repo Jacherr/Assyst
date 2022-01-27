@@ -10,7 +10,7 @@ use crate::{
         self,
         codesprint::{BenchmarkResponse, Language, Test},
     },
-    util::{self, codeblock, download_content, nanos_to_readable},
+    util::{self, codeblock, nanos_to_readable}, downloader,
 };
 use assyst_common::consts;
 use lazy_static::lazy_static;
@@ -202,13 +202,14 @@ async fn run_submit_subcommand(
             .and_then(Language::from_ext)
             .ok_or_else(|| "Could not infer language from file extension. Make sure your file ends with a supported file extension.")?;
     
-        let code = download_content(
-            &context.assyst.reqwest_client,
+        let code = downloader::download_content(
+            &context.assyst,
             &attachment.url,
             consts::ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES,
         )
         .await
-        .map(|c| String::from_utf8_lossy(&c).to_string())?;
+        .map(|c| String::from_utf8_lossy(&c).to_string())
+        .map_err(|e| e.to_string())?;
 
         Ok((language, Cow::Owned(code)))
     })()

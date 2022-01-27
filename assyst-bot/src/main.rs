@@ -6,6 +6,7 @@ mod caching;
 mod command;
 // mod consts;
 mod ansi;
+mod downloader;
 mod filetype;
 mod handler;
 mod handlers;

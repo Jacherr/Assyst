@@ -15,7 +15,7 @@ pub struct Auth {
     pub wsi: Box<str>,
     pub rapidapi: Box<str>,
     pub codesprint: Box<str>,
-    pub cdn: Box<str>
+    pub cdn: Box<str>,
 }
 
 #[derive(Clone, Deserialize)]
@@ -57,7 +57,8 @@ pub struct Url {
     pub rule34: Box<str>,
     pub wsi: Box<str>,
     pub codesprint: Box<str>,
-    pub cdn: Box<str>
+    pub cdn: Box<str>,
+    pub proxy: Box<str>,
 }
 
 #[derive(Clone, Deserialize)]
