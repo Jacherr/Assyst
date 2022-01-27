@@ -547,8 +547,8 @@ pub fn nanos_to_readable(time: u32) -> String {
 }
 
 pub fn handle_job_result(result: JobResult) -> Result<Bytes, RequestError> {
-    match result {
-        JobResult::Image(data) => Ok(Bytes::from(data.1)),
-        JobResult::Error(err) => Err(RequestError::from(err.1)),
+    match result.result {
+        Ok(data) => Ok(Bytes::from(data)),
+        Err(err) => Err(RequestError::from(err)),
     }
 }
