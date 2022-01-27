@@ -172,12 +172,12 @@ pub async fn wsi_listen(
 
         for job in keys {
             let tx = lock.remove(&job).unwrap();
-            let _ = tx.send(JobResult::Error((
+            let _ = tx.send(JobResult::new_err(
                 0,
                 ProcessingError::Other(
                     "The image server died. Try again in a few seconds.".to_owned(),
                 ),
-            )));
+            ));
         }
 
         eprintln!("Lost connection to WSI server, attempting reconnection in 10 sec...");
@@ -211,13 +211,13 @@ pub async fn run_wsi_job(
 
     let res = timeout(MAX_TIME_LIMIT, rx).await;
     let result = match res {
-        Err(_) => JobResult::Error((0, ProcessingError::Timeout)),
-        Ok(x) => x.unwrap_or(JobResult::Error((
+        Err(_) => JobResult::new_err(0, ProcessingError::Timeout),
+        Ok(x) => x.unwrap_or(JobResult::new_err(
             0,
             ProcessingError::Other(
                 "The image server died. Try again in a couple of minutes.".to_string(),
             ),
-        ))),
+        )),
     };
 
     handle_job_result(result)
