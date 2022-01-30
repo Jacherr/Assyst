@@ -11,13 +11,12 @@ use crate::{
     rest::{
         annmarie::{self, info},
         bt::{get_languages, validate_language},
-        fake_eval,
-        wsi, healthcheck,
+        fake_eval, wsi,
     },
     util::{
-        codeblock, ensure_same_guild, exec_sync, extract_page_title, format_discord_timestamp,
-        format_time, generate_list, generate_table, get_buffer_filetype, get_memory_usage,
-        parse_codeblock, bytes_to_readable,
+        bytes_to_readable, codeblock, ensure_same_guild, exec_sync, extract_page_title,
+        format_discord_timestamp, format_time, generate_list, generate_table, get_buffer_filetype,
+        get_memory_usage, parse_codeblock,
     },
 };
 use crate::{
@@ -28,12 +27,13 @@ use assyst_common::consts;
 use assyst_database::Reminder;
 use futures::TryFutureExt;
 use lazy_static::lazy_static;
+use shared::query_params::ResizeMethod;
 use std::{
     collections::HashMap,
+    convert::TryInto,
     sync::{atomic::Ordering, Arc},
     time::{Duration, Instant},
 };
-use shared::query_params::ResizeMethod;
 
 const USEFUL_LINKS_TEXT: &str = "Invite the bot: <https://jacher.io/assyst>\nSupport server: <https://discord.gg/VRPGgMEhGk>\nVote for Assyst for some sweet perks! <https://vote.jacher.io/topgg> & <https://vote.jacher.io/dbl>";
 
@@ -601,9 +601,12 @@ pub async fn run_remind_command(
         _ => return Err(CommandError::new_boxed("No comment provided")),
     };
 
-    let time = parse_to_millis(time).map_err(|e| e.to_string())? as u64;
+    let time: i64 = parse_to_millis(time)
+        .map_err(|e| e.as_str())?
+        .try_into()
+        .map_err(|_| "Input is too large to fit in i64")?;
 
-    if time == 0 {
+    if time <= 0 {
         return Err(CommandError::new_boxed("An invalid time was provided"));
     }
 
@@ -616,10 +619,9 @@ pub async fn run_remind_command(
         }
     };
 
-    let ftime = format_time(time);
-    let time = get_current_millis() + time;
+    let ftime = format_time(time as u64);
+    let time = (get_current_millis() as i64) + time;
 
-    // TODO: try_into
     context
         .assyst
         .database
@@ -1106,17 +1108,29 @@ pub async fn run_healthcheck_command(
     let healthcheck = healthcheck.1.clone();
     if healthcheck.is_empty() {
         context
-            .reply_with_text(format!("No healthcheck results found.\nElapsed: {} seconds", elapsed))
+            .reply_with_text(format!(
+                "No healthcheck results found.\nElapsed: {} seconds",
+                elapsed
+            ))
             .await?;
 
         return Ok(());
     }
 
-    let fmt = healthcheck.iter().map(|x| (x.service.clone(), x.status.to_string())).collect::<Vec<_>>();
+    let fmt = healthcheck
+        .iter()
+        .map(|x| (x.service.clone(), x.status.to_string()))
+        .collect::<Vec<_>>();
 
     let output = generate_table(&fmt.iter().map(|x| (&x.0[..], &x.1[..])).collect::<Vec<_>>());
 
-    context.reply_with_text(format!("Updated {} seconds ago\n{}", elapsed, codeblock(&output, "ansi"))).await?;
+    context
+        .reply_with_text(format!(
+            "Updated {} seconds ago\n{}",
+            elapsed,
+            codeblock(&output, "ansi")
+        ))
+        .await?;
 
     Ok(())
 }
