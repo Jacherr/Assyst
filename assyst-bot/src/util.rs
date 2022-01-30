@@ -287,17 +287,40 @@ fn unit_to_ms(u: &str) -> u64 {
     }
 }
 
+pub enum ParseToMillisError {
+    ParseIntError,
+    Overflow,
+}
+
+impl ParseToMillisError {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ParseToMillisError::ParseIntError => "Input string is too large to fit in numeric type",
+            ParseToMillisError::Overflow => "Final time is too large to fit in numeric type",
+        }
+    }
+}
+
 /// Parses a string to milliseconds
-pub fn parse_to_millis(input: &str) -> Result<u64, ParseIntError> {
+pub fn parse_to_millis(input: &str) -> Result<u64, ParseToMillisError> {
     let matches = regexes::TIME_STRING.captures_iter(input);
 
-    let mut total = 0;
+    let mut total: u64 = 0;
 
     for current in matches {
-        let amount = current[1].parse::<u64>()?;
-        let unit = unit_to_ms(&current[2]);
+        let amount = current[1]
+            .parse::<u64>()
+            .map_err(|_| ParseToMillisError::ParseIntError)?;
 
-        total += amount * unit;
+        let unit: u64 = unit_to_ms(&current[2])
+            .try_into()
+            .map_err(|_| ParseToMillisError::Overflow)?;
+
+        let ms = amount
+            .checked_mul(unit)
+            .ok_or(ParseToMillisError::Overflow)?;
+
+        total = total.checked_add(ms).ok_or(ParseToMillisError::Overflow)?;
     }
 
     Ok(total)
