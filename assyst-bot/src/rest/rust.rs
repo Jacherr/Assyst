@@ -4,6 +4,7 @@ use serde_json::json;
 use std::borrow::{Borrow, Cow};
 
 const API_BASE: &str = "https://play.rust-lang.org";
+const GODBOLT: &str = "https://godbolt.org/api/compiler/nightly/compile";
 const BENCHMARK_TEMPLATE: &str = r#"
 #![feature(test)]
 #[cfg(test)]
@@ -24,6 +25,30 @@ mod tests {
 }
 "#;
 
+pub enum OptimizationLevel {
+    Debug,
+    Release,
+}
+
+impl OptimizationLevel {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            OptimizationLevel::Debug => "debug",
+            OptimizationLevel::Release => "release",
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct GodboltAsmBlock {
+    pub text: String,
+}
+
+#[derive(Deserialize)]
+pub struct GodboltResult {
+    asm: Vec<GodboltAsmBlock>,
+}
+
 #[derive(Deserialize)]
 pub struct ApiResult {
     pub success: bool,
@@ -39,6 +64,31 @@ impl ApiResult {
             &self.stdout
         }
     }
+}
+
+pub async fn godbolt(client: &Client, code: &str) -> Result<String, Error> {
+    Ok(client
+        .post(GODBOLT)
+        .header("accept", "application/json")
+        .header("content-type", "application/json")
+        .json(&json!({
+            "source": code,
+            "compiler": "nightly",
+            "options": {
+                "userArguments": "-Copt-level=3"
+            },
+            "lang": "rust",
+            "allowStoreCodeDebug": true
+        }))
+        .send()
+        .await?
+        .json::<GodboltResult>()
+        .await?
+        .asm
+        .into_iter()
+        .map(|x| x.text)
+        .collect::<Vec<_>>()
+        .join("\n"))
 }
 
 pub async fn request(
@@ -82,8 +132,23 @@ pub async fn run(
     .await
 }
 
-pub async fn miri(client: &Client, code: &str, channel: Option<&str>) -> Result<ApiResult, Error> {
-    request(client, "miri", code, channel, None, None, None, None).await
+pub async fn miri(
+    client: &Client,
+    code: &str,
+    channel: Option<&str>,
+    opt: OptimizationLevel,
+) -> Result<ApiResult, Error> {
+    request(
+        client,
+        "miri",
+        code,
+        channel,
+        Some(opt.as_str()),
+        None,
+        None,
+        None,
+    )
+    .await
 }
 
 pub fn prepend_code(code: &str) -> Cow<str> {
@@ -97,20 +162,49 @@ pub fn prepend_code(code: &str) -> Cow<str> {
     }
 }
 
-pub async fn run_miri(client: &Client, code: &str, channel: &str) -> Result<ApiResult, Error> {
+pub async fn run_miri(
+    client: &Client,
+    code: &str,
+    channel: &str,
+    opt: OptimizationLevel,
+) -> Result<ApiResult, Error> {
     let code = prepend_code(code);
 
-    miri(client, &*code, Some(channel)).await
+    miri(client, &*code, Some(channel), opt).await
 }
 
-pub async fn run_binary(client: &Client, code: &str, channel: &str) -> Result<ApiResult, Error> {
+pub async fn run_binary(
+    client: &Client,
+    code: &str,
+    channel: &str,
+    opt: OptimizationLevel,
+) -> Result<ApiResult, Error> {
     let code = prepend_code(code);
 
-    run(client, code.borrow(), Some(channel), None, None, None, None).await
+    run(
+        client,
+        code.borrow(),
+        Some(channel),
+        Some(opt.as_str()),
+        None,
+        None,
+        None,
+    )
+    .await
 }
 
 pub async fn run_benchmark(client: &Client, code: &str) -> Result<ApiResult, Error> {
     let code = BENCHMARK_TEMPLATE.replace("{{code}}", code);
 
-    run_binary(client, &code, "nightly").await
+    run_binary(client, &code, "nightly", OptimizationLevel::Release).await
+}
+
+pub async fn run_godbolt(client: &Client, code: &str) -> Result<ApiResult, Error> {
+    let asm = godbolt(client, code).await?;
+
+    Ok(ApiResult {
+        success: true,
+        stdout: asm,
+        stderr: String::new(),
+    })
 }

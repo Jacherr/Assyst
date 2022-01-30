@@ -11,7 +11,9 @@ use crate::{
     rest::{
         annmarie::{self, info},
         bt::{get_languages, validate_language},
-        fake_eval, wsi,
+        fake_eval,
+        rust::OptimizationLevel,
+        wsi,
     },
     util::{
         bytes_to_readable, codeblock, ensure_same_guild, exec_sync, extract_page_title,
@@ -102,13 +104,14 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .build();
     pub static ref RUST_COMMAND: Command = CommandBuilder::new("rust")
-        .arg(Argument::Choice(&["run", "bench", "miri"]))
-        .arg(Argument::Choice(&["stable", "beta", "nightly"]))
+        .arg(Argument::Choice(&["run", "bench", "miri", "asm"]))
         .arg(Argument::StringRemaining)
+        .flag("stable", None)
+        .flag("release", None)
         .public()
         .description("run/benchmark rust code")
-        .example("run stable break rust;")
-        .usage("[run|bench] [stable|nightly|beta] [code]")
+        .example("run break rust;")
+        .usage("[run|bench|miri|asm] [code]")
         .cooldown(Duration::from_secs(2))
         .category(CATEGORY_NAME)
         .build();
@@ -510,16 +513,26 @@ pub async fn run_wsi_stats_command(
 pub async fn run_rust_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
-    _flags: ParsedFlags,
+    flags: ParsedFlags,
 ) -> CommandResult {
     let ty = args[0].as_choice();
-    let channel = args[1].as_choice();
-    let code = parse_codeblock(args[2].as_text(), "rs");
+    let channel = flags
+        .contains_key("stable")
+        .then(|| "stable")
+        .unwrap_or("nightly");
+
+    let opt = flags
+        .contains_key("release")
+        .then(|| OptimizationLevel::Release)
+        .unwrap_or(OptimizationLevel::Debug);
+
+    let code = parse_codeblock(args[1].as_text(), "rs");
 
     let result = match ty {
-        "run" => rust::run_binary(&context.assyst.reqwest_client, code, channel).await,
+        "run" => rust::run_binary(&context.assyst.reqwest_client, code, channel, opt).await,
         "bench" => rust::run_benchmark(&context.assyst.reqwest_client, code).await,
-        "miri" => rust::run_miri(&context.assyst.reqwest_client, code, channel).await,
+        "miri" => rust::run_miri(&context.assyst.reqwest_client, code, channel, opt).await,
+        "asm" => rust::run_godbolt(&context.assyst.reqwest_client, code).await,
         _ => unreachable!(),
     };
 
