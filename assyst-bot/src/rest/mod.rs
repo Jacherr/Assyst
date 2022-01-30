@@ -20,6 +20,8 @@ use crate::{
     rest::{annmarie::info, wsi::run_wsi_job},
 };
 
+use self::rust::OptimizationLevel;
+
 pub mod annmarie;
 pub mod bt;
 pub mod codesprint;
@@ -341,7 +343,13 @@ pub async fn healthcheck(assyst: Arc<Assyst>) -> Vec<HealthcheckResult> {
     ));
 
     let timer = Instant::now();
-    let rust_result = rust::run_binary(&assyst.reqwest_client, "1", "stable").await;
+    let rust_result = rust::run_binary(
+        &assyst.reqwest_client,
+        "1",
+        "stable",
+        OptimizationLevel::Debug,
+    )
+    .await;
     results.push(HealthcheckResult::new_from_result(
         "Rust",
         rust_result,
