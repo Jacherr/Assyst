@@ -59,6 +59,7 @@ pub struct Url {
     pub codesprint: Box<str>,
     pub cdn: Box<str>,
     pub proxy: Box<str>,
+    pub eval: Box<str>,
 }
 
 #[derive(Clone, Deserialize)]

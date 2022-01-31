@@ -37,7 +37,6 @@ mod routes {
     pub const COOL_TEXT: &str = "https://cooltext.com/PostChange";
     pub const OCR: &str = "http://ocr.y21_.repl.co/?url=";
     pub const CHARINFO: &str = "https://www.fileformat.info/info/unicode/char/";
-    pub const FAKE_EVAL: &str = "https://jacher.io/eval";
     pub const IDENTIFY: &str = "https://microsoft-computer-vision3.p.rapidapi.com/analyze?language=en&descriptionExclude=Celebrities&visualFeatures=Description&details=Celebrities";
 
     pub fn discord_bot_list_stats_url() -> String {
@@ -145,9 +144,10 @@ pub fn parse_path_parameter(path: String, param: (&str, &str)) -> String {
     path.replace(&format!(":{}", param.0), param.1)
 }
 
-pub async fn fake_eval(client: &Client, code: &str) -> Result<FakeEvalResponse, Error> {
-    client
-        .post(routes::FAKE_EVAL)
+pub async fn fake_eval(assyst: &Assyst, code: &str) -> Result<FakeEvalResponse, Error> {
+    assyst
+        .reqwest_client
+        .post(format!("{}/eval", assyst.config.url.eval))
         .json(&FakeEvalBody {
             code: code.to_string(),
         })
@@ -335,7 +335,7 @@ pub async fn healthcheck(assyst: Arc<Assyst>) -> Vec<HealthcheckResult> {
     ));
 
     let timer = Instant::now();
-    let fake_eval_result = fake_eval(&assyst.reqwest_client, "1").await;
+    let fake_eval_result = fake_eval(&assyst, "1").await;
     results.push(HealthcheckResult::new_from_result(
         "Eval",
         fake_eval_result,
