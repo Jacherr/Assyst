@@ -44,7 +44,7 @@ lazy_static! {
         .build();
 }
 
-const SUPPORTED_LANGUAGES: &[&str] = &["Rust 1.59 (nightly)", "JavaScript (V8 9.5)"];
+const SUPPORTED_LANGUAGES: &[&str] = &["Rust 1.60 (nightly)", "JavaScript (V8 9.5)"];
 
 async fn run_info_subcommand(
     context: Arc<Context>,
@@ -60,7 +60,7 @@ async fn run_info_subcommand(
     let mut message = String::from(
         r#"
 **Codesprint**
-Compete for the fastest solutions to programming challenges.
+Compete for the fastest solutions to programming challenges. Submit your solution by sending: -cs submit <challenge_id> <codeblock_or_file>
 
 **Rules**
 This only works with some enforced rules.

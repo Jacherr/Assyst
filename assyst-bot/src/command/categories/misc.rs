@@ -946,7 +946,7 @@ pub async fn run_fake_eval_command(
 ) -> CommandResult {
     let code = args[0].as_text();
 
-    let mut response = fake_eval(&context.assyst.reqwest_client, code).await?;
+    let mut response = fake_eval(&context.assyst, code).await?;
 
     if response.message.trim() == "42" {
         response.message = "The answer to life, the universe, and everything".to_owned();

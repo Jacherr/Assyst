@@ -62,7 +62,7 @@ impl Language {
                 format!("{}/bench", assyst.config.url.codesprint.as_ref()),
                 Some(assyst.config.auth.codesprint.as_ref()),
             ),
-            Self::JavaScript => (format!("{}?bench=true", routes::FAKE_EVAL), None),
+            Self::JavaScript => (format!("{}/bench", assyst.config.url.eval), None),
         }
     }
 }
