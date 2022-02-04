@@ -12,7 +12,10 @@ twilight-http = "0.5.0"
 twilight-model = "0.5.0"
 tokio = { version = "1.0", features = ["full"] }
 futures = "0.3.12"
-sqlx = { version = "0.5.1", features = ["postgres", "runtime-tokio-native-tls"] }
+sqlx = { version = "0.5.1", features = [
+    "postgres",
+    "runtime-tokio-native-tls",
+] }
 serde = "1.0.123"
 serde_json = "1.0"
 dotenv = "0.15.0"
@@ -34,6 +37,7 @@ assyst-database = { path = "../assyst-database" }
 assyst-common = { path = "../assyst-common" }
 assyst-logger = { path = "../assyst-logger" }
 shared = { git = "https://github.com/jacherr/wsi-shared" }
+url = "2.2.2"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3.9", features = ["psapi"] }
