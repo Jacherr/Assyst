@@ -7,9 +7,7 @@ use crate::{
         context::Context,
         registry::CommandResult,
     },
-    rest::{
-        wsi
-    },
+    rest::wsi,
     util::{bytes_to_readable, generate_list},
 };
 use crate::{
@@ -19,9 +17,9 @@ use crate::{
 use assyst_common::consts;
 use bytes::Bytes;
 use lazy_static::lazy_static;
+use shared::query_params::ResizeMethod;
 use std::time::Duration;
 use std::{borrow::Cow, sync::Arc};
-use shared::query_params::ResizeMethod;
 
 const CATEGORY_NAME: &str = "image (wsi)";
 
@@ -118,6 +116,17 @@ lazy_static! {
         .arg(Argument::ImageBuffer)
         .public()
         .description("flop an image")
+        .example(consts::Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref F_SHIFT_COMMAND: Command = CommandBuilder::new("frameshift")
+        .arg(Argument::ImageBuffer)
+        .alias("butt")
+        .alias("fshift")
+        .public()
+        .description("frameshift an image")
         .example(consts::Y21)
         .usage("[image]")
         .cooldown(Duration::from_secs(4))
@@ -817,6 +826,21 @@ pub async fn run_femurbreaker_command(
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
+}
+
+pub async fn run_f_shift_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    let raw_image = args[0].as_bytes();
+    let wsi_fn = wsi::frame_shift;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes, user_id| Box::pin(wsi_fn(assyst, bytes, user_id))),
+    )
+    .await
 }
 
 pub async fn run_frames_command(

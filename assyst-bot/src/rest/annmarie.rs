@@ -141,7 +141,7 @@ pub async fn randomize(
     (route, {
         if let Ok(bytes) = x {
             Ok(bytes)
-        } else if let Err(y) = x{
+        } else if let Err(y) = x {
             Err(RequestError::from(y))
         } else {
             unreachable!()
@@ -288,24 +288,6 @@ pub async fn fringe(
             preprocess: true,
             query_params: vec![],
             route: routes::FRINGE.to_owned(),
-            images: vec![],
-        },
-    ));
-
-    Ok(run_wsi_job(assyst, job, user_id).await?)
-}
-
-pub async fn f_shift(
-    assyst: Arc<Assyst>,
-    image: Bytes,
-    user_id: UserId,
-) -> Result<Bytes, RequestError> {
-    let job = FifoSend::Annmarie(FifoData::new(
-        image.to_vec(),
-        AnnmarieQueryParams {
-            preprocess: true,
-            query_params: vec![],
-            route: routes::F_SHIFT.to_owned(),
             images: vec![],
         },
     ));

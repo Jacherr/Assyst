@@ -81,6 +81,12 @@ pub mod argument_type {
         command: &'a Command,
         index: usize,
     ) -> Result<ParsedArgumentResult, CommandParseError<'a>> {
+        if !(args.len() <= index) {
+            return Ok(ParsedArgumentResult::r#break(ParsedArgument::Text(
+                args[index..].join(" "),
+            )))
+        }
+
         // check if no extra args or if no referenced message
         if args.len() <= index && context.message.referenced_message.is_none() {
             Err(CommandParseError::with_reply(
@@ -90,20 +96,20 @@ pub mod argument_type {
             ))
         // check if referenced message and if it has any content to use
         } else if let Some(r) = &context.message.referenced_message {
-            if r.content.is_empty() {
-                Err(CommandParseError::with_reply(
-                    "This command expects a text argument that was not provided.".to_owned(),
-                    Some(command),
-                    CommandParseErrorType::MissingArgument,
-                ))
+            if !r.content.is_empty() {
+                Ok(ParsedArgumentResult::r#break(ParsedArgument::Text(
+                    r.content.clone(),
+                )))
             } else if !(args.len() <= index) {
                 Ok(ParsedArgumentResult::r#break(ParsedArgument::Text(
                     args[index..].join(" "),
                 )))
             } else {
-                Ok(ParsedArgumentResult::r#break(ParsedArgument::Text(
-                    r.content.clone(),
-                )))
+                Err(CommandParseError::with_reply(
+                    "This command expects a text argument that was not provided.".to_owned(),
+                    Some(command),
+                    CommandParseErrorType::MissingArgument,
+                ))
             }
         } else {
             Ok(ParsedArgumentResult::r#break(ParsedArgument::Text(

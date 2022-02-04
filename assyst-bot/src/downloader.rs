@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 use assyst_common::config::Config;
 use bytes::Bytes;
 use futures::{Stream, StreamExt};
-use reqwest::{Client, StatusCode};
+use reqwest::{Client, StatusCode, Url};
 
 use crate::{assyst::Assyst, rest::ServiceStatus};
 
@@ -84,10 +84,19 @@ pub async fn download_content(
     url: &str,
     limit: usize,
 ) -> Result<Vec<u8>, DownloadError> {
+    const WHITLISTED_DOMAINS: [&str; 4] =
+        ["tenor.com", "jacher.io", "discordapp.com", "discordapp.net"];
+
     let config = &assyst.config;
     let client = &assyst.reqwest_client;
 
-    if !config.url.proxy.is_empty() {
+    let url_p = Url::parse(url).unwrap();
+
+    let is_whitelisted = WHITLISTED_DOMAINS
+        .iter()
+        .any(|d| url_p.host_str().unwrap().contains(d));
+
+    if !config.url.proxy.is_empty() && !is_whitelisted {
         // First, try to download with proxy
         let stream = download_with_proxy(client, config, url, limit).await;
 

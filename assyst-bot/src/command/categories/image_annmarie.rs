@@ -15,7 +15,7 @@ use crate::{
 use assyst_common::consts;
 use bytes::Bytes;
 use lazy_static::lazy_static;
-use shared::fifo::{FifoSend, FifoData};
+use shared::fifo::{FifoData, FifoSend};
 use shared::query_params::AnnmarieQueryParams;
 use std::sync::Arc;
 use std::time::Duration;
@@ -96,18 +96,6 @@ lazy_static! {
         .usage("[image]")
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
-        .build();
-    pub static ref F_SHIFT_COMMAND: Command = CommandBuilder::new("frameshift")
-        .arg(Argument::ImageBuffer)
-        .alias("butt")
-        .alias("fshift")
-        .public()
-        .description("frameshift an image")
-        .example(consts::Y21)
-        .usage("[image]")
-        .cooldown(Duration::from_secs(4))
-        .category(CATEGORY_NAME)
-        .disable()
         .build();
     pub static ref FRINGE_COMMAND: Command = CommandBuilder::new("fringe")
         .arg(Argument::ImageBuffer)
@@ -294,7 +282,8 @@ pub async fn run_annmarie_command(
         },
     ));
 
-    let result = run_wsi_job(context.assyst.clone(), job, context.author_id()).await
+    let result = run_wsi_job(context.assyst.clone(), job, context.author_id())
+        .await
         .map_err(|x| x.to_string())?;
 
     let format = if flags.contains_key("json") {
@@ -344,14 +333,6 @@ pub async fn run_flag_command(
     _flags: ParsedFlags,
 ) -> CommandResult {
     run_annmarie_noarg_command!(annmarie::flag, args, context)
-}
-
-pub async fn run_f_shift_command(
-    context: Arc<Context>,
-    args: Vec<ParsedArgument>,
-    _flags: ParsedFlags,
-) -> CommandResult {
-    run_annmarie_noarg_command!(annmarie::f_shift, args, context)
 }
 
 pub async fn run_fringe_command(

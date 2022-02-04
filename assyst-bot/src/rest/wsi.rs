@@ -143,10 +143,7 @@ pub async fn wsi_listen(
                 println!("sending id: {}", id);
                 match writer.write_u32(job.len() as u32).await {
                     Err(e) => {
-                        println!(
-                            "Failed to write to WSI: {:?}",
-                            e.to_string()
-                        );
+                        println!("Failed to write to WSI: {:?}", e.to_string());
                         break;
                     }
                     _ => {}
@@ -155,10 +152,7 @@ pub async fn wsi_listen(
                 println!("sending data for: {}", id);
                 match writer.write_all(&job).await {
                     Err(e) => {
-                        println!(
-                            "Failed to write to WSI: {:?}",
-                            e.to_string()
-                        );
+                        println!("Failed to write to WSI: {:?}", e.to_string());
                         break;
                     }
                     _ => {}
@@ -599,6 +593,16 @@ pub async fn invert(
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
     let job = FifoSend::Invert(FifoData::new(image.to_vec(), NoneQuery {}));
+
+    run_wsi_job(assyst, job, user_id).await
+}
+
+pub async fn frame_shift(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    let job = FifoSend::FrameShift(FifoData::new(image.to_vec(), NoneQuery {}));
 
     run_wsi_job(assyst, job, user_id).await
 }
