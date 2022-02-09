@@ -563,7 +563,7 @@ pub async fn run_remind_command(
                 })
                 .collect::<String>();
 
-            let output = if reminders.is_empty() {
+            let output = if !reminders.is_empty() {
                 format!(":calendar: **Upcoming Reminders:**\nThe number on the left side is the reminder ID, use it to delete a reminder: `-remind delete 10`\n\n{}", reminders)
             } else {
                 ":calendar: You have no set reminders.".to_owned()
