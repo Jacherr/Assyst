@@ -75,7 +75,7 @@ pub async fn godbolt(client: &Client, code: &str) -> Result<String, Error> {
             "source": code,
             "compiler": "nightly",
             "options": {
-                "userArguments": "-Copt-level=3"
+                "userArguments": "-Copt-level=3 -C target-feature=+sse3,+avx -C target-cpu=native"
             },
             "lang": "rust",
             "allowStoreCodeDebug": true

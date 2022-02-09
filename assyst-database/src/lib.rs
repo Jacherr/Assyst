@@ -47,6 +47,15 @@ pub struct ColorRole {
     pub guild_id: i64,
 }
 
+#[derive(sqlx::FromRow, Debug)]
+pub struct Tag {
+    pub name: String,
+    pub data: String,
+    pub author: i64,
+    pub guild_id: i64,
+    pub created_at: i64,
+}
+
 impl From<DatabaseReminder> for Reminder {
     fn from(r: DatabaseReminder) -> Self {
         Reminder {
@@ -789,4 +798,121 @@ impl Database {
             .fetch_all(&self.pool)
             .await
     }
+
+    pub async fn add_tag(
+        &self,
+        author: i64,
+        guild_id: i64,
+        name: &str,
+        content: &str,
+    ) -> Result<bool, sqlx::Error> {
+        let query = r#"INSERT INTO tags VALUES ($1, $2, $3, $4, $5)"#;
+
+        match sqlx::query(query)
+            .bind(name)
+            .bind(content)
+            .bind(author)
+            .bind(guild_id)
+            .bind(get_current_millis() as i64)
+            .execute(&self.pool)
+            .await
+        {
+            Ok(_) => Ok(true),
+            Err(e) => {
+                if is_unique_violation(&e) {
+                    Ok(false)
+                } else {
+                    Err(e)
+                }
+            }
+        }
+    }
+
+    pub async fn remove_tag(
+        &self,
+        author: i64,
+        guild_id: i64,
+        name: &str,
+    ) -> Result<bool, sqlx::Error> {
+        let query = r#"DELETE FROM tags WHERE name = $1 AND author = $2 AND guild_id = $3"#;
+
+        match sqlx::query(query)
+            .bind(name)
+            .bind(author)
+            .bind(guild_id)
+            .execute(&self.pool)
+            .await
+        {
+            Ok(rows) => Ok(rows.rows_affected() > 0),
+            Err(e) => {
+                if is_unique_violation(&e) {
+                    Ok(false)
+                } else {
+                    Err(e)
+                }
+            }
+        }
+    }
+
+    pub async fn edit_tag(
+        &self,
+        author: i64,
+        guild_id: i64,
+        name: &str,
+        new_content: &str,
+    ) -> Result<bool, sqlx::Error> {
+        let query =
+            r#"UPDATE tags SET data = $1 WHERE name = $2 AND author = $3 AND guild_id = $4"#;
+
+        let result = sqlx::query(query)
+            .bind(new_content)
+            .bind(name)
+            .bind(author)
+            .bind(guild_id)
+            .execute(&self.pool)
+            .await;
+
+        match result {
+            Ok(_) => Ok(true),
+            Err(sqlx::Error::RowNotFound) => Ok(false),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub async fn get_tag(&self, guild_id: i64, name: &str) -> Result<Option<Tag>, sqlx::Error> {
+        let query = r#"SELECT * FROM tags WHERE name = $1 AND guild_id = $2"#;
+
+        let result = sqlx::query_as(query)
+            .bind(name)
+            .bind(guild_id)
+            .fetch_one(&self.pool)
+            .await;
+
+        match result {
+            Ok(v) => Ok(Some(v)),
+            Err(sqlx::Error::RowNotFound) => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub async fn get_tags_paged(
+        &self,
+        guild_id: i64,
+        offset: i64,
+        limit: i64,
+    ) -> Result<Vec<Tag>, sqlx::Error> {
+        let query = r#"SELECT * FROM tags WHERE guild_id = $1 OFFSET $2 LIMIT $3"#;
+
+        sqlx::query_as(query)
+            .bind(guild_id)
+            .bind(offset)
+            .bind(limit)
+            .fetch_all(&self.pool)
+            .await
+    }
+}
+
+fn is_unique_violation(error: &sqlx::Error) -> bool {
+    const UNIQUE_CONSTRAINT_VIOLATION_CODE: Cow<'_, str> = Cow::Borrowed("23505");
+    error.as_database_error().and_then(|e| e.code()) == Some(UNIQUE_CONSTRAINT_VIOLATION_CODE)
 }

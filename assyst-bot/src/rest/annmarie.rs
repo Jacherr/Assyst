@@ -100,18 +100,13 @@ impl From<crate::rest::wsi::RequestError> for RequestError {
 }
 
 impl Display for RequestError {
+    #[rustfmt::skip]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RequestError::Reqwest(x) => {
-                write!(f, "{}", &format!("A request error occurred: {}", x))
-            }
-            RequestError::Annmarie(_, y) => {
-                write!(f, "{}", &format!("Invalid response status code: {:?}", y))
-            }
-            RequestError::InvalidStatus(x) => {
-                write!(f, "{}", &format!("Invalid response status code: {:?}", x))
-            }
-            RequestError::Wsi(x) => write!(f, "{}", &format!("WSI error: {:?}", x)),
+            RequestError::Reqwest(_) => write!(f, "A network error occurred"),
+            RequestError::Annmarie(a, _) => write!(f, "{}", a.message),
+            RequestError::InvalidStatus(x) => write!(f, "Invalid response status code: {}", x),
+            RequestError::Wsi(x) => write!(f, "WSI error: {}", x),
         }
     }
 }
@@ -450,13 +445,4 @@ pub async fn zoom_blur(
     ));
 
     Ok(run_wsi_job(assyst, job, user_id).await?)
-}
-
-pub fn format_err(err: RequestError) -> String {
-    match err {
-        RequestError::Reqwest(_) => String::from("A network error occurred"),
-        RequestError::Annmarie(e, _) => e.message.to_string(),
-        RequestError::InvalidStatus(e) => e.to_string(),
-        RequestError::Wsi(e) => crate::rest::wsi::format_err(e),
-    }
 }

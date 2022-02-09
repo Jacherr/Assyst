@@ -2,7 +2,6 @@ use crate::util::get_wsi_request_tier;
 use crate::{assyst::Assyst, util::handle_job_result};
 use bincode::{deserialize, serialize};
 use bytes::Bytes;
-use futures::future::select;
 use reqwest::Error;
 use serde::Deserialize;
 use shared::errors::ProcessingError;
@@ -253,22 +252,25 @@ impl From<crate::rest::annmarie::RequestError> for RequestError {
         })
     }
 }
-impl ToString for RequestError {
-    fn to_string(&self) -> String {
+
+impl std::fmt::Display for RequestError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RequestError::Reqwest(e) => e.to_string(),
-            RequestError::Serde(e) => e.to_string(),
-            RequestError::Wsi(e) => e.message.to_string(),
-            RequestError::Sqlx(e) => e.to_string(),
+            RequestError::Reqwest(_) => write!(f, "A network error occurred"),
+            RequestError::Serde(e) => write!(f, "{}", e),
+            RequestError::Wsi(e) => write!(f, "{}", e.message),
+            RequestError::Sqlx(e) => write!(f, "{}", e),
         }
     }
 }
 
+impl std::error::Error for RequestError {}
+
 pub async fn randomize(
-    assyst: &Assyst,
-    image: Bytes,
-    user_id: UserId,
-    acceptable_routes: &mut Vec<&'static str>,
+    _assyst: &Assyst,
+    _image: Bytes,
+    _user_id: UserId,
+    _acceptable_routes: &mut Vec<&'static str>,
 ) -> (&'static str, Result<Bytes, RequestError>) {
     todo!()
 
@@ -902,13 +904,4 @@ pub async fn zoom(
     let job = FifoSend::Zoom(FifoData::new(image.to_vec(), NoneQuery {}));
 
     run_wsi_job(assyst, job, user_id).await
-}
-
-pub fn format_err(err: RequestError) -> String {
-    match err {
-        RequestError::Reqwest(_) => String::from("A network error occurred"),
-        RequestError::Wsi(e) => e.message.to_string(),
-        RequestError::Serde(e) => e.to_string(),
-        RequestError::Sqlx(e) => e.to_string(),
-    }
 }

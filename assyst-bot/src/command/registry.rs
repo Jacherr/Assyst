@@ -1,10 +1,9 @@
 use super::command::{Command, ParsedArgument, ParsedCommand, ParsedFlags};
 use super::{
-    categories::{codesprint::*, fun::*, image_annmarie::*, image_wsi::*, misc::*},
+    categories::{codesprint::*, fun::*, image_annmarie::*, image_wsi::*, misc::*, tag::*},
     command::CommandAvailability,
 };
 use crate::command::context::Context;
-use std::error::Error;
 use std::future::Future;
 use std::sync::Arc;
 use std::{collections::HashMap, pin::Pin};
@@ -13,7 +12,7 @@ use tokio::{
     time::{sleep, Duration},
 };
 
-pub type CommandResult = Result<(), Box<dyn Error + Send + Sync>>;
+pub type CommandResult = anyhow::Result<()>;
 pub type CommandResultOuter = Pin<Box<dyn Future<Output = CommandResult> + Send>>;
 pub type CommandRun =
     Box<dyn Fn(Arc<Context>, Vec<ParsedArgument>, ParsedFlags) -> CommandResultOuter + Send + Sync>;
@@ -79,8 +78,7 @@ impl CommandRegistry {
         assyst
             .database
             .increment_command_uses(&command_name)
-            .await
-            .map_err(|e| e.to_string())?;
+            .await?;
 
         result
     }
@@ -201,5 +199,6 @@ impl CommandRegistry {
         register_command!(self, ZOOM_COMMAND, run_zoom_command);
         register_command!(self, HEALTHCHECK_COMMAND, run_healthcheck_command);
         register_command!(self, UNCAPTION_COMMAND, run_uncaption_command);
+        register_command!(self, TAG_COMMAND, run_tag_command);
     }
 }

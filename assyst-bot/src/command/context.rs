@@ -1,6 +1,7 @@
+use anyhow::Context as _;
 use assyst_common::consts;
 use bytes::Bytes;
-use std::{error::Error, time::Instant};
+use std::time::Instant;
 use tokio::sync::Mutex;
 use twilight_http::Client as HttpClient;
 use twilight_model::{
@@ -47,10 +48,7 @@ impl Context {
         &self.assyst.http
     }
 
-    pub async fn reply(
-        &self,
-        message_builder: MessageBuilder,
-    ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
+    pub async fn reply(&self, message_builder: MessageBuilder) -> anyhow::Result<Arc<Message>> {
         let mut reply_lock = self.reply.lock().await;
 
         if !reply_lock.has_replied() {
@@ -58,7 +56,7 @@ impl Context {
             reply_lock.set_reply(result.clone());
             Ok(result)
         } else {
-            let reply = reply_lock.reply.as_ref().unwrap();
+            let reply = reply_lock.reply.as_ref().expect("No reply found");
 
             if reply.attachments.len() > 0 || message_builder.attachment.is_some() {
                 self.http()
@@ -82,16 +80,12 @@ impl Context {
         &self,
         format: &str,
         buffer: Bytes,
-    ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
+    ) -> anyhow::Result<Arc<Message>> {
         self.reply_with_file(&format!("image/{}", format), buffer)
             .await
     }
 
-    pub async fn reply_with_file(
-        &self,
-        mime: &str,
-        buffer: Bytes,
-    ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
+    pub async fn reply_with_file(&self, mime: &str, buffer: Bytes) -> anyhow::Result<Arc<Message>> {
         self.reply_with_image_and_text(mime, buffer, None).await
     }
 
@@ -100,9 +94,9 @@ impl Context {
         format: &str,
         buffer: Bytes,
         text: Option<String>,
-    ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
+    ) -> anyhow::Result<Arc<Message>> {
         let mut builder = MessageBuilder::new();
-        let real_format = format.split("/").nth(1).ok_or_else(|| "Invalid format")?;
+        let real_format = format.split("/").nth(1).context("Invalid format")?;
 
         if let Some(text) = text {
             let text = if text.is_empty() {
@@ -127,10 +121,7 @@ impl Context {
         }
     }
 
-    pub async fn reply_with_text<S: Into<String>>(
-        &self,
-        text: S,
-    ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
+    pub async fn reply_with_text<S: Into<String>>(&self, text: S) -> anyhow::Result<Arc<Message>> {
         let text: String = text.into();
 
         let checked_text = if text.is_empty() {
@@ -146,7 +137,7 @@ impl Context {
     async fn create_new_message(
         &self,
         message_builder: MessageBuilder,
-    ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
+    ) -> anyhow::Result<Arc<Message>> {
         let mut create_message = self
             .assyst
             .http
@@ -176,7 +167,7 @@ impl Context {
         &self,
         message_id: MessageId,
         message_builder: MessageBuilder,
-    ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
+    ) -> anyhow::Result<Arc<Message>> {
         let mut update_message = self
             .assyst
             .http
@@ -199,10 +190,7 @@ impl Context {
         Ok(result)
     }
 
-    pub async fn reply_err<S: Into<String>>(
-        &self,
-        content: S,
-    ) -> Result<Arc<Message>, Box<dyn Error + Send + Sync>> {
+    pub async fn reply_err<S: Into<String>>(&self, content: S) -> anyhow::Result<Arc<Message>> {
         let content = format!(":warning: `{}`", content.into().replace("`", "'"));
 
         self.reply(MessageBuilder::new().content(content.into_boxed_str()))
