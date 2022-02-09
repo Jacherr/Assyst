@@ -1,15 +1,14 @@
 use crate::{
     command::{
         command::{
-            Argument, Command, CommandAvailability, CommandBuilder, CommandError, ParsedArgument,
-            ParsedFlags,
+            Argument, Command, CommandAvailability, CommandBuilder, ParsedArgument, ParsedFlags,
         },
         context::Context,
         registry::CommandResult,
     },
     logger,
     rest::{
-        annmarie::{self, info},
+        annmarie::info,
         bt::{get_languages, validate_language},
         fake_eval,
         rust::OptimizationLevel,
@@ -25,11 +24,13 @@ use crate::{
     rest::{bt::translate_single, get_char_info, rust},
     util::{get_current_millis, parse_to_millis},
 };
+use anyhow::{anyhow, bail, Context as _};
 use assyst_common::consts;
 use assyst_database::Reminder;
 use futures::TryFutureExt;
 use lazy_static::lazy_static;
 use shared::query_params::ResizeMethod;
+use std::fmt::Write;
 use std::{
     collections::HashMap,
     convert::TryInto,
@@ -264,8 +265,7 @@ pub async fn run_enlarge_command(
             1.5,
             ResizeMethod::Nearest,
         )
-        .await
-        .map_err(wsi::format_err)?;
+        .await?;
 
         let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
         context.reply_with_image(format, result).await?;
@@ -325,7 +325,7 @@ pub async fn run_help_command(
             .assyst
             .registry
             .get_command_from_name_or_alias(command_name)
-            .ok_or_else(|| "Command not found".to_owned())?;
+            .context("Command not found")?;
         let raw_aliases = &*command.aliases.join(", ");
         let aliases = if command.aliases.len() == 0 {
             "None"
@@ -397,18 +397,19 @@ pub async fn run_prefix_command(
 ) -> CommandResult {
     let new_prefix = args[0].as_text();
     if new_prefix.len() > 14 {
-        return Err("Prefixes cannot be longer than 14 characters".into());
+        bail!("Prefixes cannot be longer than 14 characters");
     };
 
     context
         .assyst
         .database
         .set_prefix_for(context.message.guild_id.unwrap().0, new_prefix)
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
+
     context
         .reply_with_text(format!("Prefix set to {}", new_prefix))
         .await?;
+
     Ok(())
 }
 
@@ -438,7 +439,6 @@ pub async fn run_stats_command(
     let uptime_minutes = context.assyst.uptime().0 as f32 / 1000f32 / 60f32;
     let commands_per_minute =
         context.assyst.commands_executed.load(Ordering::Relaxed) as f32 / uptime_minutes;
-    // *context.assyst.commands_executed.lock().await as f32 / uptime_minutes;
 
     let stats_table = generate_table(&[
         ("Guilds", &guild_count.to_string()),
@@ -456,8 +456,7 @@ pub async fn run_stats_command(
                 .assyst
                 .database
                 .get_badtranslator_message_stats(guild_id)
-                .await
-                .map_err(|e| e.to_string())?;
+                .await?;
 
             format!("Total: {}, Server: {}", total, guild)
         }),
@@ -465,14 +464,10 @@ pub async fn run_stats_command(
 
     let assyst_uptime = context.assyst.uptime().format();
 
-    let annmarie_info = info(context.assyst.clone())
-        .await
-        .map_err(annmarie::format_err)?;
+    let annmarie_info = info(context.assyst.clone()).await?;
     let annmarie_uptime = format_time(annmarie_info.uptime.floor() as u64 * 1000);
 
-    let wsi_info = wsi::stats(context.assyst.clone())
-        .await
-        .map_err(wsi::format_err)?;
+    let wsi_info = wsi::stats(context.assyst.clone()).await?;
     let wsi_uptime = format_time(wsi_info.uptime_ms as u64);
 
     let uptimes_table = generate_table(&[
@@ -497,9 +492,7 @@ pub async fn run_wsi_stats_command(
     _: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    let response = wsi::stats(context.assyst.clone())
-        .await
-        .map_err(wsi::format_err)?;
+    let response = wsi::stats(context.assyst.clone()).await?;
 
     let output = format!(
         "**Current Requests:** {}\n**Total Workers:** {}",
@@ -534,9 +527,7 @@ pub async fn run_rust_command(
         "miri" => rust::run_miri(&context.assyst.reqwest_client, code, channel, opt).await,
         "asm" => rust::run_godbolt(&context.assyst.reqwest_client, code).await,
         _ => unreachable!(),
-    };
-
-    let result = result.map_err(|e| e.to_string())?;
+    }?;
 
     let formatted = result.format();
 
@@ -560,8 +551,7 @@ pub async fn run_remind_command(
                 .assyst
                 .database
                 .fetch_user_reminders(user_id, 10)
-                .await
-                .map_err(|e| e.to_string())?
+                .await?
                 .iter()
                 .map(|reminder| {
                     format!(
@@ -573,28 +563,24 @@ pub async fn run_remind_command(
                 })
                 .collect::<String>();
 
-            let output = if reminders.len() > 0 {
+            let output = if reminders.is_empty() {
                 format!(":calendar: **Upcoming Reminders:**\nThe number on the left side is the reminder ID, use it to delete a reminder: `-remind delete 10`\n\n{}", reminders)
             } else {
                 ":calendar: You have no set reminders.".to_owned()
             };
 
-            context.reply_with_text(output).await.unwrap();
+            context.reply_with_text(output).await?;
             return Ok(());
         }
         "remove" | "delete" => {
             let user_id = context.message.author.id.0;
-            let reminder_id = args[1]
-                .as_text()
-                .parse::<i32>()
-                .map_err(|e| e.to_string())?;
+            let reminder_id = args[1].as_text().parse::<i32>()?;
 
             let was_deleted = context
                 .assyst
                 .database
                 .delete_reminder_by_id(user_id, reminder_id)
-                .await
-                .map_err(|e| e.to_string())?;
+                .await?;
 
             if was_deleted {
                 context
@@ -604,33 +590,28 @@ pub async fn run_remind_command(
                 return Ok(());
             }
 
-            return Err(CommandError::new_boxed("Failed to delete reminder, either because the ID is wrong or the reminder is not yours."));
+            bail!("Failed to delete reminder, either because the ID is wrong or the reminder is not yours.");
         }
         _ => {}
     };
 
     let comment = match args.get(1) {
         Some(ParsedArgument::Text(arg)) => arg,
-        _ => return Err(CommandError::new_boxed("No comment provided")),
+        _ => bail!("No comment provided"),
     };
 
-    let time: i64 = parse_to_millis(time)
-        .map_err(|e| e.as_str())?
+    let time: i64 = parse_to_millis(time)?
         .try_into()
-        .map_err(|_| "Input is too large to fit in i64")?;
+        .map_err(|_| anyhow!("Input is too large to fit in i64"))?;
 
     if time <= 0 {
-        return Err(CommandError::new_boxed("An invalid time was provided"));
+        bail!("An invalid time was provided");
     }
 
-    let guild_id = match context.message.guild_id {
-        Some(id) => id.0,
-        None => {
-            return Err(CommandError::new_boxed(
-                "This command can only be run in a server",
-            ))
-        }
-    };
+    let guild_id = context
+        .message
+        .guild_id
+        .expect("Already checked in handle_message");
 
     let ftime = format_time(time as u64);
     let time = (get_current_millis() as i64) + time;
@@ -644,10 +625,9 @@ pub async fn run_remind_command(
             message_id: context.message.id.0 as i64,
             user_id: context.message.author.id.0 as i64,
             timestamp: time as i64,
-            guild_id: guild_id as i64,
+            guild_id: guild_id.0 as i64,
         })
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
 
     context
         .reply_with_text(format!("Reminder set for {} from now", ftime))
@@ -662,12 +642,7 @@ pub async fn run_top_commands_command(
     _flags: ParsedFlags,
 ) -> CommandResult {
     if args[0].is_nothing() {
-        let top_commands = context
-            .assyst
-            .database
-            .get_command_usage_stats()
-            .await
-            .map_err(|e| e.to_string())?;
+        let top_commands = context.assyst.database.get_command_usage_stats().await?;
 
         let top_commands_formatted_raw: Vec<(&str, String)> = top_commands
             .iter()
@@ -682,10 +657,7 @@ pub async fn run_top_commands_command(
 
         let table = generate_list("Command", "Uses", &top_commands_formatted);
 
-        context
-            .reply_with_text(codeblock(&table, "hs"))
-            .await
-            .map_err(|e| e.to_string())?;
+        context.reply_with_text(codeblock(&table, "hs")).await?;
     } else {
         let command_name = args[0].as_text();
 
@@ -700,20 +672,16 @@ pub async fn run_top_commands_command(
                 .assyst
                 .database
                 .get_command_usage_stats_for(cmd_name)
-                .await
-                .map_err(|e| e.to_string())?;
+                .await?;
 
             context
                 .reply_with_text(format!(
                     "Command `{}` been used **{}** times.",
                     cmd_name, data.uses
                 ))
-                .await
-                .map_err(|e| e.to_string())?;
+                .await?;
         } else {
-            return Err(CommandError::new_boxed(
-                "No command with this name or alias exists.",
-            ));
+            bail!("No command with this name or alias exists.");
         }
     }
     Ok(())
@@ -728,8 +696,7 @@ pub async fn run_top_bt_command(
         .assyst
         .database
         .get_badtranslator_messages_raw()
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
 
     let top_bt_formatted_raw: Vec<(String, String)> = top_bt
         .iter()
@@ -739,15 +706,12 @@ pub async fn run_top_bt_command(
 
     let top_commands_formatted = top_bt_formatted_raw
         .iter()
-        .map(|(a, b)| (&a[..], &b[..]))
+        .map(|(a, b)| (a.as_str(), b.as_str()))
         .collect::<Vec<_>>();
 
     let table = generate_list("Guild ID", "Messages", &top_commands_formatted);
 
-    context
-        .reply_with_text(codeblock(&table, "hs"))
-        .await
-        .map_err(|e| e.to_string())?;
+    context.reply_with_text(codeblock(&table, "hs")).await?;
     Ok(())
 }
 
@@ -768,35 +732,29 @@ pub async fn run_btchannel_command(
                 .next()
                 .and_then(|a| a.maybe_text())
                 .map(str::parse::<u64>)
-                .unwrap_or(Ok(context.message.channel_id.0))
-                .map_err(|e| e.to_string())?;
+                .unwrap_or(Ok(context.message.channel_id.0))?;
 
             ensure_same_guild(&context, channel_id, guild_id).await?;
 
             let language = args.next().and_then(|a| a.maybe_text()).unwrap_or("en");
 
-            let is_valid_language = validate_language(&context.assyst.reqwest_client, language)
-                .await
-                .map_err(|e| e.to_string())?;
+            let is_valid_language =
+                validate_language(&context.assyst.reqwest_client, language).await?;
 
             if !is_valid_language {
-                return Err(CommandError::new_boxed(&format!(
-                    "This language does not exist or cannot be used as a target language. Run `{}btchannel languages` for a list of languages",
-                    context.prefix
-                )));
+                bail!("This language does not exist or cannot be used as a target language. Run `{}btchannel languages` for a list of languages", context.prefix);
             }
 
             context
                 .http()
                 .create_webhook(channel_id.into(), "Bad Translator")
-                .await
-                .map_err(|e| e.to_string())?;
+                .await?;
 
             context.assyst.database.add_bt_channel(channel_id, language)
                 .await
                 .map_err(|e| {
                     eprintln!("{:?}", e);
-                    CommandError::new_boxed("Registering BT channel failed. This is likely a bug. Please contact one of the bot developers")
+                    anyhow!("Registering BT channel failed. This is likely a bug. Please contact one of the bot developers")
                 })?;
 
             context
@@ -812,33 +770,27 @@ pub async fn run_btchannel_command(
                 .next()
                 .and_then(|a| a.maybe_text())
                 .map(str::parse::<u64>)
-                .unwrap_or(Ok(context.message.channel_id.0))
-                .map_err(|e| e.to_string())?;
+                .unwrap_or(Ok(context.message.channel_id.0))?;
 
             ensure_same_guild(&context, channel_id, guild_id).await?;
 
             let language = args.next().and_then(|a| a.maybe_text()).unwrap_or("en");
 
-            let is_valid_language = validate_language(&context.assyst.reqwest_client, language)
-                .await
-                .map_err(|e| e.to_string())?;
+            let is_valid_language =
+                validate_language(&context.assyst.reqwest_client, language).await?;
 
             if !is_valid_language {
-                return Err(CommandError::new_boxed(&format!(
-                    "This language does not exist or cannot be used as a target language. Run `{}btchannel languages` for a list of languages",
-                    context.prefix
-                )));
+                bail!("This language does not exist or cannot be used as a target language. Run `{}btchannel languages` for a list of languages", context.prefix);
             }
 
             let did_update = context
                 .assyst
                 .database
                 .update_bt_channel_language(channel_id, language)
-                .await
-                .map_err(|e| e.to_string())?;
+                .await?;
 
             if !did_update {
-                return Err(CommandError::new_boxed("Failed to update BT language. Make sure that the provided ID is a valid BT channel."));
+                bail!("Failed to update BT language. Make sure that the provided ID is a valid BT channel.");
             }
 
             context
@@ -856,8 +808,7 @@ pub async fn run_btchannel_command(
                 .next()
                 .and_then(|a| a.maybe_text())
                 .map(str::parse::<u64>)
-                .ok_or_else(|| String::from("Please provide a channel ID."))?
-                .map_err(|e| e.to_string())?;
+                .context("No channel ID provided.")??;
 
             ensure_same_guild(&context, channel_id, guild_id).await?;
 
@@ -865,13 +816,10 @@ pub async fn run_btchannel_command(
                 .assyst
                 .database
                 .delete_bt_channel(channel_id)
-                .await
-                .map_err(|e| e.to_string())?;
+                .await?;
 
             if !did_delete {
-                return Err(CommandError::new_boxed(
-                    "Failed to delete BT channel. Is it registered in that channel?",
-                ));
+                bail!("Failed to delete BT channel. Is it registered in that channel?");
             }
 
             context
@@ -885,9 +833,7 @@ pub async fn run_btchannel_command(
                 .await?
         }
         "languages" => {
-            let languages = get_languages(&context.assyst.reqwest_client)
-                .await
-                .map_err(|e| e.to_string())?;
+            let languages = get_languages(&context.assyst.reqwest_client).await?;
 
             let message = codeblock(&generate_list("Code", "Language", &languages), "hs");
             context.reply_with_text(message).await?
@@ -910,13 +856,11 @@ pub async fn run_chars_command(
     let mut output = String::new();
 
     for ch in chars {
-        let (html, url) = get_char_info(&context.assyst.reqwest_client, ch)
-            .await
-            .map_err(|e| e.to_string())?;
+        let (html, url) = get_char_info(&context.assyst.reqwest_client, ch).await?;
 
         let title = extract_page_title(&html).unwrap_or_else(|| "<unknown>".to_owned());
 
-        output.push_str(&format!("`{}` — **{}** ({})\n", ch, title, url));
+        let _ = write!(output, "`{}` — **{}** ({})\n", ch, title, url);
     }
 
     context.reply_with_text(output).await?;
@@ -975,7 +919,7 @@ pub async fn run_exec_command(
 ) -> CommandResult {
     let command = args[0].as_text();
 
-    let result = exec_sync(command).map_err(|e| e.to_string())?;
+    let result = exec_sync(command)?;
 
     let mut output = "".to_owned();
     if !result.stdout.is_empty() {
@@ -1011,11 +955,7 @@ pub async fn run_command_command(
             let guild_id = context.message.guild_id.unwrap();
             let lock = context.assyst.database.cache.read().await;
             let disabled_commands = (*lock).disabled_commands.get(&guild_id).unwrap();
-            let should_disable = if disabled_commands.contains(cmd.name) {
-                false
-            } else {
-                true
-            };
+            let should_disable = !disabled_commands.contains(cmd.name);
             drop(lock);
 
             if should_disable {
@@ -1023,29 +963,23 @@ pub async fn run_command_command(
                     .assyst
                     .database
                     .add_disabled_command(guild_id, cmd.name)
-                    .await
-                    .map_err(|e| e.to_string())?;
+                    .await?;
                 context
                     .reply_with_text(format!("Disabled command: `{}`", cmd.name))
-                    .await
-                    .map_err(|e| e.to_string())?;
+                    .await?;
             } else {
                 context
                     .assyst
                     .database
                     .remove_disabled_command(guild_id, cmd.name)
-                    .await
-                    .map_err(|e| e.to_string())?;
+                    .await?;
                 context
                     .reply_with_text(format!("Enabled command: `{}`", cmd.name))
-                    .await
-                    .map_err(|e| e.to_string())?;
+                    .await?;
             };
         }
         None => {
-            return Err(CommandError::new_boxed(
-                "No command with this name or alias exists.",
-            ));
+            bail!("No command with this name or alias exists.");
         }
     };
 

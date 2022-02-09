@@ -15,6 +15,7 @@ mod rest;
 mod tasks;
 mod util;
 
+use anyhow::Context;
 use assyst::Assyst;
 use assyst_webserver::run as webserver_run;
 use dotenv::dotenv;
@@ -34,13 +35,9 @@ use twilight_model::gateway::{
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     dotenv().ok();
-    let token = env::var("DISCORD_TOKEN").unwrap();
-
-    //let y = Vec::<u8>::with_capacity(5_000_000_000);
-    //unsafe { std::ptr::read_volatile(y.as_ptr()) };
-    //drop(y);
+    let token = env::var("DISCORD_TOKEN")?;
 
     let assyst = Arc::new(Assyst::new(&token).await);
     let activity = Activity {
@@ -61,7 +58,7 @@ async fn main() {
         url: None,
         buttons: Vec::new(),
     };
-    let presence = UpdatePresencePayload::new(vec![activity], false, None, Status::Online).unwrap();
+    let presence = UpdatePresencePayload::new(vec![activity], false, None, Status::Online)?;
 
     // spawn as many shards as discord recommends
     let scheme = ShardScheme::Auto;
@@ -70,8 +67,7 @@ async fn main() {
         .http_client(assyst.http.clone())
         .presence(presence)
         .build()
-        .await
-        .unwrap();
+        .await?;
 
     let spawned_cluster = cluster.clone();
     tokio::spawn(async move { spawned_cluster.up().await });
@@ -81,9 +77,9 @@ async fn main() {
     tasks::init_reminder_loop(assyst.clone());
     tasks::init_caching_gc_loop(assyst.clone());
     tasks::update_patrons(assyst.clone());
-    tasks::init_metrics_collect_loop(cluster, assyst.clone())
-        .expect("Failed to initialize metrics collect loop");
     tasks::init_healthcheck(assyst.clone());
+    tasks::init_metrics_collect_loop(cluster, assyst.clone())
+        .context("Failed to initialize metrics collect loop")?;
 
     // Bot list webhooks and metrics
     webserver_run(
@@ -113,12 +109,14 @@ async fn main() {
 
     // Event loop
     while let Some((_, event)) = events.next().await {
-        assyst.metrics.add_event();
         let assyst_clone = assyst.clone();
         tokio::spawn(async move {
             handle_event(assyst_clone, event).await;
         });
+        assyst.metrics.add_event();
     }
 
     println!("{}", "shutting down");
+
+    Ok(())
 }

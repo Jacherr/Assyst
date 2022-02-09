@@ -202,9 +202,8 @@ async fn run_annmarie_noarg_command(
     function: annmarie::NoArgFunction,
 ) -> CommandResult {
     context.reply_with_text("processing...").await?;
-    let result = function(context.assyst.clone(), raw_image, context.author_id())
-        .await
-        .map_err(annmarie::format_err)?;
+    let result = function(context.assyst.clone(), raw_image, context.author_id()).await?;
+
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -254,9 +253,7 @@ pub async fn run_quote_command(
         .await?
         .ok_or_else(|| CommandError::new_boxed("Failed to fetch guild"))?;
 
-    let bytes = annmarie::quote(&context.assyst, &messages, guild, white)
-        .await
-        .map_err(annmarie::format_err)?;
+    let bytes = annmarie::quote(&context.assyst, &messages, guild, white).await?;
 
     context.reply_with_image("png", bytes).await?;
 
@@ -282,14 +279,12 @@ pub async fn run_annmarie_command(
         },
     ));
 
-    let result = run_wsi_job(context.assyst.clone(), job, context.author_id())
-        .await
-        .map_err(|x| x.to_string())?;
+    let result = run_wsi_job(context.assyst.clone(), job, context.author_id()).await?;
 
     let format = if flags.contains_key("json") {
         "json"
     } else {
-        get_buffer_filetype(&result).unwrap_or_else(|| "png")
+        get_buffer_filetype(&result).unwrap_or("png")
     };
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -360,9 +355,8 @@ pub async fn run_heart_locket_command(
     let text = args[1].as_text();
 
     context.reply_with_text("processing...").await?;
-    let result = wsi::heart_locket(context.assyst.clone(), image, text, context.author_id())
-        .await
-        .map_err(wsi::format_err)?;
+    let result =
+        wsi::heart_locket(context.assyst.clone(), image, text, context.author_id()).await?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -376,9 +370,7 @@ pub async fn run_neon_command(
     let image = args[0].as_bytes();
     let radius = args[1].as_text();
     context.reply_with_text("processing...").await?;
-    let result = annmarie::neon(context.assyst.clone(), image, context.author_id(), radius)
-        .await
-        .map_err(annmarie::format_err)?;
+    let result = annmarie::neon(context.assyst.clone(), image, context.author_id(), radius).await?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -416,9 +408,8 @@ pub async fn run_zoom_blur_command(
     let image = args[0].as_bytes();
     let power = args[1].as_text();
     context.reply_with_text("processing...").await?;
-    let result = annmarie::zoom_blur(context.assyst.clone(), image, context.author_id(), power)
-        .await
-        .map_err(annmarie::format_err)?;
+    let result =
+        annmarie::zoom_blur(context.assyst.clone(), image, context.author_id(), power).await?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())

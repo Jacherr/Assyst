@@ -12,6 +12,8 @@ use crate::{assyst::Assyst, rest::ServiceStatus};
 pub enum DownloadError {
     ProxyNetworkError,
     InvalidStatus,
+    Url(url::ParseError),
+    NoHost,
     LimitExceeded(usize),
     Reqwest(reqwest::Error),
 }
@@ -23,10 +25,14 @@ impl fmt::Display for DownloadError {
             DownloadError::ProxyNetworkError => write!(f, "Failed to connect to proxy"),
             DownloadError::InvalidStatus => write!(f, "Invalid status received from proxy"),
             DownloadError::LimitExceeded(b) => write!(f, "Content download exceeded byte limit ({})", b),
+            DownloadError::Url(e) => write!(f, "Failed to parse URL: {}", e),
+            DownloadError::NoHost => write!(f, "No host found in URL"),
             DownloadError::Reqwest(e) => write!(f, "{}", e),
         }
     }
 }
+
+impl std::error::Error for DownloadError {}
 
 async fn download_with_proxy(
     client: &Client,
@@ -90,11 +96,10 @@ pub async fn download_content(
     let config = &assyst.config;
     let client = &assyst.reqwest_client;
 
-    let url_p = Url::parse(url).unwrap();
+    let url_p = Url::parse(url).map_err(DownloadError::Url)?;
+    let host = url_p.host_str().ok_or(DownloadError::NoHost)?;
 
-    let is_whitelisted = WHITLISTED_DOMAINS
-        .iter()
-        .any(|d| url_p.host_str().unwrap().contains(d));
+    let is_whitelisted = WHITLISTED_DOMAINS.iter().any(|d| host.contains(d));
 
     if !config.url.proxy.is_empty() && !is_whitelisted {
         // First, try to download with proxy

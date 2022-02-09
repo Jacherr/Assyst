@@ -3,7 +3,9 @@ use crate::util::normalize_mentions;
 use crate::{
     rest::bt, util::get_current_millis, util::normalize_emojis, util::sanitize_message_content,
 };
+use anyhow::Context;
 use assyst_common::bt::{BadTranslatorEntry, ChannelCache};
+use assyst_common::consts;
 use reqwest::StatusCode;
 use std::collections::HashMap;
 use std::{borrow::Cow, time::Duration};
@@ -16,25 +18,8 @@ use twilight_model::{
     user::User,
 };
 
-macro_rules! unwrap_or_eprintln {
-    ($what:expr, $msg:expr) => {
-        match $what {
-            Some(x) => x,
-            None => {
-                eprintln!($msg);
-                return;
-            }
-        }
-    };
-}
-
 mod flags {
     pub const DISABLED: u32 = 0x1;
-}
-
-mod constants {
-    pub const RATELIMIT_LEN: u64 = 2500;
-    pub const RATELIMITED_MESSAGE: &'static str = "You are sending messages too quickly!";
 }
 
 #[derive(Debug)]
@@ -46,7 +31,7 @@ impl BadTranslatorRatelimit {
     }
 
     pub fn expired(&self) -> bool {
-        get_current_millis() - self.0 >= constants::RATELIMIT_LEN
+        get_current_millis() - self.0 >= consts::BT_RATELIMIT_LEN
     }
 }
 
@@ -140,13 +125,15 @@ impl BadTranslator {
         self.channels.write().await.remove(&id);
     }
 
-    pub async fn delete_bt_channel(&self, assyst: &Assyst, id: &ChannelId) {
-        match assyst.database.delete_bt_channel(id.0).await {
-            Err(e) => eprintln!("Deleting BT channel failed: {:?}", e),
-            _ => {}
-        };
+    pub async fn delete_bt_channel(&self, assyst: &Assyst, id: &ChannelId) -> anyhow::Result<()> {
+        assyst
+            .database
+            .delete_bt_channel(id.0)
+            .await
+            .context("Deleting BT channel failed")?;
 
         self.channels.write().await.remove(&id.0);
+        Ok(())
     }
 
     /// Returns true if given user ID is ratelimited
@@ -169,22 +156,28 @@ impl BadTranslator {
         false
     }
 
-    pub async fn handle_message(&self, assyst: &Assyst, message: Box<MessageCreate>) {
+    pub async fn handle_message(
+        &self,
+        assyst: &Assyst,
+        message: Box<MessageCreate>,
+    ) -> anyhow::Result<()> {
         // We're assuming the caller has already made sure this is a valid channel
         // So we don't check if it's a BT channel again
 
-        let message_len = message.content.len();
+        let guild_id = message.guild_id.expect("There are no BT channels in DMs");
 
         if is_webhook(&message.author) || is_ratelimit_message(assyst, &message) {
-            return;
+            // ignore its own webhook/ratelimit messages
+            return Ok(());
         }
 
-        if message_len == 0 || message.author.bot {
+        if message.content.is_empty() || message.author.bot {
             let _ = assyst
                 .http
                 .delete_message(message.channel_id, message.id)
                 .await;
-            return;
+
+            return Ok(());
         }
 
         let ratelimit = self.try_ratelimit(&message.author.id).await;
@@ -196,36 +189,28 @@ impl BadTranslator {
                 .delete_message(message.channel_id, message.id)
                 .await;
 
-            let res_message = if let Ok(message) = assyst
+            let response = assyst
                 .http
                 .create_message(message.channel_id)
                 .content(&format!(
                     "<@{}>, {}",
                     message.author.id.0,
-                    constants::RATELIMITED_MESSAGE
-                ))
-                .unwrap()
-                .await
-            {
-                message
-            } else {
-                return;
-            };
+                    consts::BT_RATELIMIT_MESSAGE
+                ))?
+                .await?;
 
             tokio::time::sleep(Duration::from_secs(5)).await;
 
-            let _ = assyst
+            assyst
                 .http
-                .delete_message(message.channel_id, res_message.id)
-                .await;
+                .delete_message(message.channel_id, response.id)
+                .await?;
 
-            return;
+            return Ok(());
         }
 
         let content = normalize_emojis(&message.content);
         let content = normalize_mentions(&content, &message.mentions);
-
-        let guild = message.guild_id.unwrap();
 
         let (webhook, language) = match self.get_or_fetch_entry(assyst, &message.channel_id).await {
             Some(webhook) => webhook,
@@ -236,14 +221,14 @@ impl BadTranslator {
             &assyst.reqwest_client,
             &content,
             message.author.id.0,
-            guild.0,
+            guild_id.0,
             &language,
         )
         .await
         {
             Ok(res) => Cow::Owned(res.result.text),
             Err(bt::TranslateError::Raw(msg)) => Cow::Borrowed(msg),
-            _ => return,
+            _ => return Ok(()),
         };
 
         let delete_state = assyst
@@ -252,46 +237,37 @@ impl BadTranslator {
             .await;
 
         // dont respond with translation if the source was prematurely deleted
-        if let Err(err) = delete_state {
-            if let ErrorType::Response {
-                status,
-                body: _,
-                error: _,
-            } = err.kind()
-            {
-                if *status == StatusCode::NOT_FOUND {
-                    return;
-                }
+        if let Err(ErrorType::Response {
+            status,
+            body: _,
+            error: _,
+        }) = delete_state.as_ref().map_err(|e| e.kind())
+        {
+            if *status == StatusCode::NOT_FOUND {
+                return Ok(());
             }
         }
 
-        let token = unwrap_or_eprintln!(webhook.token.as_ref(), "Failed to extract token");
+        let token = webhook.token.as_ref().context("Failed to extract token")?;
 
         let translation =
             sanitize_message_content(translation.chars().take(2000).collect::<String>().as_str());
 
-        if let Err(e) = assyst
+        assyst
             .http
             .execute_webhook(webhook.id, token)
             .content(translation)
             .username(&message.author.name)
             .avatar_url(get_avatar_url(&message.author))
             .await
-        {
-            eprintln!("Executing webhook failed: {:?}", e);
-        }
+            .context("Executing webhook failed")?;
 
         // Increase metrics counter for this guild
-        let guild_id = guild.0;
-        let _ = register_badtranslated_message_to_db(&assyst, guild_id)
+        register_badtranslated_message_to_db(&assyst, guild_id.0)
             .await
-            .map_err(|e| {
-                eprintln!(
-                    "Error updating BadTranslator message metric for guild_id {}: {}",
-                    guild_id,
-                    e.to_string()
-                )
-            });
+            .with_context(|| format!("Error updating BT message metric for {}", guild_id))?;
+
+        Ok(())
     }
 }
 
@@ -336,6 +312,6 @@ fn is_webhook(user: &User) -> bool {
 
 fn is_ratelimit_message(assyst: &Assyst, message: &MessageCreate) -> bool {
     // TODO: check if message was sent by the bot itself
-    message.content.contains(constants::RATELIMITED_MESSAGE)
+    message.content.contains(consts::BT_RATELIMIT_MESSAGE)
         && message.author.id.0 == assyst.config.bot_id
 }

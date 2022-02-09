@@ -16,22 +16,23 @@ use crate::{
     util::{get_current_millis, get_guild_owner, is_guild_manager, regexes, Uptime},
 };
 
+use anyhow::{bail, Context as _};
 use assyst_common::{config::Config, consts::BOT_ID};
 use assyst_database::Database;
 use async_recursion::async_recursion;
 use regex::Captures;
 use reqwest::Client as ReqwestClient;
-use shared::{job::JobResult, fifo::FifoSend};
+use shared::{fifo::FifoSend, job::JobResult};
 use std::{
     borrow::{Borrow, Cow},
-    collections::{HashSet, HashMap},
+    collections::{HashMap, HashSet},
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc,
     },
     time::Instant,
 };
-use tokio::sync::{Mutex, RwLock, mpsc::UnboundedSender, oneshot::Sender};
+use tokio::sync::{mpsc::UnboundedSender, oneshot::Sender, Mutex, RwLock};
 use twilight_http::Client as HttpClient;
 use twilight_model::channel::{Channel, GuildChannel, Message};
 
@@ -117,7 +118,7 @@ pub struct Assyst {
     pub started_at: u64,
     pub commands_executed: AtomicU64,
     pub healthcheck_result: Mutex<(Instant, Vec<HealthcheckResult>)>,
-    wsi_tx: UnboundedSender<(Sender<JobResult>, FifoSend, usize)>
+    wsi_tx: UnboundedSender<(Sender<JobResult>, FifoSend, usize)>,
 }
 impl Assyst {
     /// Create a new Assyst instance from a token. This method does NOT
@@ -136,9 +137,10 @@ impl Assyst {
             .await
             .map(Arc::new)
             .unwrap();
-        
+
         let config_clone = config.clone();
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<(Sender<JobResult>, FifoSend, usize)>();
+        let (tx, rx) =
+            tokio::sync::mpsc::unbounded_channel::<(Sender<JobResult>, FifoSend, usize)>();
 
         let mut assyst = Assyst {
             guilds: Mutex::new(HashSet::new()),
@@ -155,14 +157,14 @@ impl Assyst {
             started_at: get_current_millis(),
             commands_executed: AtomicU64::new(0),
             healthcheck_result: Mutex::new((Instant::now(), vec![])),
-            wsi_tx: tx
+            wsi_tx: tx,
         };
         if assyst.config.disable_bad_translator {
             assyst.badtranslator.disable().await
         }
 
         tokio::spawn(async move {
-            wsi_listen(rx,&config_clone.url.wsi.to_string()).await;
+            wsi_listen(rx, &config_clone.url.wsi.to_string()).await;
         });
 
         assyst.registry.register_commands();
@@ -199,13 +201,13 @@ impl Assyst {
     /// happen on separate threads of execution.
     pub async fn handle_command(
         self: &Arc<Self>,
-        _message: Message,
+        message: Message,
         from_update: bool,
-    ) -> Result<(), String> {
+    ) -> anyhow::Result<()> {
         // timing for use in ping command
         let start = Instant::now();
 
-        let message = Arc::new(_message);
+        let message = Arc::new(message);
 
         if from_update && message.edited_timestamp.is_none() {
             return Ok(());
@@ -215,6 +217,9 @@ impl Assyst {
         if self.config.user.blacklist.contains(&message.author.id.0) {
             return Ok(());
         }
+
+        // unwrapping is fine because handle_message checks for that already
+        let guild_id = message.guild_id.unwrap().0;
 
         // parsing prefix from start of content
         let prefix;
@@ -234,12 +239,8 @@ impl Assyst {
                 None => {
                     let try_prefix = self
                         .database
-                        .get_or_set_prefix_for(
-                            message.guild_id.unwrap().0,
-                            &self.config.prefix.default,
-                        )
-                        .await
-                        .map_err(|err| err.to_string())?;
+                        .get_or_set_prefix_for(guild_id, &self.config.prefix.default)
+                        .await?;
 
                     match try_prefix {
                         Some(p) => {
@@ -321,7 +322,7 @@ impl Assyst {
                         None => e.error,
                     };
 
-                    context.reply_err(err).await.map_err(|e| e.to_string())?;
+                    context.reply_err(err).await?;
                 }
                 reply.lock().await.in_use = false;
                 return Ok(());
@@ -333,13 +334,11 @@ impl Assyst {
         // checking if the command is disabled
         let is_guild_disabled = self
             .database
-            .is_command_disabled(command_instance.name, message.guild_id.unwrap())
+            .is_command_disabled(command_instance.name, guild_id.into())
             .await;
 
         if is_guild_disabled {
-            let owner = get_guild_owner(&self.http, message.guild_id.unwrap())
-                .await
-                .map_err(|e| e.to_string())?;
+            let owner = get_guild_owner(&self.http, guild_id.into()).await?;
 
             if owner != message.author.id && !self.user_is_admin(context.author_id().0) {
                 return Ok(());
@@ -351,27 +350,27 @@ impl Assyst {
                 .http
                 .channel(message.channel_id)
                 .await
-                .map_err(|e| format!("fetching channel for nsfw check fail: {}", e.to_string()))?
-                .unwrap();
+                .context("fetching channel for nsfw check failed")?
+                .context("channel not found")?;
 
             if let Channel::Guild(guild) = channel {
                 if let GuildChannel::Text(guild_text) = guild {
                     if !guild_text.nsfw {
                         context
                             .reply_err("This command is limited to NSFW text channels only.")
-                            .await
-                            .map_err(|e| e.to_string())?;
+                            .await?;
+
                         return Ok(());
                     }
                 } else {
                     context
                         .reply_err("This command is limited to NSFW text channels only.")
-                        .await
-                        .map_err(|e| e.to_string())?;
+                        .await?;
+
                     return Ok(());
                 }
             } else {
-                unreachable!()
+                bail!("fetched channel was not a guild channel");
             }
         }
 
@@ -380,8 +379,8 @@ impl Assyst {
         if is_global_disabled && !self.user_is_admin(context.author_id().0) {
             context
                 .reply_err("This command is globally disabled. :(")
-                .await
-                .map_err(|e| e.to_string())?;
+                .await?;
+
             return Ok(());
         }
 
@@ -389,24 +388,20 @@ impl Assyst {
 
         // checking if this command violates the ratelimits
         let mut ratelimit_lock = self.command_ratelimits.write().await;
-        let command_ratelimit = ratelimit_lock
-            .time_until_guild_command_usable(message.guild_id.unwrap(), &command_instance.name);
+        let command_ratelimit =
+            ratelimit_lock.time_until_guild_command_usable(guild_id.into(), &command_instance.name);
 
-        match command_ratelimit {
-            Some(r) => {
-                reply.lock().await.in_use = false;
-                context
-                    .reply_err(format!(
-                        "This command is on cooldown for {:.2} seconds.",
-                        (r as f64 / 1000f64)
-                    ))
-                    .await
-                    .map_err(|e| e.to_string())?;
-                return Ok(());
-            }
-            None => {}
+        if let Some(r) = command_ratelimit {
+            reply.lock().await.in_use = false;
+            let message = format!(
+                "This command is on cooldown for {:.2} seconds.",
+                (r as f64 / 1000f64)
+            );
+            context.reply_err(message).await?;
+
+            return Ok(());
         };
-        ratelimit_lock.set_command_expire_at(message.guild_id.unwrap(), &command_instance);
+        ratelimit_lock.set_command_expire_at(guild_id.into(), &command_instance);
         drop(ratelimit_lock);
 
         self.metrics.add_command();
@@ -419,10 +414,7 @@ impl Assyst {
         if let Err(err) = command_result {
             let err_dsc = err.to_string().replace("\\n", "\n");
 
-            context
-                .reply_err(err_dsc)
-                .await
-                .map_err(|e| e.to_string())?;
+            context.reply_err(err_dsc).await?;
         };
 
         self.metrics

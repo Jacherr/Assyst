@@ -12,6 +12,7 @@ use crate::{
     },
     util::{self, codeblock, nanos_to_readable}, downloader,
 };
+use anyhow::{anyhow, Context as _};
 use assyst_common::consts;
 use lazy_static::lazy_static;
 use std::fmt::Write;
@@ -97,16 +98,16 @@ async fn run_show_subcommand(
 ) -> CommandResult {
     let id = args[1]
         .maybe_text()
-        .ok_or_else(|| "No id provided")?
+        .context("No id provided")?
         .parse::<i32>()
-        .map_err(|_| "Failed to parse challenge ID as an integer")?;
+        .context("Failed to parse challenge ID as an integer")?;
 
     let challenge = context
         .assyst
         .database
         .get_codesprint_challenge(id)
         .await?
-        .ok_or_else(|| format!("Could not find challenge with id `{}`!", id))?;
+        .with_context(|| format!("Could not find challenge with id `{}`!", id))?;
 
     let message = format!(
         "**Challenge #{}**: {} - submitted by <@{}>\n\n{}",
@@ -124,9 +125,9 @@ async fn run_best_subcommand(
 ) -> CommandResult {
     let id = args[1]
         .maybe_text()
-        .ok_or_else(|| "No id provided")?
+        .context("No id provided")?
         .parse::<i32>()
-        .map_err(|_| "Failed to parse challenge ID as an integer")?;
+        .map_err(|_| anyhow!("Failed to parse challenge ID as an integer"))?;
 
     let language = flags
         .get("language")
@@ -165,9 +166,9 @@ async fn run_submit_subcommand(
 
     let id = args[1]
         .maybe_text()
-        .ok_or_else(|| "No id provided")?
+        .context("No id provided")?
         .parse::<i32>()
-        .map_err(|_| "Failed to parse challenge ID as an integer")?;
+        .map_err(|_| anyhow!("Failed to parse challenge ID as an integer"))?;
 
     let tests = context
         .assyst
@@ -183,24 +184,22 @@ async fn run_submit_subcommand(
     let (language, code): (Language, Cow<'_, str>) = (|| async {
         if let Some(cb) = args[2].maybe_text() {
             let (language, code) = util::parse_codeblock_with_language(cb)
-                .ok_or_else(|| "Failed to parse codeblock")?;
+                .context("Failed to parse codeblock")?;
 
             let language = Language::from_ext(language)
-                .ok_or_else(|| "Could not infer language from file extension. Make sure your file ends with a supported file extension.")?;
+                .context("Could not infer language from file extension. Make sure your file ends with a supported file extension.")?;
             
-            return Ok::<_, Box<dyn std::error::Error + Send + Sync>>((language, Cow::Borrowed(code)));
+            return <anyhow::Result<_>>::Ok((language, Cow::Borrowed(code)))
         }
 
-        let attachment = context.message.attachments.first().ok_or_else(|| {
-            "No attachment provided. Make sure to attach the code you want to submit as an attachment."
-        })?;
+        let attachment = context.message.attachments.first().context("No attachment provided. Make sure to attach the code you want to submit as an attachment.")?;
     
         let language = attachment
             .filename
             .rsplit('.')
             .next()
             .and_then(Language::from_ext)
-            .ok_or_else(|| "Could not infer language from file extension. Make sure your file ends with a supported file extension.")?;
+            .context("Could not infer language from file extension. Make sure your file ends with a supported file extension.")?;
     
         let code = downloader::download_content(
             &context.assyst,
@@ -208,8 +207,7 @@ async fn run_submit_subcommand(
             consts::ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES,
         )
         .await
-        .map(|c| String::from_utf8_lossy(&c).to_string())
-        .map_err(|e| e.to_string())?;
+        .map(|c| String::from_utf8_lossy(&c).to_string())?;
 
         Ok((language, Cow::Owned(code)))
     })()
@@ -298,7 +296,7 @@ async fn run_list_subcommand(
         .maybe_text()
         .unwrap_or("1")
         .parse::<i64>()
-        .map_err(|_| "Failed to parse challenge ID as an integer")?;
+        .map_err(|_| anyhow!("Failed to parse challenge ID as an integer"))?;
 
     let challenges = context
         .assyst

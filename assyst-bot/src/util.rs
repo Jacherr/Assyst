@@ -1,19 +1,13 @@
-use crate::{
-    assyst::Assyst,
-    command::context::Context,
-    downloader::{self, DownloadError},
-    filetype,
-    rest::wsi::RequestError,
-};
+use crate::{assyst::Assyst, command::context::Context, filetype, rest::wsi::RequestError};
 use assyst_common::consts;
 use bytes::Bytes;
 use regex::Captures;
 use shared::job::JobResult;
 
+use anyhow::bail;
 use std::{
     borrow::Cow,
     convert::TryInto,
-    num::ParseIntError,
     process::Command,
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
@@ -93,15 +87,11 @@ pub async fn ensure_same_guild(
     context: &Arc<Context>,
     channel_id: u64,
     guild_id: u64,
-) -> Result<(), String> {
-    let is = is_same_guild(context.http(), channel_id, guild_id)
-        .await
-        .map_err(|e| e.to_string())?;
+) -> anyhow::Result<()> {
+    let is = is_same_guild(context.http(), channel_id, guild_id).await?;
 
     if !is {
-        return Err(String::from(
-            "The provided channel is not part of this guild.",
-        ));
+        bail!("The provided channel is not part of this guild.");
     } else {
         Ok(())
     }
@@ -111,7 +101,7 @@ pub async fn is_same_guild(
     client: &Client,
     channel_id: u64,
     guild_id: u64,
-) -> Result<bool, Box<dyn std::error::Error>> {
+) -> Result<bool, twilight_http::Error> {
     let real_guild_id = client
         .channel(channel_id.into())
         .await?
@@ -287,19 +277,23 @@ fn unit_to_ms(u: &str) -> u64 {
     }
 }
 
+#[derive(Debug)]
 pub enum ParseToMillisError {
     ParseIntError,
     Overflow,
 }
 
-impl ParseToMillisError {
-    pub fn as_str(&self) -> &'static str {
+impl std::fmt::Display for ParseToMillisError {
+    #[rustfmt::skip]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ParseToMillisError::ParseIntError => "Input string is too large to fit in numeric type",
-            ParseToMillisError::Overflow => "Final time is too large to fit in numeric type",
+            ParseToMillisError::ParseIntError => write!(f, "Input string is too large to fit in numeric type"),
+            ParseToMillisError::Overflow => write!(f, "Final time is too large to fit in numeric type")
         }
     }
 }
+
+impl std::error::Error for ParseToMillisError {}
 
 /// Parses a string to milliseconds
 pub fn parse_to_millis(input: &str) -> Result<u64, ParseToMillisError> {
@@ -450,13 +444,13 @@ pub async fn is_guild_manager(
 pub async fn ensure_guild_manager(
     context: &Arc<Context>,
     guild_id: impl Into<GuildId>,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+) -> anyhow::Result<()> {
     let user_id = context.message.author.id;
 
     if is_guild_manager(context.http(), guild_id.into(), user_id).await? {
         Ok(())
     } else {
-        Err("You need manage server permissions to run this command".into())
+        bail!("You need manage server permissions to run this command");
     }
 }
 

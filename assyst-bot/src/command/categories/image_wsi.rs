@@ -14,6 +14,7 @@ use crate::{
     rest,
     util::{codeblock, get_buffer_filetype},
 };
+use anyhow::{anyhow, Context as _};
 use assyst_common::consts;
 use bytes::Bytes;
 use lazy_static::lazy_static;
@@ -524,9 +525,7 @@ pub async fn run_3d_rotate_command(
 ) -> CommandResult {
     let image = args[0].as_bytes();
     context.reply_with_text("processing...").await?;
-    let result = wsi::_3d_rotate(context.assyst.clone(), image, context.author_id())
-        .await
-        .map_err(wsi::format_err)?;
+    let result = wsi::_3d_rotate(context.assyst.clone(), image, context.author_id()).await?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -548,9 +547,9 @@ pub async fn run_ahshit_command(
 }
 
 pub async fn run_randomize_command(
-    context: Arc<Context>,
-    args: Vec<ParsedArgument>,
-    mut flags: ParsedFlags,
+    _context: Arc<Context>,
+    _args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     /*
     async fn inner_randomize(
@@ -700,9 +699,7 @@ pub async fn run_blur_command(
     let image = args[0].as_bytes();
     let power = args[1].as_text();
     context.reply_with_text("processing...").await?;
-    let result = wsi::blur(context.assyst.clone(), image, context.author_id(), power)
-        .await
-        .map_err(wsi::format_err)?;
+    let result = wsi::blur(context.assyst.clone(), image, context.author_id(), power).await?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -715,7 +712,7 @@ pub async fn run_burntext_command(
 ) -> CommandResult {
     let text = args[0].as_text();
     context.reply_with_text("processing...").await?;
-    let result = rest::burning_text(text).await.map_err(|e| e.to_string())?;
+    let result = rest::burning_text(text).await?;
     context.reply_with_image("gif", result).await?;
     Ok(())
 }
@@ -728,9 +725,7 @@ pub async fn run_caption_command(
     let image = args[0].as_bytes();
     let text = args[1].as_text();
     context.reply_with_text("processing...").await?;
-    let result = wsi::caption(context.assyst.clone(), image, context.author_id(), text)
-        .await
-        .map_err(wsi::format_err)?;
+    let result = wsi::caption(context.assyst.clone(), image, context.author_id(), text).await?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -743,9 +738,7 @@ pub async fn run_drip_command(
 ) -> CommandResult {
     let image = args[0].as_bytes();
     context.reply_with_text("processing...").await?;
-    let result = wsi::audio(context.assyst.clone(), image, "drip", context.author_id())
-        .await
-        .map_err(wsi::format_err)?;
+    let result = wsi::audio(context.assyst.clone(), image, "drip", context.author_id()).await?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -821,8 +814,7 @@ pub async fn run_femurbreaker_command(
         "femurbreaker",
         context.author_id(),
     )
-    .await
-    .map_err(wsi::format_err)?;
+    .await?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -850,9 +842,7 @@ pub async fn run_frames_command(
 ) -> CommandResult {
     let image = args[0].as_bytes();
     context.reply_with_text("processing...").await?;
-    let result = wsi::frames(context.assyst.clone(), image, context.author_id())
-        .await
-        .map_err(wsi::format_err)?;
+    let result = wsi::frames(context.assyst.clone(), image, context.author_id()).await?;
     context.reply_with_file("application/zip", result).await?;
     Ok(())
 }
@@ -865,9 +855,7 @@ pub async fn run_ghost_command(
     let image = args[0].as_bytes();
     let depth = args[1].as_text();
     context.reply_with_text("processing...").await?;
-    let result = wsi::ghost(context.assyst.clone(), image, context.author_id(), depth)
-        .await
-        .map_err(wsi::format_err)?;
+    let result = wsi::ghost(context.assyst.clone(), image, context.author_id(), depth).await?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -927,9 +915,7 @@ pub async fn run_gif_speed_command(
     let delay = args[1].maybe_text();
 
     context.reply_with_text("processing...").await?;
-    let result = wsi::gif_speed(context.assyst.clone(), image, context.author_id(), delay)
-        .await
-        .map_err(wsi::format_err)?;
+    let result = wsi::gif_speed(context.assyst.clone(), image, context.author_id(), delay).await?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -957,9 +943,7 @@ pub async fn run_image_info_command(
 ) -> CommandResult {
     let image = args[0].as_bytes();
     context.reply_with_text("processing...").await?;
-    let result = wsi::image_info(context.assyst.clone(), image)
-        .await
-        .map_err(wsi::format_err)?;
+    let result = wsi::image_info(context.assyst.clone(), image).await?;
 
     let mime_type = result.mime_type;
     let file_size = bytes_to_readable(result.file_size_bytes);
@@ -1005,9 +989,8 @@ pub async fn run_imagemagick_eval_command(
     let image = args[0].as_bytes();
     let text = args[1].as_text();
     context.reply_with_text("processing...").await?;
-    let result = wsi::imagemagick_eval(context.assyst.clone(), image, context.author_id(), text)
-        .await
-        .map_err(wsi::format_err)?;
+    let result =
+        wsi::imagemagick_eval(context.assyst.clone(), image, context.author_id(), text).await?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -1086,8 +1069,7 @@ pub async fn run_meme_command(
         top_text.trim(),
         bottom_text.trim(),
     )
-    .await
-    .map_err(wsi::format_err)?;
+    .await?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -1121,8 +1103,7 @@ pub async fn run_motivate_command(
         top_text.trim(),
         bottom_text.trim(),
     )
-    .await
-    .map_err(wsi::format_err)?;
+    .await?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -1142,8 +1123,7 @@ pub async fn run_overlay_command(
         context.author_id(),
         &overlay.to_ascii_lowercase(),
     )
-    .await
-    .map_err(wsi::format_err)?;
+    .await?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -1163,8 +1143,7 @@ pub async fn run_pixelate_command(
         context.author_id(),
         downscaled_height,
     )
-    .await
-    .map_err(wsi::format_err)?;
+    .await?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -1219,9 +1198,7 @@ pub async fn run_resize_command(
     context.reply_with_text("processing...").await?;
 
     if args.get(1).is_none() {
-        result = wsi::resize(context.assyst.clone(), image, context.author_id(), method)
-            .await
-            .map_err(wsi::format_err)?;
+        result = wsi::resize(context.assyst.clone(), image, context.author_id(), method).await?;
     } else {
         let text = args[1].as_text();
         if text.contains("x") {
@@ -1230,13 +1207,13 @@ pub async fn run_resize_command(
                 .get(0)
                 .unwrap()
                 .parse::<usize>()
-                .map_err(|_| "Invalid resolution.".to_owned())?;
+                .map_err(|_| anyhow!("Invalid resolution."))?;
 
             let height = split
                 .get(1)
-                .ok_or_else(|| "Invalid resolution.".to_owned())?
+                .context("Invalid resolution.")?
                 .parse::<usize>()
-                .map_err(|_| "Invalid resolution.".to_owned())?;
+                .map_err(|_| anyhow!("Invalid resolution."))?;
 
             result = wsi::resize_width_height(
                 context.assyst.clone(),
@@ -1246,12 +1223,11 @@ pub async fn run_resize_command(
                 height,
                 method,
             )
-            .await
-            .map_err(wsi::format_err)?;
+            .await?;
         } else {
             let scale = text
                 .parse::<f32>()
-                .map_err(|_| "Invalid resolution.".to_owned())?;
+                .map_err(|_| anyhow!("Invalid resolution"))?;
 
             result = wsi::resize_scale(
                 context.assyst.clone(),
@@ -1260,8 +1236,7 @@ pub async fn run_resize_command(
                 scale,
                 method,
             )
-            .await
-            .map_err(wsi::format_err)?;
+            .await?;
         }
     }
 
@@ -1293,9 +1268,7 @@ pub async fn run_rotate_command(
     let image = args[0].as_bytes();
     let degrees = args[1].as_text();
     context.reply_with_text("processing...").await?;
-    let result = wsi::rotate(context.assyst.clone(), image, context.author_id(), degrees)
-        .await
-        .map_err(wsi::format_err)?;
+    let result = wsi::rotate(context.assyst.clone(), image, context.author_id(), degrees).await?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -1313,9 +1286,7 @@ pub async fn run_set_loop_command(
         _ => unreachable!(),
     };
     context.reply_with_text("processing...").await?;
-    let result = wsi::set_loop(context.assyst.clone(), image, context.author_id(), looping)
-        .await
-        .map_err(wsi::format_err)?;
+    let result = wsi::set_loop(context.assyst.clone(), image, context.author_id(), looping).await?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -1328,9 +1299,7 @@ pub async fn run_siren_command(
 ) -> CommandResult {
     let image = args[0].as_bytes();
     context.reply_with_text("processing...").await?;
-    let result = wsi::audio(context.assyst.clone(), image, "siren", context.author_id())
-        .await
-        .map_err(wsi::format_err)?;
+    let result = wsi::audio(context.assyst.clone(), image, "siren", context.author_id()).await?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -1418,9 +1387,7 @@ pub async fn run_sweden_command(
 ) -> CommandResult {
     let image = args[0].as_bytes();
     context.reply_with_text("processing...").await?;
-    let result = wsi::audio(context.assyst.clone(), image, "sweden", context.author_id())
-        .await
-        .map_err(wsi::format_err)?;
+    let result = wsi::audio(context.assyst.clone(), image, "sweden", context.author_id()).await?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -1439,8 +1406,7 @@ pub async fn run_terraria_command(
         "terraria",
         context.author_id(),
     )
-    .await
-    .map_err(wsi::format_err)?;
+    .await?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -1519,8 +1485,7 @@ pub async fn run_identify_command(
         url,
         context.assyst.config.auth.rapidapi.as_ref(),
     )
-    .await
-    .map_err(|e| e.to_string())?;
+    .await?;
 
     let caption = identify
         .description
@@ -1535,11 +1500,7 @@ pub async fn run_identify_command(
         })
         .unwrap_or_else(|| String::from(consts::IDENTIFY_ERROR_MESSAGE));
 
-    context
-        .reply_with_text(caption)
-        .await
-        .map_err(|e| e.to_string())?;
-
+    context.reply_with_text(caption).await?;
     Ok(())
 }
 
@@ -1549,9 +1510,7 @@ async fn run_wsi_noarg_command(
     function: wsi::NoArgFunction,
 ) -> CommandResult {
     context.reply_with_text("processing...").await?;
-    let result = function(context.assyst.clone(), raw_image, context.author_id())
-        .await
-        .map_err(wsi::format_err)?;
+    let result = function(context.assyst.clone(), raw_image, context.author_id()).await?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
 
     context.reply_with_image(format, result).await?;

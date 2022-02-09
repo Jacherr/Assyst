@@ -1,12 +1,13 @@
 use crate::{
     command::{
-        command::{Argument, Command, CommandBuilder, CommandError, ParsedArgument, ParsedFlags},
+        command::{Argument, Command, CommandBuilder, ParsedArgument, ParsedFlags},
         context::Context,
         registry::CommandResult,
     },
     rest::{self, bt::bad_translate, bt::translate_single},
     util::{codeblock, ensure_guild_manager, normalize_emojis},
 };
+use anyhow::{bail, Context as _};
 use assyst_common::consts;
 use bytes::Bytes;
 use lazy_static::lazy_static;
@@ -125,9 +126,7 @@ pub async fn run_bt_command(
 ) -> CommandResult {
     let text = args[0].as_text();
     let text = normalize_emojis(text);
-    let translated = bad_translate(&context.assyst.reqwest_client, &text)
-        .await
-        .map_err(|e| e.to_string())?;
+    let translated = bad_translate(&context.assyst.reqwest_client, &text).await?;
 
     let output = format!("**Output**\n{}", translated.result.text);
     context.reply_with_text(output).await?;
@@ -140,9 +139,7 @@ pub async fn run_btdebug_command(
     _flags: ParsedFlags,
 ) -> CommandResult {
     let text = args[0].as_text();
-    let translated = bad_translate(&context.assyst.reqwest_client, text)
-        .await
-        .map_err(|e| e.to_string())?;
+    let translated = bad_translate(&context.assyst.reqwest_client, text).await?;
 
     let chain = translated
         .translations
@@ -186,12 +183,10 @@ pub async fn run_ocrbt_command(
     let image = args[0].as_text();
     let result = rest::ocr_image(&context.assyst.reqwest_client, image).await?;
     if result.is_empty() {
-        return Err("No text detected".into());
+        bail!("No text detected");
     };
 
-    let translated = bad_translate(&context.assyst.reqwest_client, &result)
-        .await
-        .map_err(|e| e.to_string())?;
+    let translated = bad_translate(&context.assyst.reqwest_client, &result).await?;
 
     context
         .reply_with_text(codeblock(&translated.result.text, ""))
@@ -209,12 +204,10 @@ pub async fn run_ocrtr_command(
 
     let result = rest::ocr_image(&context.assyst.reqwest_client, image).await?;
     if result.is_empty() {
-        return Err("No text detected".into());
+        bail!("No text detected");
     };
 
-    let translated = translate_single(&context.assyst.reqwest_client, &result, lang)
-        .await
-        .map_err(|e| e.to_string())?;
+    let translated = translate_single(&context.assyst.reqwest_client, &result, lang).await?;
 
     context
         .reply_with_text(codeblock(&translated.result.text, ""))
@@ -230,12 +223,10 @@ pub async fn run_rule34_command(
     let query = args[0].as_text();
     let result = rest::get_random_rule34(&context.assyst, query).await?;
 
-    let result = if result.len() == 0 {
-        "No results found".to_string()
-    } else {
-        let first = &result[0];
-        format!("**Score: {}**\n{}", first.score, first.url)
-    };
+    let result = result
+        .first()
+        .map(|first| format!("**Score: {}**\n{}", first.score, first.url))
+        .unwrap_or_else(|| String::from("No results found"));
 
     context.reply_with_text(result).await?;
     Ok(())
@@ -250,7 +241,7 @@ pub async fn run_color_command(
         .message
         .guild_id
         .map(|x| x.0)
-        .ok_or_else(|| CommandError::new_boxed("This command can only be used in servers"))?;
+        .context("This command can only be used in servers")?;
 
     let mut args = args.iter();
     let ty = args.next().and_then(ParsedArgument::maybe_text);
@@ -267,7 +258,7 @@ pub async fn run_color_command(
                     .and_then(ParsedArgument::maybe_text)
                     .map(|x| x.strip_prefix("#").unwrap_or(x))
                     .map(|x| u32::from_str_radix(x, 16))
-                    .ok_or_else(|| CommandError::new_boxed("No color code provided"))??;
+                    .context("No color code provided")??;
 
                 let role = context
                     .assyst
@@ -339,14 +330,14 @@ pub async fn run_color_command(
             let name = args
                 .next()
                 .and_then(ParsedArgument::maybe_text)
-                .ok_or_else(|| CommandError::new_boxed("No color name provided."))?;
+                .context("No color name provided.")?;
 
             let role = context
                 .assyst
                 .database
                 .remove_color_role(guild_id as i64, name)
                 .await?
-                .ok_or_else(|| CommandError::new_boxed("Color role does not exist"))?;
+                .context("Color role does not exist")?;
 
             context
                 .assyst
@@ -366,7 +357,7 @@ pub async fn run_color_command(
             let role = roles
                 .iter()
                 .find(|x| x.name.eq(name))
-                .ok_or_else(|| CommandError::new_boxed("Color role does not exist"))?;
+                .context("Color role does not exist")?;
 
             let user_id = context.message.author.id;
 
@@ -435,10 +426,14 @@ pub async fn run_labels_command(
     let output = if result.is_empty() {
         "No text detected".to_owned()
     } else {
-        let x = result.iter().take(15).map(|x| format!("{:.2}% - {}", x.score * 100.0, x.description)).collect::<Vec<_>>();
+        let x = result
+            .iter()
+            .take(15)
+            .map(|x| format!("{:.2}% - {}", x.score * 100.0, x.description))
+            .collect::<Vec<_>>();
         x.join("\n")
     };
-    
+
     context.reply_with_text(codeblock(&output, "")).await?;
     Ok(())
 }
