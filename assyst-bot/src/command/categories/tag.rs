@@ -32,6 +32,14 @@ lazy_static! {
         .arg(Argument::String)
         .arg(Argument::Optional(Box::new(Argument::String)))
         .arg(Argument::Optional(Box::new(Argument::StringRemaining)))
+        .usage("[create|delete|edit|list|info|<tag name>] [<tag name>] [<tag content>]")
+        .example("create test hello, this is a tag")
+        .example("delete test")
+        .example("edit test new content")
+        .example("list")
+        .example("list 2")
+        .example("info test")
+        .example("test")
         .build();
 }
 
@@ -43,7 +51,7 @@ async fn run_create_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>)
         .and_then(|t| t.maybe_text())
         .context("No tag name provided.")?;
 
-    ensure!(name.len() < 20, "tag name must be less than 20 characters");
+    ensure!(name.len() < 20, "Tag name must be less than 20 characters");
 
     let content = args
         .get(2)
@@ -129,7 +137,7 @@ async fn run_list_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -
         .map(|t| t.parse::<i64>())
         .unwrap_or(Ok(1))?;
 
-    ensure!(page >= 1, "page must be greater or equal to 1");
+    ensure!(page >= 1, "Page must be greater or equal to 1");
 
     let offset = (page - 1) * DEFAULT_LIST_COUNT;
 
