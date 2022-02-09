@@ -43,6 +43,8 @@ async fn run_create_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>)
         .and_then(|t| t.maybe_text())
         .context("No tag name provided.")?;
 
+    ensure!(name.len() < 20, "tag name must be less than 20 characters");
+
     let content = args
         .get(2)
         .and_then(|t| t.maybe_text())
