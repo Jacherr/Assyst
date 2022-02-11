@@ -17,6 +17,7 @@ use twilight_model::{
     channel::{message::Mention, Channel},
     guild::Permissions,
     id::{GuildId, UserId},
+    user::User,
 };
 
 #[macro_export]
@@ -504,4 +505,29 @@ pub fn handle_job_result(result: JobResult) -> Result<Bytes, RequestError> {
         Ok(data) => Ok(Bytes::from(data)),
         Err(err) => Err(RequestError::from(err)),
     }
+}
+
+pub fn get_default_avatar_url(user: &User) -> String {
+    // Unwrapping discrim parsing is ok, it should never be out of range or non-numeric
+    format!(
+        "https://cdn.discordapp.com/embed/avatars/{}.png",
+        user.discriminator.parse::<u16>().unwrap() % 5
+    )
+}
+
+pub fn get_avatar_url(user: &User) -> String {
+    let avatar = match &user.avatar {
+        Some(av) => av,
+        None => return get_default_avatar_url(user),
+    };
+
+    let ext = if avatar.starts_with("a_") {
+        "gif"
+    } else {
+        "png"
+    };
+    format!(
+        "https://cdn.discordapp.com/avatars/{}/{}.{}",
+        user.id, avatar, ext
+    )
 }
