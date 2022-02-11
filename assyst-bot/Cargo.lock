@@ -57,6 +57,7 @@ dependencies = [
  "assyst-common",
  "assyst-database",
  "assyst-logger",
+ "assyst-tag",
  "assyst-webserver",
  "async-recursion",
  "async-trait",
@@ -116,6 +117,14 @@ dependencies = [
  "twilight-embed-builder",
  "twilight-http",
  "twilight-model",
+]
+
+[[package]]
+name = "assyst-tag"
+version = "0.1.0"
+dependencies = [
+ "memchr",
+ "rand 0.8.4",
 ]
 
 [[package]]
