@@ -1,7 +1,6 @@
 use std::collections::HashMap;
-
+use anyhow::{ensure, anyhow, Context as _};
 use rand::prelude::ThreadRng;
-
 use crate::{context::Context, subtags};
 
 pub mod limits {
@@ -78,10 +77,8 @@ impl<'a> Parser<'a> {
         &self.input[start..self.idx]
     }
 
-    pub fn parse_segment(&mut self) -> Option<String> {
-        if !self.counter.try_iterate() {
-            return None;
-        }
+    pub fn parse_segment(&mut self) -> anyhow::Result<String> {
+        ensure!(self.counter.try_iterate(), "Maximum number of iterations reached");
 
         let mut output = String::new();
 
@@ -90,9 +87,6 @@ impl<'a> Parser<'a> {
 
             match byte {
                 b'{' => {
-                    // save index so the full tag can be "restored" later if an error occurs
-                    let start = self.idx;
-
                     // skip {
                     self.idx += 1;
 
@@ -111,12 +105,8 @@ impl<'a> Parser<'a> {
 
                     self.idx += 1;
 
-                    if let Some(result) = self.handle_tag(name, args) {
-                        output.push_str(&result);
-                    } else {
-                        let tag = String::from_utf8_lossy(&self.input[start..self.idx]);
-                        output.push_str(&tag);
-                    }
+                    let result = self.handle_tag(name, args).with_context(|| format!("An error occurred while processing {name}"))?;
+                    output.push_str(&result);
                 }
                 b'|' | b'}' => {
                     break;
@@ -128,15 +118,15 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Some(output)
+        Ok(output)
     }
 
-    pub fn handle_tag(&mut self, name: &str, args: Vec<String>) -> Option<String> {
+    pub fn handle_tag(&mut self, name: &str, args: Vec<String>) -> anyhow::Result<String> {
         match name {
             "repeat" => subtags::repeat(args),
             "range" => subtags::range(self, args),
             "eval" => subtags::eval(self, args),
-            "arg" => subtags::arg(self),
+            "arg" => subtags::arg(self, args),
             "args" => subtags::args(self),
             "set" => subtags::set(self, args),
             "get" => subtags::get(self, args),
@@ -161,7 +151,7 @@ impl<'a> Parser<'a> {
             "lastattachment" => subtags::attachment_last(self),
             "avatar" => subtags::avatar(self, args),
             "download" => subtags::download(self, args),
-            _ => None,
+            _ => Err(anyhow!("Unknown subtag: {name}")),
         }
     }
 
