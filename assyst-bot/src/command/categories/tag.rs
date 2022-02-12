@@ -227,8 +227,7 @@ async fn run_tag_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) ->
 
         tag::parse(&tag.data, &args, TagContext { ccx, tokio })
     })
-    .await?
-    .unwrap_or_else(|| String::from("Tag returned no content"));
+    .await??;
 
     context.reply_with_text(output).await?;
 
@@ -258,42 +257,42 @@ struct TagContext {
 }
 
 impl tag::Context for TagContext {
-    fn execute_javascript(&self, code: &str) -> Option<String> {
+    fn execute_javascript(&self, code: &str) -> anyhow::Result<String> {
         let response = self
             .tokio
-            .block_on(fake_eval(&self.ccx.assyst, code))
-            .ok()?;
+            .block_on(fake_eval(&self.ccx.assyst, code))?;
 
-        Some(response.message)
+        Ok(response.message)
     }
 
-    fn get_last_attachment(&self) -> Option<String> {
+    fn get_last_attachment(&self) -> anyhow::Result<String> {
         let http = &self.ccx.assyst.http;
         let message = &*self.ccx.message;
         let previous = self
             .tokio
-            .block_on(previous_message_attachment(http, message))?;
+            .block_on(previous_message_attachment(http, message))
+            .context("Failed to extract last attachment")?;
 
-        Some(previous.into_owned())
+        Ok(previous.into_owned())
     }
 
-    fn get_avatar(&self, user_id: Option<u64>) -> Option<String> {
+    fn get_avatar(&self, user_id: Option<u64>) -> anyhow::Result<String> {
         let http = &self.ccx.assyst.http;
         let user_id = user_id.unwrap_or(self.ccx.message.author.id.0);
 
-        let user = self.tokio.block_on(http.user(user_id.into())).ok()??;
+        let user = self.tokio.block_on(http.user(user_id.into()))??;
 
-        Some(util::get_avatar_url(&user))
+        Ok(util::get_avatar_url(&user))
     }
 
-    fn download(&self, url: &str) -> Option<String> {
+    fn download(&self, url: &str) -> anyhow::Result<String> {
         let assyst = &self.ccx.assyst;
 
         let content =
             downloader::download_content(assyst, url, consts::ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES);
 
-        let content = self.tokio.block_on(content).ok()?;
+        let content = self.tokio.block_on(content)?;
 
-        Some(String::from_utf8_lossy(&content).into_owned())
+        Ok(String::from_utf8_lossy(&content).into_owned())
     }
 }
