@@ -1,4 +1,4 @@
-use std::{convert::TryInto, sync::Arc};
+use std::{convert::TryInto, sync::Arc, time::Duration};
 
 use anyhow::{ensure, Context as _};
 use assyst_common::consts;
@@ -8,14 +8,16 @@ use std::fmt::Write;
 
 use crate::{
     command::{
-        command::{Argument, Command, CommandBuilder, ParsedArgument, ParsedFlags},
+        command::{
+            Argument, Command, CommandAvailability, CommandBuilder, ParsedArgument, ParsedFlags,
+        },
         context::Context,
         parse::image_lookups::previous_message_attachment,
         registry::CommandResult,
     },
     downloader,
     rest::fake_eval,
-    util::{self, codeblock},
+    util,
 };
 
 const CATEGORY_NAME: &str = "misc";
@@ -33,7 +35,8 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .alias("t")
         .description(DESCRIPTION)
-        .public()
+        .availability(CommandAvailability::Private)
+        .cooldown(Duration::from_secs(1))
         .arg(Argument::String)
         .arg(Argument::Optional(Box::new(Argument::String)))
         .arg(Argument::Optional(Box::new(Argument::StringRemaining)))
@@ -227,7 +230,8 @@ async fn run_tag_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) ->
 
         tag::parse(&tag.data, &args, TagContext { ccx, tokio })
     })
-    .await?;
+    .await?
+    .context("Tag execution failed");
 
     let output = output.unwrap_or_else(|e| util::codeblock(&format!("{:?}", e), ""));
 

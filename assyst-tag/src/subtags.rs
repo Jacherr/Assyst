@@ -1,4 +1,7 @@
-use crate::parser::{limits, Parser};
+use crate::parser::{
+    limits::{self, MAX_DEPTH, MAX_STRING_LENGTH},
+    Parser,
+};
 use anyhow::Context;
 use rand::Rng;
 
@@ -11,15 +14,19 @@ use anyhow::ensure;
 macro_rules! ensure_request_limit {
     ($parser:expr) => {
         ensure!(
-            $parser.counter_mut().try_request(),
+            $parser.state().counter().try_request(),
             "Maximum number of HTTP requests reached"
         );
     };
 }
 
+#[rustfmt::skip]
 pub fn repeat(args: Vec<String>) -> anyhow::Result<String> {
     let count = args.first().context("Missing count argument")?.parse()?;
     let input = args.get(1).context("Missing input agument")?;
+
+    ensure!(input.len() + count < MAX_STRING_LENGTH, "String exceeds maximum length of {MAX_STRING_LENGTH} bytes");
+
     Ok(input.repeat(count))
 }
 
@@ -27,14 +34,17 @@ pub fn range(parser: &mut Parser, args: Vec<String>) -> anyhow::Result<String> {
     let lower = args.first().context("Missing lower bound")?.parse()?;
     let upper = args.get(1).context("Missing upper bound")?.parse()?;
     let out: usize = parser.rng().gen_range(lower..=upper);
+
     Ok(out.to_string())
 }
 
+#[rustfmt::skip]
 pub fn eval(parser: &mut Parser, args: Vec<String>) -> anyhow::Result<String> {
-    ensure_request_limit!(parser);
-
     let text = args.first().context("Missing input argument")?;
-    crate::parse(text, parser.args(), parser.context())
+
+    ensure!(parser.depth() < MAX_DEPTH, "Maximum recursion depth reached ({MAX_DEPTH})");
+
+    Parser::from_parent(text.as_bytes(), parser).parse_segment(true)
 }
 
 pub fn arg(parser: &Parser, args: Vec<String>) -> anyhow::Result<String> {
@@ -62,30 +72,34 @@ pub fn set(parser: &mut Parser, args: Vec<String>) -> anyhow::Result<String> {
     let key = iter.next().context("Missing key argument")?;
     let value = iter.next().context("Missing value argument")?;
 
-    let variables = parser.variables_mut();
-
-    ensure!(variables.len() < limits::MAX_VARIABLES, "Maximum number of variables reached");
-    ensure!(key.len() < limits::MAX_VARIABLE_KEY_LENGTH, "Key exceeds maximum length of {}", limits::MAX_VARIABLE_KEY_LENGTH);
-    ensure!(value.len() < limits::MAX_VARIABLE_VALUE_LENGTH, "Value exceeds maximum length of {}", limits::MAX_VARIABLE_VALUE_LENGTH);
-
-    variables.insert(key.into(), value.into());
-    Ok(String::new())
+    parser.state().with_variables_mut(move |variables| -> anyhow::Result<String> {
+        ensure!(variables.len() < limits::MAX_VARIABLES, "Maximum number of variables reached");
+        ensure!(key.len() < limits::MAX_VARIABLE_KEY_LENGTH, "Key exceeds maximum length of {}", limits::MAX_VARIABLE_KEY_LENGTH);
+        ensure!(value.len() < limits::MAX_VARIABLE_VALUE_LENGTH, "Value exceeds maximum length of {}", limits::MAX_VARIABLE_VALUE_LENGTH);
+        
+        variables.insert(key.into(), value.into());
+        Ok(String::new())
+    })
 }
 
 pub fn get(parser: &Parser, args: Vec<String>) -> anyhow::Result<String> {
     let key = args.first().context("Missing key argument")?;
 
-    Ok(parser
-        .variables()
-        .get(key.as_str())
-        .map(|s| s.as_ref().to_owned())
-        .unwrap_or_else(String::new))
+    parser.state().with_variables(|variables| {
+        Ok(variables
+            .get(key.as_str())
+            .map(|s| s.clone())
+            .unwrap_or_else(String::new))
+    })
 }
 
 pub fn delete(parser: &mut Parser, args: Vec<String>) -> anyhow::Result<String> {
     let key = args.first().context("Missing key argument")?;
 
-    parser.variables_mut().remove(key.as_str());
+    parser
+        .state()
+        .with_variables_mut(|variables| variables.remove(key.as_str()));
+
     Ok(String::new())
 }
 

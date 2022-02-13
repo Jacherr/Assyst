@@ -1,13 +1,22 @@
+use std::cell::RefCell;
+use std::collections::HashMap;
+
 pub use context::Context;
 pub use context::NopContext;
+use parser::Counter;
 pub use parser::Parser;
+use parser::SharedState;
 
 mod context;
 mod parser;
 mod subtags;
 
 pub fn parse<C: Context>(input: &str, args: &[&str], cx: C) -> anyhow::Result<String> {
-    Parser::new(input.as_bytes(), args, &cx).parse_segment()
+    let variables = RefCell::new(HashMap::new());
+    let counter = Counter::default();
+    let state = SharedState::new(&variables, &counter);
+
+    Parser::new(input.as_bytes(), args, state, &cx).parse_segment(true)
 }
 
 #[cfg(test)]
@@ -20,7 +29,7 @@ mod tests {
         let segment = parse(input, &["{range:5|10}"], NopContext);
         match segment {
             Ok(r) => println!("{r}"),
-            Err(e) => println!("Error: {:?}", e)
+            Err(e) => println!("Error: {:?}", e),
         }
     }
 }
