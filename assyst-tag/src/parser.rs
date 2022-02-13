@@ -1,7 +1,10 @@
 use crate::{context::Context, subtags};
 use anyhow::{anyhow, ensure, Context as _};
 use rand::prelude::ThreadRng;
-use std::{cell::Cell, collections::HashMap};
+use std::{
+    cell::{Cell, RefCell},
+    collections::HashMap,
+};
 
 pub mod limits {
     use std::cell::Cell;
@@ -9,16 +12,51 @@ pub mod limits {
     pub const MAX_REQUESTS: u32 = 5;
     pub const MAX_VARIABLES: usize = 100;
     pub const MAX_VARIABLE_KEY_LENGTH: usize = 100;
-    pub const MAX_VARIABLE_VALUE_LENGTH: usize = 5000;
+    pub const MAX_VARIABLE_VALUE_LENGTH: usize = MAX_STRING_LENGTH;
     pub const MAX_ITERATIONS: u32 = 500;
+    pub const MAX_DEPTH: u32 = 15;
+    pub const MAX_STRING_LENGTH: usize = 10000;
+
     pub fn try_increment(field_cell: &Cell<u32>, limit: u32) -> bool {
         let field = field_cell.get();
-        if field < limit {
+        if field >= limit {
             false
         } else {
             field_cell.set(field + 1);
             true
         }
+    }
+}
+
+#[derive(Clone)]
+pub struct SharedState<'a> {
+    variables: &'a RefCell<HashMap<String, String>>,
+    counter: &'a Counter,
+}
+
+impl<'a> SharedState<'a> {
+    pub fn new(variables: &'a RefCell<HashMap<String, String>>, counter: &'a Counter) -> Self {
+        Self { variables, counter }
+    }
+
+    pub fn with_variables_mut<F, T>(&self, f: F) -> T
+    where
+        F: FnOnce(&mut HashMap<String, String>) -> T,
+    {
+        let mut variables = self.variables.borrow_mut();
+        f(&mut *variables)
+    }
+
+    pub fn with_variables<F, T>(&self, f: F) -> T
+    where
+        F: FnOnce(&HashMap<String, String>) -> T,
+    {
+        let variables = self.variables.borrow();
+        f(&*variables)
+    }
+
+    pub fn counter(&self) -> &Counter {
+        &self.counter
     }
 }
 
@@ -41,11 +79,10 @@ pub struct Parser<'a> {
     input: &'a [u8],
     args: &'a [&'a str],
     idx: usize,
+    state: SharedState<'a>,
     rng: ThreadRng,
-    // TODO: share with subparsers created by {eval}
-    variables: HashMap<Box<str>, Box<str>>,
-    counter: Counter,
     cx: &'a dyn Context,
+    depth: u32,
 }
 
 fn is_identifier(b: u8) -> bool {
@@ -53,18 +90,36 @@ fn is_identifier(b: u8) -> bool {
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(input: &'a [u8], args: &'a [&'a str], cx: &'a dyn Context) -> Self {
+    pub fn from_parent(input: &'a [u8], other: &Self) -> Self {
+        Self {
+            input,
+            args: other.args,
+            idx: 0,
+            state: other.state.clone(),
+            rng: rand::thread_rng(),
+            cx: other.cx,
+            depth: other.depth + 1,
+        }
+    }
+
+    pub fn new(
+        input: &'a [u8],
+        args: &'a [&'a str],
+        state: SharedState<'a>,
+        cx: &'a dyn Context,
+    ) -> Self {
         Self {
             input,
             args,
             cx,
             idx: 0,
+            state,
             rng: rand::thread_rng(),
-            variables: HashMap::new(),
-            counter: Counter::default(),
+            depth: 0,
         }
     }
 
+    /// Reads bytes from input until the first non-identifier byte is found, increasing the internal index on
     pub fn read_identifier(&mut self) -> &'a [u8] {
         let start = self.idx;
 
@@ -81,9 +136,9 @@ impl<'a> Parser<'a> {
         &self.input[start..self.idx]
     }
 
-    pub fn parse_segment(&mut self) -> anyhow::Result<String> {
+    pub fn parse_segment(&mut self, mut side_effects: bool) -> anyhow::Result<String> {
         ensure!(
-            self.counter.try_iterate(),
+            self.state.counter.try_iterate(),
             "Maximum number of iterations reached"
         );
 
@@ -100,6 +155,9 @@ impl<'a> Parser<'a> {
                     // get subtag name, i.e. `range` in {range:1|10}
                     let name = std::str::from_utf8(self.read_identifier()).unwrap();
 
+                    // check if tag is allowed to have "side effects"
+                    side_effects &= !matches!(name, "note" | "ignore");
+
                     let mut args = Vec::new();
 
                     while let Some(b'|' | b':') = self.input.get(self.idx) {
@@ -107,14 +165,32 @@ impl<'a> Parser<'a> {
                         self.idx += 1;
 
                         // recursively parse segment
-                        args.push(self.parse_segment()?);
+                        args.push(self.parse_segment(side_effects)?);
                     }
 
                     self.idx += 1;
 
-                    let result = self
-                        .handle_tag(name, args)
-                        .with_context(|| format!("An error occurred while processing {name}"))?;
+                    // handle special cased tags
+                    let result = match name {
+                        "note" => String::new(),
+                        "ignore" => args.into_iter().next().unwrap_or_else(String::new),
+                        _ => {
+                            // only actually evaluate tag if it's allowed to have side effects
+                            if side_effects {
+                                self.handle_tag(name, args).with_context(|| {
+                                    format!("An error occurred while processing {name}")
+                                })?
+                            } else {
+                                String::new()
+                            }
+                        }
+                    };
+
+                    ensure!(
+                        output.len() + result.len() < limits::MAX_STRING_LENGTH,
+                        "Output string exceeds maximum string length of {} bytes",
+                        limits::MAX_STRING_LENGTH
+                    );
 
                     output.push_str(&result);
                 }
@@ -173,19 +249,15 @@ impl<'a> Parser<'a> {
         &mut self.rng
     }
 
-    pub fn variables(&self) -> &HashMap<Box<str>, Box<str>> {
-        &self.variables
+    pub fn state(&self) -> &SharedState<'a> {
+        &self.state
     }
 
-    pub fn variables_mut(&mut self) -> &mut HashMap<Box<str>, Box<str>> {
-        &mut self.variables
+    pub fn depth(&self) -> u32 {
+        self.depth
     }
 
     pub fn context(&self) -> &dyn Context {
         &*self.cx
-    }
-
-    pub fn counter_mut(&mut self) -> &mut Counter {
-        &mut self.counter
     }
 }
