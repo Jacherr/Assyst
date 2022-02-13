@@ -1,6 +1,6 @@
-use rand::Rng;
-use anyhow::Context;
 use crate::parser::{limits, Parser};
+use anyhow::Context;
+use rand::Rng;
 
 use anyhow::ensure;
 
@@ -10,8 +10,11 @@ use anyhow::ensure;
 /// Returns with an error if the limit is reached
 macro_rules! ensure_request_limit {
     ($parser:expr) => {
-        ensure!($parser.counter_mut().try_request(), "Maximum number of HTTP requests reached");
-    }
+        ensure!(
+            $parser.counter_mut().try_request(),
+            "Maximum number of HTTP requests reached"
+        );
+    };
 }
 
 pub fn repeat(args: Vec<String>) -> anyhow::Result<String> {
@@ -35,8 +38,16 @@ pub fn eval(parser: &mut Parser, args: Vec<String>) -> anyhow::Result<String> {
 }
 
 pub fn arg(parser: &Parser, args: Vec<String>) -> anyhow::Result<String> {
-    let arg = args.first().context("Missing index argument")?.parse::<usize>()?;
-    let arg = parser.args().get(arg).with_context(|| format!("Index {arg} is out of bounds"))?;
+    let arg = args
+        .first()
+        .context("Missing index argument")?
+        .parse::<usize>()?;
+
+    let arg = parser
+        .args()
+        .get(arg)
+        .with_context(|| format!("Index {arg} is out of bounds"))?;
+
     Ok(arg.to_string())
 }
 
@@ -45,15 +56,17 @@ pub fn args(parser: &Parser) -> anyhow::Result<String> {
     Ok(args.join(" "))
 }
 
+#[rustfmt::skip]
 pub fn set(parser: &mut Parser, args: Vec<String>) -> anyhow::Result<String> {
     let mut iter = args.into_iter();
     let key = iter.next().context("Missing key argument")?;
     let value = iter.next().context("Missing value argument")?;
 
     let variables = parser.variables_mut();
+
     ensure!(variables.len() < limits::MAX_VARIABLES, "Maximum number of variables reached");
-    ensure!(key.len() < limits::MAX_VARIABLE_KEY_LENGTH, "Key exceeds maximum length");
-    ensure!(value.len() < limits::MAX_VARIABLE_VALUE_LENGTH, "Value exceeds maximum length");
+    ensure!(key.len() < limits::MAX_VARIABLE_KEY_LENGTH, "Key exceeds maximum length of {}", limits::MAX_VARIABLE_KEY_LENGTH);
+    ensure!(value.len() < limits::MAX_VARIABLE_VALUE_LENGTH, "Value exceeds maximum length of {}", limits::MAX_VARIABLE_VALUE_LENGTH);
 
     variables.insert(key.into(), value.into());
     Ok(String::new())
@@ -115,7 +128,7 @@ pub fn pi() -> anyhow::Result<String> {
 
 pub fn max(args: Vec<String>) -> anyhow::Result<String> {
     let mut max = args.first().context("No arguments present")?.parse()?;
-    
+
     for arg in args.iter().skip(1) {
         let arg = arg.parse()?;
 
@@ -129,7 +142,7 @@ pub fn max(args: Vec<String>) -> anyhow::Result<String> {
 
 pub fn min(args: Vec<String>) -> anyhow::Result<String> {
     let mut min = args.first().context("No arguments present")?.parse()?;
-    
+
     for arg in args.iter().skip(1) {
         let arg = arg.parse()?;
 
@@ -163,7 +176,6 @@ pub fn upper(args: Vec<String>) -> anyhow::Result<String> {
     let mut text = args.into_iter().next().context("Missing text argument")?;
     text.make_ascii_uppercase();
     Ok(text)
-
 }
 
 pub fn replace(args: Vec<String>) -> anyhow::Result<String> {

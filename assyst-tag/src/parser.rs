@@ -1,19 +1,22 @@
-use std::collections::HashMap;
-use anyhow::{ensure, anyhow, Context as _};
-use rand::prelude::ThreadRng;
 use crate::{context::Context, subtags};
+use anyhow::{anyhow, ensure, Context as _};
+use rand::prelude::ThreadRng;
+use std::{cell::Cell, collections::HashMap};
 
 pub mod limits {
+    use std::cell::Cell;
+
     pub const MAX_REQUESTS: u32 = 5;
     pub const MAX_VARIABLES: usize = 100;
     pub const MAX_VARIABLE_KEY_LENGTH: usize = 100;
     pub const MAX_VARIABLE_VALUE_LENGTH: usize = 5000;
     pub const MAX_ITERATIONS: u32 = 500;
-    pub fn try_increment(field: &mut u32, limit: u32) -> bool {
-        if *field >= limit {
+    pub fn try_increment(field_cell: &Cell<u32>, limit: u32) -> bool {
+        let field = field_cell.get();
+        if field < limit {
             false
         } else {
-            *field += 1;
+            field_cell.set(field + 1);
             true
         }
     }
@@ -21,16 +24,16 @@ pub mod limits {
 
 #[derive(Default)]
 pub struct Counter {
-    requests: u32,
-    iterations: u32,
+    requests: Cell<u32>,
+    iterations: Cell<u32>,
 }
 
 impl Counter {
-    pub fn try_request(&mut self) -> bool {
-        limits::try_increment(&mut self.requests, limits::MAX_REQUESTS)
+    pub fn try_request(&self) -> bool {
+        limits::try_increment(&self.requests, limits::MAX_REQUESTS)
     }
-    pub fn try_iterate(&mut self) -> bool {
-        limits::try_increment(&mut self.iterations, limits::MAX_ITERATIONS)
+    pub fn try_iterate(&self) -> bool {
+        limits::try_increment(&self.iterations, limits::MAX_ITERATIONS)
     }
 }
 
@@ -39,6 +42,7 @@ pub struct Parser<'a> {
     args: &'a [&'a str],
     idx: usize,
     rng: ThreadRng,
+    // TODO: share with subparsers created by {eval}
     variables: HashMap<Box<str>, Box<str>>,
     counter: Counter,
     cx: &'a dyn Context,
@@ -78,7 +82,10 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_segment(&mut self) -> anyhow::Result<String> {
-        ensure!(self.counter.try_iterate(), "Maximum number of iterations reached");
+        ensure!(
+            self.counter.try_iterate(),
+            "Maximum number of iterations reached"
+        );
 
         let mut output = String::new();
 
@@ -105,7 +112,10 @@ impl<'a> Parser<'a> {
 
                     self.idx += 1;
 
-                    let result = self.handle_tag(name, args).with_context(|| format!("An error occurred while processing {name}"))?;
+                    let result = self
+                        .handle_tag(name, args)
+                        .with_context(|| format!("An error occurred while processing {name}"))?;
+
                     output.push_str(&result);
                 }
                 b'|' | b'}' => {
