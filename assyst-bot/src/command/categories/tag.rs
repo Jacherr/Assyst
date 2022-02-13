@@ -15,7 +15,7 @@ use crate::{
     },
     downloader,
     rest::fake_eval,
-    util,
+    util::{self, codeblock},
 };
 
 const CATEGORY_NAME: &str = "misc";
@@ -227,7 +227,9 @@ async fn run_tag_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) ->
 
         tag::parse(&tag.data, &args, TagContext { ccx, tokio })
     })
-    .await??;
+    .await?;
+
+    let output = output.unwrap_or_else(|e| util::codeblock(&format!("{:?}", e), ""));
 
     context.reply_with_text(output).await?;
 
@@ -258,9 +260,7 @@ struct TagContext {
 
 impl tag::Context for TagContext {
     fn execute_javascript(&self, code: &str) -> anyhow::Result<String> {
-        let response = self
-            .tokio
-            .block_on(fake_eval(&self.ccx.assyst, code))?;
+        let response = self.tokio.block_on(fake_eval(&self.ccx.assyst, code))?;
 
         Ok(response.message)
     }
@@ -280,7 +280,10 @@ impl tag::Context for TagContext {
         let http = &self.ccx.assyst.http;
         let user_id = user_id.unwrap_or(self.ccx.message.author.id.0);
 
-        let user = self.tokio.block_on(http.user(user_id.into()))??;
+        let user = self
+            .tokio
+            .block_on(http.user(user_id.into()))?
+            .context("User not found")?;
 
         Ok(util::get_avatar_url(&user))
     }
