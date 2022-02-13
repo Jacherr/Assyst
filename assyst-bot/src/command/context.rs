@@ -123,8 +123,11 @@ impl Context {
 
     pub async fn reply_with_text<S: Into<String>>(&self, text: S) -> anyhow::Result<Arc<Message>> {
         let text: String = text.into();
+        // Trim the response so that a message with just spaces is considered empty
+        // We only care about responses with just spaces, so trim_start and trim in this case do the same thing
+        let trimmed = text.trim_start();
 
-        let checked_text = if text.is_empty() {
+        let checked_text = if trimmed.is_empty() {
             String::from("[Empty Response]")
         } else {
             text

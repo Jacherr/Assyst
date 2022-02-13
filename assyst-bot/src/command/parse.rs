@@ -84,7 +84,7 @@ pub mod argument_type {
         if !(args.len() <= index) {
             return Ok(ParsedArgumentResult::r#break(ParsedArgument::Text(
                 args[index..].join(" "),
-            )))
+            )));
         }
 
         // check if no extra args or if no referenced message

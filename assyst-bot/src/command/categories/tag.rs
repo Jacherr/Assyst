@@ -1,15 +1,22 @@
-use std::{convert::TryInto, sync::Arc};
+use std::{convert::TryInto, sync::Arc, time::Duration};
 
 use anyhow::{ensure, Context as _};
+use assyst_common::consts;
+use assyst_tag as tag;
 use lazy_static::lazy_static;
 use std::fmt::Write;
 
 use crate::{
     command::{
-        command::{Argument, Command, CommandBuilder, ParsedArgument, ParsedFlags},
+        command::{
+            Argument, Command, CommandAvailability, CommandBuilder, ParsedArgument, ParsedFlags,
+        },
         context::Context,
+        parse::image_lookups::previous_message_attachment,
         registry::CommandResult,
     },
+    downloader,
+    rest::fake_eval,
     util,
 };
 
@@ -28,7 +35,8 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .alias("t")
         .description(DESCRIPTION)
-        .public()
+        .availability(CommandAvailability::Private)
+        .cooldown(Duration::from_secs(1))
         .arg(Argument::String)
         .arg(Argument::Optional(Box::new(Argument::String)))
         .arg(Argument::Optional(Box::new(Argument::StringRemaining)))
@@ -208,7 +216,26 @@ async fn run_tag_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) ->
         .await?
         .context("No tag found.")?;
 
-    context.reply_with_text(tag.data).await?;
+    let ccx = context.clone();
+    let output = tokio::task::spawn_blocking(move || {
+        let args = args
+            .iter()
+            .skip(1)
+            .flat_map(|a| a.maybe_text())
+            .map(|s| s.split_ascii_whitespace())
+            .flatten()
+            .collect::<Vec<_>>();
+
+        let tokio = tokio::runtime::Handle::current();
+
+        tag::parse(&tag.data, &args, TagContext { ccx, tokio })
+    })
+    .await?
+    .context("Tag execution failed");
+
+    let output = output.unwrap_or_else(|e| util::codeblock(&format!("{:?}", e), ""));
+
+    context.reply_with_text(output).await?;
 
     Ok(())
 }
@@ -227,5 +254,52 @@ pub async fn run_tag_command(
         "list" => run_list_subcommand(context, args).await,
         "info" => run_info_subcommand(context, args).await,
         _ => run_tag_subcommand(context, args).await,
+    }
+}
+
+struct TagContext {
+    tokio: tokio::runtime::Handle,
+    ccx: Arc<Context>,
+}
+
+impl tag::Context for TagContext {
+    fn execute_javascript(&self, code: &str) -> anyhow::Result<String> {
+        let response = self.tokio.block_on(fake_eval(&self.ccx.assyst, code))?;
+
+        Ok(response.message)
+    }
+
+    fn get_last_attachment(&self) -> anyhow::Result<String> {
+        let http = &self.ccx.assyst.http;
+        let message = &*self.ccx.message;
+        let previous = self
+            .tokio
+            .block_on(previous_message_attachment(http, message))
+            .context("Failed to extract last attachment")?;
+
+        Ok(previous.into_owned())
+    }
+
+    fn get_avatar(&self, user_id: Option<u64>) -> anyhow::Result<String> {
+        let http = &self.ccx.assyst.http;
+        let user_id = user_id.unwrap_or(self.ccx.message.author.id.0);
+
+        let user = self
+            .tokio
+            .block_on(http.user(user_id.into()))?
+            .context("User not found")?;
+
+        Ok(util::get_avatar_url(&user))
+    }
+
+    fn download(&self, url: &str) -> anyhow::Result<String> {
+        let assyst = &self.ccx.assyst;
+
+        let content =
+            downloader::download_content(assyst, url, consts::ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES);
+
+        let content = self.tokio.block_on(content)?;
+
+        Ok(String::from_utf8_lossy(&content).into_owned())
     }
 }

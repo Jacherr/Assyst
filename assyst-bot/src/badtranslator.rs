@@ -1,5 +1,5 @@
 use crate::assyst::Assyst;
-use crate::util::normalize_mentions;
+use crate::util::{self, normalize_mentions};
 use crate::{
     rest::bt, util::get_current_millis, util::normalize_emojis, util::sanitize_message_content,
 };
@@ -258,7 +258,7 @@ impl BadTranslator {
             .execute_webhook(webhook.id, token)
             .content(translation)
             .username(&message.author.name)
-            .avatar_url(get_avatar_url(&message.author))
+            .avatar_url(util::get_avatar_url(&message.author))
             .await
             .context("Executing webhook failed")?;
 
@@ -279,31 +279,6 @@ async fn register_badtranslated_message_to_db(
         .database
         .increment_badtranslator_messages(guild_id)
         .await
-}
-
-fn get_default_avatar_url(user: &User) -> String {
-    // Unwrapping discrim parsing is ok, it should never be out of range or non-numeric
-    format!(
-        "https://cdn.discordapp.com/embed/avatars/{}.png",
-        user.discriminator.parse::<u16>().unwrap() % 5
-    )
-}
-
-fn get_avatar_url(user: &User) -> String {
-    let avatar = match &user.avatar {
-        Some(av) => av,
-        None => return get_default_avatar_url(user),
-    };
-
-    let ext = if avatar.starts_with("a_") {
-        "gif"
-    } else {
-        "png"
-    };
-    format!(
-        "https://cdn.discordapp.com/avatars/{}/{}.{}",
-        user.id, avatar, ext
-    )
 }
 
 fn is_webhook(user: &User) -> bool {
