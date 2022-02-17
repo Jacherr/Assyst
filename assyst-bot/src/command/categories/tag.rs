@@ -302,4 +302,33 @@ impl tag::Context for TagContext {
 
         Ok(String::from_utf8_lossy(&content).into_owned())
     }
+
+    fn channel_id(&self) -> anyhow::Result<u64> {
+        Ok(self.ccx.message.channel_id.0)
+    }
+
+    fn guild_id(&self) -> anyhow::Result<u64> {
+        self.ccx
+            .message
+            .guild_id
+            .context("Missing Guild ID")
+            .map(|s| s.0)
+    }
+
+    fn user_id(&self) -> anyhow::Result<u64> {
+        Ok(self.ccx.message.author.id.0)
+    }
+
+    fn user_tag(&self, id: Option<u64>) -> anyhow::Result<String> {
+        if let Some(id) = id {
+            let user = self
+                .tokio
+                .block_on(self.ccx.http().user(id.into()))?
+                .context("User not found")?;
+
+            Ok(util::format_tag(&user))
+        } else {
+            Ok(util::format_tag(&self.ccx.message.author))
+        }
+    }
 }
