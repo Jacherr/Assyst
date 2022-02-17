@@ -16,7 +16,7 @@ use crate::{
         registry::CommandResult,
     },
     downloader,
-    rest::fake_eval,
+    rest::{fake_eval, FakeEvalImageResponse},
     util,
 };
 
@@ -264,9 +264,14 @@ struct TagContext {
 
 impl tag::Context for TagContext {
     fn execute_javascript(&self, code: &str) -> anyhow::Result<String> {
-        let response = self.tokio.block_on(fake_eval(&self.ccx.assyst, code))?;
+        let response = self
+            .tokio
+            .block_on(fake_eval(&self.ccx.assyst, code, false))?;
 
-        Ok(response.message)
+        match response {
+            FakeEvalImageResponse::Image(..) => unreachable!(),
+            FakeEvalImageResponse::Text(t) => return Ok(t.message),
+        };
     }
 
     fn get_last_attachment(&self) -> anyhow::Result<String> {
