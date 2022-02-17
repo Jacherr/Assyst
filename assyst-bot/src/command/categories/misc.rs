@@ -12,7 +12,7 @@ use crate::{
         bt::{get_languages, validate_language},
         fake_eval,
         rust::OptimizationLevel,
-        wsi,
+        wsi, FakeEvalImageResponse, FakeEvalResponse,
     },
     util::{
         bytes_to_readable, codeblock, ensure_same_guild, exec_sync, extract_page_title,
@@ -890,25 +890,30 @@ pub async fn run_fake_eval_command(
 ) -> CommandResult {
     let code = args[0].as_text();
 
-    let mut response = fake_eval(&context.assyst, code).await?;
+    let mut response = match fake_eval(&context.assyst, code, true).await? {
+        FakeEvalImageResponse::Image(i, t) => {
+            context.reply_with_image(t.as_str(), i).await?;
+        }
+        FakeEvalImageResponse::Text(FakeEvalResponse { mut message }) => {
+            if message.trim() == "42" {
+                message = "The answer to life, the universe, and everything".to_owned();
+            }
 
-    if response.message.trim() == "42" {
-        response.message = "The answer to life, the universe, and everything".to_owned();
-    }
+            let codeblocked_input = codeblock(code, "js");
+            let codeblocked_output = codeblock(&message, "js");
 
-    let codeblocked_input = codeblock(code, "js");
-    let codeblocked_output = codeblock(&response.message, "js");
+            logger::info(
+                &context.assyst,
+                &format!(
+                    "User Evaled: {} Output: {}",
+                    codeblocked_input, codeblocked_output
+                ),
+            )
+            .await;
 
-    logger::info(
-        &context.assyst,
-        &format!(
-            "User Evaled: {} Output: {}",
-            codeblocked_input, codeblocked_output
-        ),
-    )
-    .await;
-
-    context.reply_with_text(codeblocked_output).await?;
+            context.reply_with_text(codeblocked_output).await?;
+        }
+    };
 
     Ok(())
 }
