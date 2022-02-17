@@ -531,3 +531,7 @@ pub fn get_avatar_url(user: &User) -> String {
         user.id, avatar, ext
     )
 }
+
+pub fn format_tag(user: &User) -> String {
+    format!("{}#{}", user.name, user.discriminator)
+}
