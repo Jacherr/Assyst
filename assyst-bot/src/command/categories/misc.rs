@@ -890,7 +890,7 @@ pub async fn run_fake_eval_command(
 ) -> CommandResult {
     let code = args[0].as_text();
 
-    let mut response = match fake_eval(&context.assyst, code, true).await? {
+    match fake_eval(&context.assyst, code, true).await? {
         FakeEvalImageResponse::Image(i, t) => {
             context.reply_with_image(t.as_str(), i).await?;
         }
