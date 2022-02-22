@@ -1,22 +1,35 @@
-use std::cell::RefCell;
-use std::collections::HashMap;
-
+use assyst_common::filetype::Type;
+use bytes::Bytes;
 pub use context::Context;
 pub use context::NopContext;
 use parser::Counter;
 pub use parser::Parser;
 use parser::SharedState;
+use std::cell::RefCell;
+use std::collections::HashMap;
 
 mod context;
 mod parser;
 mod subtags;
 
-pub fn parse<C: Context>(input: &str, args: &[&str], cx: C) -> anyhow::Result<String> {
+#[derive(Debug)]
+pub struct ParseResult {
+    pub output: String,
+    pub attachment: Option<(Bytes, Type)>,
+}
+
+pub fn parse<C: Context>(input: &str, args: &[&str], cx: C) -> anyhow::Result<ParseResult> {
     let variables = RefCell::new(HashMap::new());
     let counter = Counter::default();
-    let state = SharedState::new(&variables, &counter);
+    let attachment = RefCell::new(None);
+    let state = SharedState::new(&variables, &counter, &attachment);
 
-    Parser::new(input.as_bytes(), args, state, &cx).parse_segment(true)
+    let output = Parser::new(input.as_bytes(), args, state, &cx).parse_segment(true)?;
+
+    Ok(ParseResult {
+        output,
+        attachment: attachment.into_inner(),
+    })
 }
 
 pub fn parse_with_parent(
@@ -33,10 +46,10 @@ mod tests {
 
     #[test]
     fn parse_test() {
-        let input = "a{if:abc|=|abc|c{note:ignore me}d|{arg:1}}b";
+        let input = "testing \\{ abc";
         let segment = parse(input, &["h", "o"], NopContext);
         match segment {
-            Ok(r) => println!("{r}"),
+            Ok(r) => println!("{r:?}"),
             Err(e) => println!("Error: {:?}", e),
         }
     }
