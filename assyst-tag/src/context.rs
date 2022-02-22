@@ -1,4 +1,5 @@
 use anyhow::anyhow;
+use assyst_common::eval::FakeEvalImageResponse;
 
 /// A "no-op" context, which returns an error for any of the methods
 ///
@@ -14,8 +15,8 @@ fn not_implemented<T>() -> anyhow::Result<T> {
 ///
 /// It contains methods that can be provided by the caller (normally the bot crate).
 pub trait Context {
-    /// Executes provided JavaScript code and returns the result as a string
-    fn execute_javascript(&self, code: &str) -> anyhow::Result<String>;
+    /// Executes provided JavaScript code and returns the result (string or image)
+    fn execute_javascript(&self, code: &str) -> anyhow::Result<FakeEvalImageResponse>;
     /// Returns the URL of the last attachment
     fn get_last_attachment(&self) -> anyhow::Result<String>;
     /// Returns the avatar URL of the provided user, or the message author
@@ -33,7 +34,7 @@ pub trait Context {
 }
 
 impl Context for NopContext {
-    fn execute_javascript(&self, _code: &str) -> anyhow::Result<String> {
+    fn execute_javascript(&self, _code: &str) -> anyhow::Result<FakeEvalImageResponse> {
         not_implemented()
     }
 
@@ -67,7 +68,7 @@ impl Context for NopContext {
 }
 
 impl Context for &dyn Context {
-    fn execute_javascript(&self, code: &str) -> anyhow::Result<String> {
+    fn execute_javascript(&self, code: &str) -> anyhow::Result<FakeEvalImageResponse> {
         (**self).execute_javascript(code)
     }
 

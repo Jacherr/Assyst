@@ -92,6 +92,7 @@ dependencies = [
 name = "assyst-common"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "serde",
  "toml",
  "twilight-model",
@@ -124,6 +125,8 @@ name = "assyst-tag"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "assyst-common",
+ "bytes",
  "rand 0.8.4",
 ]
 

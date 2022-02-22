@@ -17,6 +17,7 @@ dependencies = [
 name = "assyst-common"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "serde",
  "toml",
  "twilight-model",

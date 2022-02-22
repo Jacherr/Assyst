@@ -1,10 +1,11 @@
 use std::{convert::TryInto, sync::Arc, time::Duration};
 
 use anyhow::{ensure, Context as _};
-use assyst_common::consts;
+use assyst_common::{consts, eval::FakeEvalImageResponse};
 use assyst_tag as tag;
 use lazy_static::lazy_static;
 use std::fmt::Write;
+use tag::ParseResult;
 
 use crate::{
     command::{
@@ -16,7 +17,7 @@ use crate::{
         registry::CommandResult,
     },
     downloader,
-    rest::{fake_eval, FakeEvalImageResponse},
+    rest::fake_eval,
     util,
 };
 
@@ -233,9 +234,23 @@ async fn run_tag_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) ->
     .await?
     .context("Tag execution failed");
 
-    let output = output.unwrap_or_else(|e| util::codeblock(&format!("{:?}", e), ""));
+    match output {
+        Ok(ParseResult { attachment, output }) => {
+            if let Some((buffer, ty)) = attachment {
+                let output = (!output.is_empty()).then(|| output);
 
-    context.reply_with_text(output).await?;
+                context
+                    .reply_with_image_and_text(ty.as_mime_str(), buffer, output)
+                    .await?;
+            } else {
+                context.reply_with_text(output).await?;
+            }
+        }
+        Err(e) => {
+            let message = util::codeblock(&format!("{e:?}"), "");
+            context.reply_with_text(message).await?;
+        }
+    };
 
     Ok(())
 }
@@ -263,15 +278,12 @@ struct TagContext {
 }
 
 impl tag::Context for TagContext {
-    fn execute_javascript(&self, code: &str) -> anyhow::Result<String> {
+    fn execute_javascript(&self, code: &str) -> anyhow::Result<FakeEvalImageResponse> {
         let response = self
             .tokio
-            .block_on(fake_eval(&self.ccx.assyst, code, false))?;
+            .block_on(fake_eval(&self.ccx.assyst, code, true))?;
 
-        match response {
-            FakeEvalImageResponse::Image(..) => unreachable!(),
-            FakeEvalImageResponse::Text(t) => return Ok(t.message),
-        };
+        Ok(response)
     }
 
     fn get_last_attachment(&self) -> anyhow::Result<String> {

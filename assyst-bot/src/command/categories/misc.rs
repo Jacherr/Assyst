@@ -12,7 +12,7 @@ use crate::{
         bt::{get_languages, validate_language},
         fake_eval,
         rust::OptimizationLevel,
-        wsi, FakeEvalImageResponse, FakeEvalResponse,
+        wsi,
     },
     util::{
         bytes_to_readable, codeblock, ensure_same_guild, exec_sync, extract_page_title,
@@ -25,7 +25,10 @@ use crate::{
     util::{get_current_millis, parse_to_millis},
 };
 use anyhow::{anyhow, bail, Context as _};
-use assyst_common::consts;
+use assyst_common::{
+    consts,
+    eval::{FakeEvalImageResponse, FakeEvalResponse},
+};
 use assyst_database::Reminder;
 use futures::TryFutureExt;
 use lazy_static::lazy_static;

@@ -3,6 +3,7 @@ use crate::parser::{
     Parser,
 };
 use anyhow::{anyhow, bail, Context};
+use assyst_common::eval::FakeEvalImageResponse;
 use rand::Rng;
 
 use anyhow::ensure;
@@ -311,7 +312,15 @@ pub fn javascript(parser: &mut Parser, args: Vec<String>) -> anyhow::Result<Stri
     ensure_request_limit!(parser);
 
     let code = args.first().context("Missing code argument")?;
-    parser.context().execute_javascript(code)
+    let result = parser.context().execute_javascript(code)?;
+
+    match result {
+        FakeEvalImageResponse::Image(img, ty) => {
+            parser.state().set_attachment(img, ty);
+            Ok(String::new())
+        }
+        FakeEvalImageResponse::Text(t) => Ok(t.message),
+    }
 }
 
 pub fn attachment_last(parser: &mut Parser) -> anyhow::Result<String> {

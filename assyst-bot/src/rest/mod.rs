@@ -1,8 +1,12 @@
 use std::{fmt::Display, sync::Arc};
 
+use assyst_common::{
+    eval::{FakeEvalBody, FakeEvalImageResponse},
+    filetype,
+};
 use bytes::Bytes;
 use reqwest::{Client, ClientBuilder, Error};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
 use shared::{
     fifo::{FifoData, FifoSend},
@@ -16,7 +20,7 @@ use std::error::Error as StdError;
 use crate::{
     ansi::Ansi,
     assyst::Assyst,
-    downloader, filetype,
+    downloader,
     rest::{annmarie::info, wsi::run_wsi_job},
 };
 
@@ -68,21 +72,6 @@ impl Display for OcrError {
 }
 
 impl StdError for OcrError {}
-
-#[derive(Serialize)]
-struct FakeEvalBody {
-    pub code: String,
-}
-
-#[derive(Deserialize)]
-pub struct FakeEvalResponse {
-    pub message: String,
-}
-
-pub enum FakeEvalImageResponse {
-    Text(FakeEvalResponse),
-    Image(Bytes, filetype::Type),
-}
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]

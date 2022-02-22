@@ -1,5 +1,7 @@
 use crate::{context::Context, subtags};
 use anyhow::{anyhow, ensure, Context as _};
+use assyst_common::filetype::Type;
+use bytes::Bytes;
 use rand::prelude::ThreadRng;
 use std::{
     cell::{Cell, RefCell},
@@ -38,11 +40,21 @@ pub struct SharedState<'a> {
     variables: &'a RefCell<HashMap<String, String>>,
     /// Counter for various limits
     counter: &'a Counter,
+    /// The attachment to be responded with, if set
+    attachment: &'a RefCell<Option<(Bytes, Type)>>,
 }
 
 impl<'a> SharedState<'a> {
-    pub fn new(variables: &'a RefCell<HashMap<String, String>>, counter: &'a Counter) -> Self {
-        Self { variables, counter }
+    pub fn new(
+        variables: &'a RefCell<HashMap<String, String>>,
+        counter: &'a Counter,
+        attachment: &'a RefCell<Option<(Bytes, Type)>>,
+    ) -> Self {
+        Self {
+            variables,
+            counter,
+            attachment,
+        }
     }
 
     /// Calls `f` with a mutable reference to the user defined variables
@@ -66,6 +78,11 @@ impl<'a> SharedState<'a> {
     /// Returns a reference to the counter
     pub fn counter(&self) -> &Counter {
         &self.counter
+    }
+
+    /// Sets the attachment to be responded with
+    pub fn set_attachment(&self, buf: Bytes, ty: Type) {
+        *self.attachment.borrow_mut() = Some((buf, ty));
     }
 }
 
@@ -278,7 +295,9 @@ impl<'a> Parser<'a> {
                 _ => {
                     // If we are escaping | or }, then only push *that* character, and not \
                     if byte == b'\\' {
-                        if let Some(&next @ b'|' | &next @ b'}') = self.input.get(self.idx + 1) {
+                        if let Some(&next @ b'|' | &next @ b'}' | &next @ b'{') =
+                            self.input.get(self.idx + 1)
+                        {
                             output.push(next as char);
                             self.idx += 2;
                             continue;

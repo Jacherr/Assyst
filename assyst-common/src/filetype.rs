@@ -1,6 +1,7 @@
 use std::cmp::min;
 use std::ops::Range;
 
+#[derive(Debug)]
 pub enum Type {
     GIF,
     JPEG,
@@ -16,6 +17,16 @@ impl Type {
             Type::MP4 => "mp4",
             Type::PNG => "png",
             Type::WEBP => "webp",
+        }
+    }
+
+    pub fn as_mime_str(&self) -> &'static str {
+        match self {
+            Type::GIF => "image/gif",
+            Type::JPEG => "image/jpeg",
+            Type::MP4 => "video/mp4",
+            Type::PNG => "image/png",
+            Type::WEBP => "image/webp",
         }
     }
 }

@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 rand = "0.8"
 anyhow = "1.0"
+assyst-common = { path = "../assyst-common" }
+bytes = "1.0.1"
