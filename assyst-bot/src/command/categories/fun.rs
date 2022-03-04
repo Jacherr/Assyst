@@ -47,6 +47,7 @@ lazy_static! {
         .build();
     pub static ref OCRTR_COMMAND: Command = CommandBuilder::new("ocrtranslate")
         .alias("ocrtr")
+        .alias("ocrt")
         .arg(Argument::String)
         .arg(Argument::ImageUrl)
         .public()

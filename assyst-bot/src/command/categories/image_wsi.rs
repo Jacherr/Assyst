@@ -516,6 +516,37 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .disable()
         .build();
+    pub static ref ZOOM_BLUR_COMMAND: Command = CommandBuilder::new("zoomblur")
+        .alias("zb")
+        .arg(Argument::ImageBuffer)
+        .arg(Argument::OptionalWithDefault(
+            Box::new(Argument::Decimal),
+            "2"
+        ))
+        .public()
+        .description("apply zoomblur effect to image")
+        .example(consts::Y21)
+        .example(format!("{} 2.5", consts::Y21))
+        .usage("[image] <power>")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref SOFTGLOW_COMMAND: Command = CommandBuilder::new("bloom")
+        .alias("softglow")
+        .arg(Argument::ImageBuffer)
+        .flag("radius", Some(FlagKind::Number))
+        .flag("brightness", Some(FlagKind::Number))
+        .flag("sharpness", Some(FlagKind::Number))
+        .public()
+        .description("bloom an image")
+        .example(consts::Y21)
+        .example(format!("{} -radius 5", consts::Y21))
+        .example(format!("{} -brightness 30", consts::Y21))
+        .example(format!("{} -sharpness 85", consts::Y21))
+        .usage("[image] <-radius: number> <-brightness: number> <-sharpness: number>")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
 }
 
 pub async fn run_3d_rotate_command(
@@ -700,6 +731,56 @@ pub async fn run_blur_command(
     let power = args[1].as_text();
     context.reply_with_text("processing...").await?;
     let result = wsi::blur(context.assyst.clone(), image, context.author_id(), power).await?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
+}
+
+pub async fn run_bloom_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    flags: ParsedFlags,
+) -> CommandResult {
+    let image = args[0].as_bytes();
+    let radius = flags
+        .get("radius")
+        .and_then(|x| x.as_ref())
+        .map(|x| x.as_text())
+        .unwrap_or(Cow::Borrowed("5"))
+        .to_string();
+
+    let brightness = flags
+        .get("brightness")
+        .and_then(|x| x.as_ref())
+        .map(|x| x.as_text())
+        .unwrap_or(Cow::Borrowed("35"))
+        .to_string();
+
+    let sharpness = flags
+        .get("sharpness")
+        .and_then(|x| x.as_ref())
+        .map(|x| x.as_text())
+        .unwrap_or(Cow::Borrowed("85"))
+        .to_string();
+
+    let radius = radius.parse::<usize>().unwrap();
+    let brightness = brightness.parse::<usize>().unwrap();
+    let sharpness = sharpness.parse::<usize>().unwrap();
+
+    println!("{}", radius);
+    println!("{}", brightness);
+    println!("{}", sharpness);
+
+    context.reply_with_text("processing...").await?;
+    let result = wsi::bloom(
+        context.assyst.clone(),
+        image,
+        context.author_id(),
+        radius,
+        brightness,
+        sharpness,
+    )
+    .await?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
@@ -1472,6 +1553,26 @@ pub async fn run_zoom_command(
         Box::new(move |assyst, bytes, user_id| Box::pin(wsi_fn(assyst, bytes, user_id))),
     )
     .await
+}
+
+pub async fn run_zoom_blur_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    let image = args[0].as_bytes();
+    let factor = args[1].as_text();
+    context.reply_with_text("processing...").await?;
+    let result = wsi::zoom_blur(
+        context.assyst.clone(),
+        image,
+        context.author_id(),
+        factor.parse::<f64>().unwrap(),
+    )
+    .await?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
 }
 
 pub async fn run_identify_command(

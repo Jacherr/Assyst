@@ -159,30 +159,6 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
-    pub static ref SOFTGLOW_COMMAND: Command = CommandBuilder::new("bloom")
-        .alias("softglow")
-        .arg(Argument::ImageBuffer)
-        .public()
-        .description("bloom an image")
-        .example(consts::Y21)
-        .usage("[image]")
-        .cooldown(Duration::from_secs(4))
-        .category(CATEGORY_NAME)
-        .build();
-    pub static ref ZOOM_BLUR_COMMAND: Command = CommandBuilder::new("zoomblur")
-        .alias("zb")
-        .arg(Argument::ImageBuffer)
-        .arg(Argument::OptionalWithDefault(
-            Box::new(Argument::String),
-            "2"
-        ))
-        .public()
-        .description("apply zoomblur effect to image")
-        .example(consts::Y21)
-        .usage("[image] <power: 1-20>")
-        .cooldown(Duration::from_secs(4))
-        .category(CATEGORY_NAME)
-        .build();
     pub static ref QUOTE_COMMAND: Command = CommandBuilder::new("quote")
         .arg(Argument::StringRemaining)
         .flag("white", Some(FlagKind::Text))
@@ -390,27 +366,4 @@ pub async fn run_sketch_command(
     _flags: ParsedFlags,
 ) -> CommandResult {
     run_annmarie_noarg_command!(annmarie::sketch, args, context)
-}
-
-pub async fn run_softglow_command(
-    context: Arc<Context>,
-    args: Vec<ParsedArgument>,
-    _flags: ParsedFlags,
-) -> CommandResult {
-    run_annmarie_noarg_command!(annmarie::softglow, args, context)
-}
-
-pub async fn run_zoom_blur_command(
-    context: Arc<Context>,
-    args: Vec<ParsedArgument>,
-    _flags: ParsedFlags,
-) -> CommandResult {
-    let image = args[0].as_bytes();
-    let power = args[1].as_text();
-    context.reply_with_text("processing...").await?;
-    let result =
-        annmarie::zoom_blur(context.assyst.clone(), image, context.author_id(), power).await?;
-    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
-    context.reply_with_image(format, result).await?;
-    Ok(())
 }
