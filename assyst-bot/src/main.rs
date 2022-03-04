@@ -6,7 +6,6 @@ mod badtranslator;
 mod caching;
 mod command;
 mod downloader;
-mod filetype;
 mod handler;
 mod handlers;
 mod logger;

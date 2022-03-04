@@ -25,7 +25,10 @@ use crate::{
     util::{get_current_millis, parse_to_millis},
 };
 use anyhow::{anyhow, bail, Context as _};
-use assyst_common::consts;
+use assyst_common::{
+    consts,
+    eval::{FakeEvalImageResponse, FakeEvalResponse},
+};
 use assyst_database::Reminder;
 use futures::TryFutureExt;
 use lazy_static::lazy_static;
@@ -890,25 +893,30 @@ pub async fn run_fake_eval_command(
 ) -> CommandResult {
     let code = args[0].as_text();
 
-    let mut response = fake_eval(&context.assyst, code).await?;
+    match fake_eval(&context.assyst, code, true).await? {
+        FakeEvalImageResponse::Image(i, t) => {
+            context.reply_with_image(t.as_str(), i).await?;
+        }
+        FakeEvalImageResponse::Text(FakeEvalResponse { mut message }) => {
+            if message.trim() == "42" {
+                message = "The answer to life, the universe, and everything".to_owned();
+            }
 
-    if response.message.trim() == "42" {
-        response.message = "The answer to life, the universe, and everything".to_owned();
-    }
+            let codeblocked_input = codeblock(code, "js");
+            let codeblocked_output = codeblock(&message, "js");
 
-    let codeblocked_input = codeblock(code, "js");
-    let codeblocked_output = codeblock(&response.message, "js");
+            logger::info(
+                &context.assyst,
+                &format!(
+                    "User Evaled: {} Output: {}",
+                    codeblocked_input, codeblocked_output
+                ),
+            )
+            .await;
 
-    logger::info(
-        &context.assyst,
-        &format!(
-            "User Evaled: {} Output: {}",
-            codeblocked_input, codeblocked_output
-        ),
-    )
-    .await;
-
-    context.reply_with_text(codeblocked_output).await?;
+            context.reply_with_text(codeblocked_output).await?;
+        }
+    };
 
     Ok(())
 }

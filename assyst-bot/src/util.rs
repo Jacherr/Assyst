@@ -1,5 +1,5 @@
-use crate::{assyst::Assyst, command::context::Context, filetype, rest::wsi::RequestError};
-use assyst_common::consts;
+use crate::{assyst::Assyst, command::context::Context, rest::wsi::RequestError};
+use assyst_common::{consts, filetype};
 use bytes::Bytes;
 use regex::Captures;
 use shared::job::JobResult;
@@ -530,4 +530,8 @@ pub fn get_avatar_url(user: &User) -> String {
         "https://cdn.discordapp.com/avatars/{}/{}.{}",
         user.id, avatar, ext
     )
+}
+
+pub fn format_tag(user: &User) -> String {
+    format!("{}#{}", user.name, user.discriminator)
 }
