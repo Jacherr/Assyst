@@ -1,10 +1,11 @@
 use std::{convert::TryInto, sync::Arc, time::Duration};
 
 use anyhow::{ensure, Context as _};
-use assyst_common::consts;
+use assyst_common::{consts, eval::FakeEvalImageResponse};
 use assyst_tag as tag;
 use lazy_static::lazy_static;
 use std::fmt::Write;
+use tag::ParseResult;
 
 use crate::{
     command::{
@@ -233,9 +234,23 @@ async fn run_tag_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) ->
     .await?
     .context("Tag execution failed");
 
-    let output = output.unwrap_or_else(|e| util::codeblock(&format!("{:?}", e), ""));
+    match output {
+        Ok(ParseResult { attachment, output }) => {
+            if let Some((buffer, ty)) = attachment {
+                let output = (!output.is_empty()).then(|| output);
 
-    context.reply_with_text(output).await?;
+                context
+                    .reply_with_image_and_text(ty.as_mime_str(), buffer, output)
+                    .await?;
+            } else {
+                context.reply_with_text(output).await?;
+            }
+        }
+        Err(e) => {
+            let message = util::codeblock(&format!("{e:?}"), "");
+            context.reply_with_text(message).await?;
+        }
+    };
 
     Ok(())
 }
@@ -263,10 +278,12 @@ struct TagContext {
 }
 
 impl tag::Context for TagContext {
-    fn execute_javascript(&self, code: &str) -> anyhow::Result<String> {
-        let response = self.tokio.block_on(fake_eval(&self.ccx.assyst, code))?;
+    fn execute_javascript(&self, code: &str) -> anyhow::Result<FakeEvalImageResponse> {
+        let response = self
+            .tokio
+            .block_on(fake_eval(&self.ccx.assyst, code, true))?;
 
-        Ok(response.message)
+        Ok(response)
     }
 
     fn get_last_attachment(&self) -> anyhow::Result<String> {
@@ -301,5 +318,34 @@ impl tag::Context for TagContext {
         let content = self.tokio.block_on(content)?;
 
         Ok(String::from_utf8_lossy(&content).into_owned())
+    }
+
+    fn channel_id(&self) -> anyhow::Result<u64> {
+        Ok(self.ccx.message.channel_id.0)
+    }
+
+    fn guild_id(&self) -> anyhow::Result<u64> {
+        self.ccx
+            .message
+            .guild_id
+            .context("Missing Guild ID")
+            .map(|s| s.0)
+    }
+
+    fn user_id(&self) -> anyhow::Result<u64> {
+        Ok(self.ccx.message.author.id.0)
+    }
+
+    fn user_tag(&self, id: Option<u64>) -> anyhow::Result<String> {
+        if let Some(id) = id {
+            let user = self
+                .tokio
+                .block_on(self.ccx.http().user(id.into()))?
+                .context("User not found")?;
+
+            Ok(util::format_tag(&user))
+        } else {
+            Ok(util::format_tag(&self.ccx.message.author))
+        }
     }
 }

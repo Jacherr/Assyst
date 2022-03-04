@@ -1,8 +1,12 @@
 use std::{fmt::Display, sync::Arc};
 
+use assyst_common::{
+    eval::{FakeEvalBody, FakeEvalImageResponse},
+    filetype,
+};
 use bytes::Bytes;
 use reqwest::{Client, ClientBuilder, Error};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
 use shared::{
     fifo::{FifoData, FifoSend},
@@ -69,16 +73,6 @@ impl Display for OcrError {
 
 impl StdError for OcrError {}
 
-#[derive(Serialize)]
-struct FakeEvalBody {
-    pub code: String,
-}
-
-#[derive(Deserialize)]
-pub struct FakeEvalResponse {
-    pub message: String,
-}
-
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CoolTextResponse {
@@ -144,17 +138,32 @@ pub fn parse_path_parameter(path: String, param: (&str, &str)) -> String {
     path.replace(&format!(":{}", param.0), param.1)
 }
 
-pub async fn fake_eval(assyst: &Assyst, code: &str) -> Result<FakeEvalResponse, Error> {
-    assyst
+pub async fn fake_eval(
+    assyst: &Assyst,
+    code: &str,
+    image: bool,
+) -> anyhow::Result<FakeEvalImageResponse> {
+    let result = assyst
         .reqwest_client
         .post(format!("{}/eval", assyst.config.url.eval))
+        .query(&[("returnBuffer", &image.to_string())])
         .json(&FakeEvalBody {
             code: code.to_string(),
         })
         .send()
         .await?
-        .json()
-        .await
+        .bytes()
+        .await?;
+
+    if let Some(sig) = filetype::get_sig(&result) {
+        Ok(FakeEvalImageResponse::Image(result, sig))
+    } else {
+        let text = std::str::from_utf8(&result)?;
+
+        serde_json::from_str(text)
+            .map(FakeEvalImageResponse::Text)
+            .map_err(Into::into)
+    }
 }
 
 pub async fn burning_text(text: &str) -> Result<Bytes, Error> {
@@ -335,7 +344,7 @@ pub async fn healthcheck(assyst: Arc<Assyst>) -> Vec<HealthcheckResult> {
     ));
 
     let timer = Instant::now();
-    let fake_eval_result = fake_eval(&assyst, "1").await;
+    let fake_eval_result = fake_eval(&assyst, "1", false).await;
     results.push(HealthcheckResult::new_from_result(
         "Eval",
         fake_eval_result,
