@@ -348,6 +348,26 @@ pub async fn blur(
     run_wsi_job(assyst, job, user_id).await
 }
 
+pub async fn bloom(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+    radius: usize,
+    brightness: usize,
+    sharpness: usize,
+) -> Result<Bytes, RequestError> {
+    let job = FifoSend::Bloom(FifoData::new(
+        image.to_vec(),
+        BloomQueryParams {
+            radius,
+            brightness,
+            sharpness,
+        },
+    ));
+
+    run_wsi_job(assyst, job, user_id).await
+}
+
 pub async fn caption(
     assyst: Arc<Assyst>,
     image: Bytes,
@@ -902,6 +922,20 @@ pub async fn zoom(
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
     let job = FifoSend::Zoom(FifoData::new(image.to_vec(), NoneQuery {}));
+
+    run_wsi_job(assyst, job, user_id).await
+}
+
+pub async fn zoom_blur(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+    factor: f64,
+) -> Result<Bytes, RequestError> {
+    let job = FifoSend::ZoomBlur(FifoData::new(
+        image.to_vec(),
+        ZoomBlurQueryParams { factor },
+    ));
 
     run_wsi_job(assyst, job, user_id).await
 }
