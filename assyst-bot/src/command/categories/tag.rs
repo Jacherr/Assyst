@@ -29,14 +29,16 @@ const DESCRIPTION: &str = r#"
 -t delete <name>             :: Delete a tag by its name
 -t edit <name> <content>     :: Edit a tag by its name and new content
 -t list [<page, default=0>]  :: List tags created in this guild
--t info <name>               :: Get information about a tag"#;
+-t info <name>               :: Get information about a tag
+
+Tag documentation: https://gist.github.com/y21/bd58942059ca9f1162b1616ee049be19
+"#;
 
 lazy_static! {
     pub static ref TAG_COMMAND: Command = CommandBuilder::new("tag")
         .category(CATEGORY_NAME)
         .alias("t")
         .description(DESCRIPTION)
-        .availability(CommandAvailability::Private)
         .cooldown(Duration::from_secs(1))
         .arg(Argument::String)
         .arg(Argument::Optional(Box::new(Argument::String)))

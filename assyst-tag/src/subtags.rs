@@ -67,6 +67,18 @@ pub fn arg(parser: &Parser, args: Vec<String>) -> anyhow::Result<String> {
     Ok(arg.to_string())
 }
 
+pub fn tryarg(parser: &Parser, args: Vec<String>) -> anyhow::Result<String> {
+    let arg = args.first().context("Missing index")?.parse::<usize>()?;
+
+    let arg = parser
+        .args()
+        .get(arg)
+        .map(|x| (**x).to_owned())
+        .unwrap_or_else(String::new);
+
+    Ok(arg.to_string())
+}
+
 pub fn args(parser: &Parser) -> anyhow::Result<String> {
     let args = parser.args();
     Ok(args.join(" "))
