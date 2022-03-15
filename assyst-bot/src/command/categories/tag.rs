@@ -40,10 +40,11 @@ lazy_static! {
         .alias("t")
         .description(DESCRIPTION)
         .cooldown(Duration::from_secs(1))
+        .availability(CommandAvailability::Public)
         .arg(Argument::String)
         .arg(Argument::Optional(Box::new(Argument::String)))
         .arg(Argument::Optional(Box::new(Argument::StringRemaining)))
-        .usage("[create|delete|edit|list|info|<tag name>] [<tag name>] [<tag content>]")
+        .usage("[create|delete|edit|list|info|raw|<tag name>] [<tag name>] [<tag content>]")
         .example("create test hello, this is a tag")
         .example("delete test")
         .example("edit test new content")
@@ -51,6 +52,7 @@ lazy_static! {
         .example("list 2")
         .example("info test")
         .example("test")
+        .example("raw test")
         .build();
 }
 
@@ -205,6 +207,26 @@ async fn run_info_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -
     Ok(())
 }
 
+async fn run_raw_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
+    let guild_id = context.message.guild_id.unwrap().0;
+    let name = args
+        .get(1)
+        .map(|t| t.as_text())
+        .context("No tag name provided.")?;
+
+    let tag = context
+        .assyst
+        .database
+        .get_tag(guild_id.try_into()?, name)
+        .await?
+        .context("No tag found.")?;
+
+    let raw = util::codeblock(&tag.data, "");
+
+    context.reply_with_text(raw).await?;
+    Ok(())
+}
+
 async fn run_tag_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
     let guild_id = context.message.guild_id.unwrap().0;
     let name = args
@@ -270,6 +292,7 @@ pub async fn run_tag_command(
         "edit" => run_edit_subcommand(context, args).await,
         "list" => run_list_subcommand(context, args).await,
         "info" => run_info_subcommand(context, args).await,
+        "raw" => run_raw_subcommand(context, args).await,
         _ => run_tag_subcommand(context, args).await,
     }
 }
