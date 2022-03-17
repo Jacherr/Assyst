@@ -89,7 +89,6 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .build();
     pub static ref LABELS_COMMAND: Command = CommandBuilder::new("labels")
-        .alias("read")
         .arg(Argument::ImageBuffer)
         .public()
         .description("create labels from image")
