@@ -10,6 +10,7 @@ use crate::{
         self,
         codesprint::{BenchmarkResponse, Language, Test},
     },
+    
     util::{self, codeblock, nanos_to_readable}, downloader,
 };
 use anyhow::{anyhow, Context as _};
@@ -110,8 +111,8 @@ async fn run_show_subcommand(
         .with_context(|| format!("Could not find challenge with id `{}`!", id))?;
 
     let message = format!(
-        "**Challenge #{}**: {} - submitted by <@{}>\n\n{}",
-        challenge.id, challenge.name, challenge.author, challenge.description
+        "**Challenge #{}**: {}\n\n{}",
+        challenge.id, challenge.name, challenge.description
     );
 
     context.reply_with_text(message).await?;
