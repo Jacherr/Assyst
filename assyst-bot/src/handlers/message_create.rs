@@ -3,6 +3,9 @@ use std::sync::Arc;
 use twilight_model::gateway::payload::MessageCreate;
 
 pub async fn handle(assyst: Arc<Assyst>, message: Box<MessageCreate>) {
+    if message.author.id.0 != 312715611413413889 {
+        return;
+    }
     // Bad translate channel
     if assyst.badtranslator.is_channel(message.channel_id.0).await {
         let result = assyst.badtranslator.handle_message(&assyst, message).await;
