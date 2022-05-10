@@ -753,12 +753,16 @@ pub async fn run_btchannel_command(
                 .create_webhook(channel_id.into(), "Bad Translator")
                 .await?;
 
-            context.assyst.database.add_bt_channel(channel_id, language)
+            let success = context.assyst.database.add_bt_channel(channel_id, language)
                 .await
                 .map_err(|e| {
                     eprintln!("{:?}", e);
                     anyhow!("Registering BT channel failed. This is likely a bug. Please contact one of the bot developers")
                 })?;
+
+            if !success {
+                bail!("This channel is already registered as a BT channel");
+            }
 
             context
                 .assyst

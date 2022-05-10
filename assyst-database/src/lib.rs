@@ -260,7 +260,7 @@ impl Database {
             .map(|x| !x.is_empty())
     }
 
-    pub async fn add_bt_channel(&self, id: u64, language: &str) -> Result<(), sqlx::Error> {
+    pub async fn add_bt_channel(&self, id: u64, language: &str) -> Result<bool, sqlx::Error> {
         let query = r#"INSERT INTO bt_channels VALUES ($1, $2)"#;
 
         sqlx::query(query)
@@ -268,7 +268,14 @@ impl Database {
             .bind(language)
             .execute(&self.pool)
             .await
-            .and_then(|_| Ok(()))
+            .and_then(|_| Ok(true))
+            .or_else(|e| {
+                if is_unique_violation(&e) {
+                    Ok(false)
+                } else {
+                    Err(e)
+                }
+            })
     }
 
     pub async fn add_reminder(&self, reminder: Reminder) -> Result<(), sqlx::Error> {
@@ -808,7 +815,7 @@ impl Database {
     ) -> Result<bool, sqlx::Error> {
         let query = r#"INSERT INTO tags VALUES ($1, $2, $3, $4, $5)"#;
 
-        match sqlx::query(query)
+        sqlx::query(query)
             .bind(name)
             .bind(content)
             .bind(author)
@@ -816,16 +823,14 @@ impl Database {
             .bind(get_current_millis() as i64)
             .execute(&self.pool)
             .await
-        {
-            Ok(_) => Ok(true),
-            Err(e) => {
+            .map(|_| true)
+            .or_else(|e| {
                 if is_unique_violation(&e) {
                     Ok(false)
                 } else {
                     Err(e)
                 }
-            }
-        }
+            })
     }
 
     pub async fn remove_tag(
@@ -836,22 +841,20 @@ impl Database {
     ) -> Result<bool, sqlx::Error> {
         let query = r#"DELETE FROM tags WHERE name = $1 AND author = $2 AND guild_id = $3"#;
 
-        match sqlx::query(query)
+        sqlx::query(query)
             .bind(name)
             .bind(author)
             .bind(guild_id)
             .execute(&self.pool)
             .await
-        {
-            Ok(rows) => Ok(rows.rows_affected() > 0),
-            Err(e) => {
+            .map(|rows| rows.rows_affected() > 0)
+            .or_else(|e| {
                 if is_unique_violation(&e) {
                     Ok(false)
                 } else {
                     Err(e)
                 }
-            }
-        }
+            })
     }
 
     pub async fn edit_tag(
