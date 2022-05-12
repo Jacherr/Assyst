@@ -109,7 +109,7 @@ impl BadTranslator {
         // TODO: maybe return Result?
         let webhooks = assyst.http.channel_webhooks(*id).await.ok()?;
 
-        let webhook = webhooks.into_iter().next()?;
+        let webhook = webhooks.into_iter().find(|w| w.token.is_some())?;
 
         let mut cache = self.channels.write().await;
         let mut entry = cache
