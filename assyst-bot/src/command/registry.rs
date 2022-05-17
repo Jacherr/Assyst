@@ -114,7 +114,6 @@ impl CommandRegistry {
         register_command!(self, BLUR_COMMAND, run_blur_command);
         register_command!(self, BT_CHANNEL_COMMAND, run_btchannel_command);
         register_command!(self, BT_COMMAND, run_bt_command);
-        register_command!(self, BTDEBUG_COMMAND, run_btdebug_command);
         register_command!(self, BURNTEXT_COMMAND, run_burntext_command);
         register_command!(self, CACHE_STATUS_COMMAND, run_cache_status_command);
         register_command!(self, CAPTION_COMMAND, run_caption_command);
