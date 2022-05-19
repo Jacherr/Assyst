@@ -51,6 +51,12 @@ impl Context {
     pub async fn reply(&self, message_builder: MessageBuilder) -> anyhow::Result<Arc<Message>> {
         let mut reply_lock = self.reply.lock().await;
 
+        if reply_lock.invocation_deleted {
+            return Err(anyhow::anyhow!(
+                "The invocation for this command was deleted, so the result was discarded."
+            ));
+        }
+
         if !reply_lock.has_replied() {
             let result = self.create_new_message(message_builder).await?;
             reply_lock.set_reply(result.clone());

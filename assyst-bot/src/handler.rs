@@ -14,6 +14,14 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
             message_update::handle(assyst, message).await;
         }
         Event::GuildCreate(guild) => {
+            assyst
+                .add_guild_to_top_guilds(
+                    guild.id.0,
+                    guild.name.clone(),
+                    guild.member_count.unwrap_or(0) as u32,
+                )
+                .await;
+
             if !assyst.guild_in_list(guild.id.0).await {
                 assyst.add_guild_to_list(guild.id.0).await;
 

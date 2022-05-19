@@ -200,5 +200,6 @@ impl CommandRegistry {
         register_command!(self, HEALTHCHECK_COMMAND, run_healthcheck_command);
         register_command!(self, UNCAPTION_COMMAND, run_uncaption_command);
         register_command!(self, TAG_COMMAND, run_tag_command);
+        register_command!(self, TOP_GUILDS_COMMAND, run_top_guilds_command);
     }
 }

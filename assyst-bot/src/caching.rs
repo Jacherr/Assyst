@@ -110,6 +110,7 @@ impl Replies {
 }
 
 pub struct Reply {
+    pub invocation_deleted: bool,
     invocation: Arc<Message>,
     pub reply: Option<Arc<Message>>,
     expire: u64,
@@ -122,6 +123,7 @@ impl Reply {
             reply: None,
             expire: get_current_millis() + MESSAGE_EDIT_HANDLE_LIMIT as u64,
             in_use: false,
+            invocation_deleted: false,
         }
     }
     pub fn has_expired(&self) -> bool {
@@ -133,5 +135,53 @@ impl Reply {
     pub fn set_reply(&mut self, reply: Arc<Message>) -> &mut Self {
         self.reply = Some(reply);
         self
+    }
+    pub fn set_invocation_deleted(&mut self) -> &mut Self {
+        self.invocation_deleted = true;
+        self
+    }
+}
+
+pub struct TopGuild {
+    pub id: u64,
+    pub name: String,
+    pub count: u32,
+}
+impl TopGuild {
+    pub fn new(id: u64, name: String, count: u32) -> Self {
+        TopGuild { id, name, count }
+    }
+}
+
+pub struct TopGuilds(pub Vec<TopGuild>);
+
+impl TopGuilds {
+    pub fn new() -> Self {
+        TopGuilds(Vec::new())
+    }
+
+    pub fn add_guild(&mut self, id: u64, name: String, count: u32) -> () {
+        if self.0.len() > 0 && count < self.0.last().unwrap().count {
+            return;
+        }
+
+        let mut found = false;
+        for guild in self.0.iter_mut() {
+            if guild.id == id {
+                guild.count = count;
+                found = true;
+            }
+        }
+        if !found {
+            self.0.push(TopGuild::new(id, name, count));
+        }
+        self.sort();
+        if self.0.len() > 25 {
+            self.0.pop();
+        }
+    }
+
+    pub fn sort(&mut self) -> () {
+        self.0.sort_by(|a, b| b.count.cmp(&a.count));
     }
 }

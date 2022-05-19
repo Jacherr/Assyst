@@ -133,6 +133,16 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
+    pub static ref FISHEYE_COMMAND: Command = CommandBuilder::new("fisheye")
+        .arg(Argument::ImageBuffer)
+        .alias("fish")
+        .public()
+        .description("fisheye an image")
+        .example(consts::Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref FRAMES_COMMAND: Command = CommandBuilder::new("frames")
         .arg(Argument::ImageBuffer)
         .public()
@@ -207,6 +217,16 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
+    pub static ref GLOBE_COMMAND: Command = CommandBuilder::new("globe")
+        .arg(Argument::ImageBuffer)
+        .alias("sphere")
+        .public()
+        .description("turn an image into a spinning globe")
+        .example(consts::Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref GRAYSCALE_COMMAND: Command = CommandBuilder::new("grayscale")
         .alias("gray")
         .arg(Argument::ImageBuffer)
@@ -278,6 +298,19 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
+    pub static ref NEON_COMMAND: Command = CommandBuilder::new("neon")
+        .arg(Argument::ImageBuffer)
+        .arg(Argument::OptionalWithDefault(
+            Box::new(Argument::Integer),
+            "1"
+        ))
+        .public()
+        .description("neon an image")
+        .example(consts::Y21)
+        .usage("[image] <power>")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref PRINTER_COMMAND: Command = CommandBuilder::new("printer")
         .arg(Argument::ImageBuffer)
         .public()
@@ -307,10 +340,19 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
+    pub static ref PAINT_COMMAND: Command = CommandBuilder::new("paint")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("paint an image")
+        .example(consts::Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref PIXELATE_COMMAND: Command = CommandBuilder::new("pixelate")
         .alias("pixel")
         .arg(Argument::ImageBuffer)
-        .arg(Argument::Optional(Box::new(Argument::String)))
+        .arg(Argument::Optional(Box::new(Argument::Integer)))
         .public()
         .description("pixelate an image")
         .example(consts::Y21)
@@ -527,7 +569,7 @@ lazy_static! {
         .description("apply zoomblur effect to image")
         .example(consts::Y21)
         .example(format!("{} 2.5", consts::Y21))
-        .usage("[image] <power>")
+        .usage("[image] <power: 1-20>")
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
@@ -767,10 +809,6 @@ pub async fn run_bloom_command(
     let brightness = brightness.parse::<usize>().unwrap();
     let sharpness = sharpness.parse::<usize>().unwrap();
 
-    println!("{}", radius);
-    println!("{}", brightness);
-    println!("{}", sharpness);
-
     context.reply_with_text("processing...").await?;
     let result = wsi::bloom(
         context.assyst.clone(),
@@ -908,6 +946,21 @@ pub async fn run_f_shift_command(
 ) -> CommandResult {
     let raw_image = args[0].as_bytes();
     let wsi_fn = wsi::frame_shift;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes, user_id| Box::pin(wsi_fn(assyst, bytes, user_id))),
+    )
+    .await
+}
+
+pub async fn run_fisheye_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    let raw_image = args[0].as_bytes();
+    let wsi_fn = wsi::fisheye;
     run_wsi_noarg_command(
         context,
         raw_image,
@@ -1107,6 +1160,21 @@ pub async fn run_jpeg_command(
     .await
 }
 
+pub async fn run_globe_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    let raw_image = args[0].as_bytes();
+    let wsi_fn = wsi::globe;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes, user_id| Box::pin(wsi_fn(assyst, bytes, user_id))),
+    )
+    .await
+}
+
 pub async fn run_magik_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
@@ -1190,6 +1258,20 @@ pub async fn run_motivate_command(
     Ok(())
 }
 
+pub async fn run_neon_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    let image = args[0].as_bytes();
+    let radius = args[1].as_text().parse::<usize>().unwrap_or(1).clamp(1, 20);
+    context.reply_with_text("processing...").await?;
+    let result = wsi::neon(context.assyst.clone(), image, context.author_id(), radius).await?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
+}
+
 pub async fn run_overlay_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
@@ -1210,13 +1292,31 @@ pub async fn run_overlay_command(
     Ok(())
 }
 
+pub async fn run_paint_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    let raw_image = args[0].as_bytes();
+    let wsi_fn = wsi::paint;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes, user_id| Box::pin(wsi_fn(assyst, bytes, user_id))),
+    )
+    .await
+}
+
 pub async fn run_pixelate_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
     let image = args[0].as_bytes();
-    let downscaled_height = args[1].maybe_text();
+    let downscaled_height = args[1]
+        .maybe_text()
+        .map(|s| s.parse::<usize>().unwrap_or(usize::MAX));
+
     context.reply_with_text("processing...").await?;
     let result = wsi::pixelate(
         context.assyst.clone(),

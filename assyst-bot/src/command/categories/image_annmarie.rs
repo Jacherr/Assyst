@@ -78,16 +78,6 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
-    pub static ref FISHEYE_COMMAND: Command = CommandBuilder::new("fisheye")
-        .arg(Argument::ImageBuffer)
-        .alias("fish")
-        .public()
-        .description("fisheye an image")
-        .example(consts::Y21)
-        .usage("[image]")
-        .cooldown(Duration::from_secs(4))
-        .category(CATEGORY_NAME)
-        .build();
     pub static ref FLAG_COMMAND: Command = CommandBuilder::new("flag")
         .arg(Argument::ImageBuffer)
         .public()
@@ -107,16 +97,6 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .disable()
         .build();
-    pub static ref GLOBE_COMMAND: Command = CommandBuilder::new("globe")
-        .arg(Argument::ImageBuffer)
-        .alias("sphere")
-        .public()
-        .description("turn an image into a spinning globe")
-        .example(consts::Y21)
-        .usage("[image]")
-        .cooldown(Duration::from_secs(4))
-        .category(CATEGORY_NAME)
-        .build();
     pub static ref HEART_LOCKET_COMMAND: Command = CommandBuilder::new("heartlocket")
         .arg(Argument::ImageBuffer)
         .arg(Argument::StringRemaining)
@@ -125,28 +105,6 @@ lazy_static! {
         .description("heart locket with a caption")
         .example("https://link.to.my/image.gif yeah")
         .usage("[image] [text]")
-        .cooldown(Duration::from_secs(4))
-        .category(CATEGORY_NAME)
-        .build();
-    pub static ref NEON_COMMAND: Command = CommandBuilder::new("neon")
-        .arg(Argument::ImageBuffer)
-        .arg(Argument::OptionalWithDefault(
-            Box::new(Argument::String),
-            "1"
-        ))
-        .public()
-        .description("neon an image")
-        .example(consts::Y21)
-        .usage("[image] <power: 1-20>")
-        .cooldown(Duration::from_secs(4))
-        .category(CATEGORY_NAME)
-        .build();
-    pub static ref PAINT_COMMAND: Command = CommandBuilder::new("paint")
-        .arg(Argument::ImageBuffer)
-        .public()
-        .description("paint an image")
-        .example(consts::Y21)
-        .usage("[image]")
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
@@ -290,14 +248,6 @@ pub async fn run_circuitboard_command(
     run_annmarie_noarg_command!(annmarie::circuitboard, args, context)
 }
 
-pub async fn run_fisheye_command(
-    context: Arc<Context>,
-    args: Vec<ParsedArgument>,
-    _flags: ParsedFlags,
-) -> CommandResult {
-    run_annmarie_noarg_command!(annmarie::fisheye, args, context)
-}
-
 pub async fn run_flag_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
@@ -314,14 +264,6 @@ pub async fn run_fringe_command(
     run_annmarie_noarg_command!(annmarie::fringe, args, context)
 }
 
-pub async fn run_globe_command(
-    context: Arc<Context>,
-    args: Vec<ParsedArgument>,
-    _flags: ParsedFlags,
-) -> CommandResult {
-    run_annmarie_noarg_command!(annmarie::globe, args, context)
-}
-
 pub async fn run_heart_locket_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
@@ -336,28 +278,6 @@ pub async fn run_heart_locket_command(
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
-}
-
-pub async fn run_neon_command(
-    context: Arc<Context>,
-    args: Vec<ParsedArgument>,
-    _flags: ParsedFlags,
-) -> CommandResult {
-    let image = args[0].as_bytes();
-    let radius = args[1].as_text();
-    context.reply_with_text("processing...").await?;
-    let result = annmarie::neon(context.assyst.clone(), image, context.author_id(), radius).await?;
-    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
-    context.reply_with_image(format, result).await?;
-    Ok(())
-}
-
-pub async fn run_paint_command(
-    context: Arc<Context>,
-    args: Vec<ParsedArgument>,
-    _flags: ParsedFlags,
-) -> CommandResult {
-    run_annmarie_noarg_command!(annmarie::paint, args, context)
 }
 
 pub async fn run_sketch_command(

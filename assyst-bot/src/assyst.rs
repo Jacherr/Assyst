@@ -1,6 +1,6 @@
 use crate::{
     badtranslator::BadTranslator,
-    caching::{Ratelimits, Replies, Reply},
+    caching::{Ratelimits, Replies, Reply, TopGuilds},
     command::{
         command::{
             Argument, Command, CommandAvailability, CommandParseError, CommandParseErrorType,
@@ -105,6 +105,7 @@ fn message_mention_prefix(content: &str) -> Option<String> {
 /// apina
 pub struct Assyst {
     pub guilds: Mutex<HashSet<u32>>,
+    pub top_guilds: Mutex<TopGuilds>,
     pub badtranslator: BadTranslator,
     pub command_ratelimits: RwLock<Ratelimits>,
     pub config: Arc<Config>,
@@ -144,6 +145,7 @@ impl Assyst {
 
         let mut assyst = Assyst {
             guilds: Mutex::new(HashSet::new()),
+            top_guilds: Mutex::new(TopGuilds::new()),
             badtranslator: BadTranslator::new(),
             command_ratelimits: RwLock::new(Ratelimits::new()),
             config,
@@ -188,6 +190,11 @@ impl Assyst {
     /// Remove a guild from cached guild list
     pub async fn remove_guild_from_list(&self, guild: u64) {
         self.guilds.lock().await.remove(&((guild >> 22) as u32));
+    }
+
+    /// Add guild to top guilds list
+    pub async fn add_guild_to_top_guilds(&self, id: u64, name: String, count: u32) {
+        self.top_guilds.lock().await.add_guild(id, name, count);
     }
 
     /// Handle an incoming message from Discord.
