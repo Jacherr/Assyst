@@ -33,6 +33,7 @@ use assyst_database::Reminder;
 use futures::TryFutureExt;
 use lazy_static::lazy_static;
 use shared::query_params::ResizeMethod;
+use shared::response_data::Stats;
 use std::fmt::Write;
 use std::{
     collections::HashMap,
@@ -147,6 +148,13 @@ lazy_static! {
         .alias("topbt")
         .availability(CommandAvailability::Private)
         .description("get top btchannel information")
+        .cooldown(Duration::from_secs(2))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref TOP_GUILDS_COMMAND: Command = CommandBuilder::new("topguilds")
+        .alias("tg")
+        .availability(CommandAvailability::Private)
+        .description("get top guild information")
         .cooldown(Duration::from_secs(2))
         .category(CATEGORY_NAME)
         .build();
@@ -443,6 +451,13 @@ pub async fn run_stats_command(
     let commands_per_minute =
         context.assyst.commands_executed.load(Ordering::Relaxed) as f32 / uptime_minutes;
 
+    let assyst_uptime = context.assyst.uptime().format();
+    let assyst_gateway = context.assyst.http.gateway().authed().await?;
+    let sessions = format!(
+        "Total: {}, Remaining: {}",
+        assyst_gateway.session_start_limit.total, assyst_gateway.session_start_limit.remaining,
+    );
+
     let stats_table = generate_table(&[
         ("Guilds", &guild_count.to_string()),
         ("Resident Memory Usage", &memory),
@@ -463,14 +478,18 @@ pub async fn run_stats_command(
 
             format!("Total: {}, Server: {}", total, guild)
         }),
+        ("Sessions", &sessions),
     ]);
-
-    let assyst_uptime = context.assyst.uptime().format();
 
     let annmarie_info = info(context.assyst.clone()).await?;
     let annmarie_uptime = format_time(annmarie_info.uptime.floor() as u64 * 1000);
 
-    let wsi_info = wsi::stats(context.assyst.clone()).await?;
+    let wsi_info = wsi::stats(context.assyst.clone()).await.unwrap_or(Stats {
+        uptime_ms: 0,
+        current_requests: 0,
+        total_workers: 0,
+    });
+
     let wsi_uptime = format_time(wsi_info.uptime_ms as u64);
 
     let uptimes_table = generate_table(&[
@@ -713,6 +732,25 @@ pub async fn run_top_bt_command(
         .collect::<Vec<_>>();
 
     let table = generate_list("Guild ID", "Messages", &top_commands_formatted);
+
+    context.reply_with_text(codeblock(&table, "hs")).await?;
+    Ok(())
+}
+
+pub async fn run_top_guilds_command(
+    context: Arc<Context>,
+    _: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    let top_guilds = context.assyst.top_guilds.lock().await;
+
+    let top_guilds_formatted = top_guilds
+        .0
+        .iter()
+        .map(|x| (format!("{} ({})", x.name, x.id), x.count.to_string()))
+        .collect::<Vec<_>>();
+
+    let table = generate_list("Guild", "Members", &top_guilds_formatted);
 
     context.reply_with_text(codeblock(&table, "hs")).await?;
     Ok(())

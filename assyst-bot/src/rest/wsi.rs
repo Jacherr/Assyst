@@ -341,7 +341,7 @@ pub async fn blur(
     let job = FifoSend::Blur(FifoData::new(
         image.to_vec(),
         BlurQueryParams {
-            power: power.parse::<f32>().unwrap(),
+            power: power.parse::<f32>().unwrap_or(1.0),
         },
     ));
 
@@ -394,6 +394,16 @@ pub async fn convert_png(
     run_wsi_job(assyst, job, user_id).await
 }
 
+pub async fn fisheye(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    let job = FifoSend::FishEye(FifoData::new(image.to_vec(), NoneQuery {}));
+
+    run_wsi_job(assyst, job, user_id).await
+}
+
 pub async fn fix_transparency(
     assyst: Arc<Assyst>,
     image: Bytes,
@@ -413,6 +423,7 @@ pub async fn flash(
 
     run_wsi_job(assyst, job, user_id).await
 }
+
 pub async fn flip(
     assyst: Arc<Assyst>,
     image: Bytes,
@@ -470,7 +481,7 @@ pub async fn ghost(
     let job = FifoSend::Ghost(FifoData::new(
         image.to_vec(),
         GhostQueryParams {
-            depth: Some(depth.parse::<usize>().unwrap()),
+            depth: Some(depth.parse::<usize>().unwrap_or(5)),
         },
     ));
 
@@ -639,6 +650,16 @@ pub async fn jpeg(
     run_wsi_job(assyst, job, user_id).await
 }
 
+pub async fn globe(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    let job = FifoSend::Globe(FifoData::new(image.to_vec(), NoneQuery {}));
+
+    run_wsi_job(assyst, job, user_id).await
+}
+
 pub async fn magik(
     assyst: Arc<Assyst>,
     image: Bytes,
@@ -667,17 +688,36 @@ pub async fn meme(
     run_wsi_job(assyst, job, user_id).await
 }
 
+pub async fn neon(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+    radius: usize,
+) -> Result<Bytes, RequestError> {
+    let job = FifoSend::Neon(FifoData::new(image.to_vec(), NeonQueryParams { radius }));
+
+    run_wsi_job(assyst, job, user_id).await
+}
+
+pub async fn paint(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    let job = FifoSend::Paint(FifoData::new(image.to_vec(), NoneQuery {}));
+
+    run_wsi_job(assyst, job, user_id).await
+}
+
 pub async fn pixelate(
     assyst: Arc<Assyst>,
     image: Bytes,
     user_id: UserId,
-    downscaled_height: Option<&str>,
+    downscaled_height: Option<usize>,
 ) -> Result<Bytes, RequestError> {
     let job = FifoSend::Pixelate(FifoData::new(
         image.to_vec(),
-        PixelateQueryParams {
-            downscaled_height: downscaled_height.map(|s| s.parse::<usize>().unwrap()),
-        },
+        PixelateQueryParams { downscaled_height },
     ));
 
     run_wsi_job(assyst, job, user_id).await
@@ -808,7 +848,7 @@ pub async fn rotate(
     let job = FifoSend::Rotate(FifoData::new(
         image.to_vec(),
         RotateQueryParams {
-            degrees: degrees.parse::<usize>().unwrap(),
+            degrees: degrees.parse::<usize>().unwrap_or(90),
         },
     ));
 

@@ -10,7 +10,8 @@ pub async fn handle(assyst: Arc<Assyst>, message: MessageDelete) -> () {
         .get_reply_from_invocation_id(message.id)
         .await;
     if let Some(reply) = try_reply {
-        let lock = reply.lock().await;
+        let mut lock = reply.lock().await;
+        lock.set_invocation_deleted();
         if !lock.in_use {
             if let Some(r) = &lock.reply {
                 let _ = assyst.http.delete_message(message.channel_id, r.id).await;

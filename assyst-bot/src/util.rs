@@ -144,7 +144,7 @@ pub fn generate_list<K: AsRef<str>, V: AsRef<str>>(
         .map(|(k, v)| {
             format!(
                 " {}{}\t{}",
-                " ".repeat(longest.len() - k.as_ref().len()),
+                " ".repeat(longest.len() - k.as_ref().chars().count()),
                 k.as_ref(),
                 v.as_ref()
             )
