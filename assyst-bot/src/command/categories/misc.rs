@@ -175,6 +175,7 @@ lazy_static! {
         .build();
     pub static ref COMMAND_COMMAND: Command = CommandBuilder::new("command")
         .alias("cmd")
+        .usage("[command name/alias]")
         .arg(Argument::String)
         .availability(CommandAvailability::GuildOwner)
         .description("toggle enable/disable a command")
