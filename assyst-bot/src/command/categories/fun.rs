@@ -4,13 +4,18 @@ use crate::{
         context::Context,
         registry::CommandResult,
     },
-    rest::{self, bt::bad_translate, bt::translate_single},
+    rest::{
+        self,
+        bt::translate_single,
+        bt::{bad_translate, TranslateResult, Translation},
+    },
     util::{codeblock, ensure_guild_manager, normalize_emojis},
 };
 use anyhow::{bail, Context as _};
 use assyst_common::consts;
 use bytes::Bytes;
 use lazy_static::lazy_static;
+use std::fmt::Write;
 use std::{sync::Arc, time::Duration};
 
 const CATEGORY_NAME: &str = "fun";
@@ -19,18 +24,11 @@ lazy_static! {
     pub static ref BT_COMMAND: Command = CommandBuilder::new("badtranslate")
         .alias("bt")
         .arg(Argument::StringRemaining)
+        .flag("chain", None)
         .public()
         .description("badly translate text")
         .example("hello is this working")
-        .usage("[text]")
-        .cooldown(Duration::from_secs(4))
-        .category(CATEGORY_NAME)
-        .build();
-    pub static ref BTDEBUG_COMMAND: Command = CommandBuilder::new("btdebug")
-        .arg(Argument::StringRemaining)
-        .public()
-        .description("badly translate text with debug info")
-        .example("hello is this working")
+        .example("hello is this working -chain")
         .usage("[text]")
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
@@ -89,7 +87,6 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .build();
     pub static ref LABELS_COMMAND: Command = CommandBuilder::new("labels")
-        .alias("read")
         .arg(Argument::ImageBuffer)
         .public()
         .description("create labels from image")
@@ -123,55 +120,35 @@ lazy_static! {
 pub async fn run_bt_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
-    _flags: ParsedFlags,
+    flags: ParsedFlags,
 ) -> CommandResult {
     let text = args[0].as_text();
     let text = normalize_emojis(text);
-    let translated = bad_translate(&context.assyst.reqwest_client, &text).await?;
+    let wants_chain = flags.contains_key("chain");
+    let TranslateResult {
+        result: Translation { text, .. },
+        translations,
+    } = bad_translate(&context.assyst.reqwest_client, &text).await?;
 
-    let output = format!("**Output**\n{}", translated.result.text);
-    context.reply_with_text(output).await?;
-    Ok(())
-}
+    let mut output = format!("**Output**\n{}", text);
 
-pub async fn run_btdebug_command(
-    context: Arc<Context>,
-    args: Vec<ParsedArgument>,
-    _flags: ParsedFlags,
-) -> CommandResult {
-    let text = args[0].as_text();
-    let translated = bad_translate(&context.assyst.reqwest_client, text).await?;
+    if wants_chain {
+        let _ = output.write_str("\n\n**Language chain**");
 
-    let chain = translated
-        .translations
-        .iter()
-        .enumerate()
-        .map(|(index, translation)| {
-            let output = format!(
-                "{}) {}: {}\n",
-                index + 1,
-                translation.lang,
-                translation.text
-            );
+        for (index, translation) in translations.into_iter().enumerate() {
+            let _ = write!(output, "\n{}) {}: ", index + 1, translation.lang);
 
-            let suffix = if output.len() > consts::MAX_CHAIN_LENGTH {
-                "…\n"
-            } else {
-                "\n"
-            };
+            for (idx, ch) in translation.text.chars().enumerate() {
+                if idx > consts::MAX_CHAIN_LENGTH {
+                    output.push('…');
+                    break;
+                }
 
-            output
-                .chars()
-                .take(consts::MAX_CHAIN_LENGTH)
-                .collect::<String>()
-                + suffix
-        })
-        .collect::<String>();
+                output.push(ch);
+            }
+        }
+    }
 
-    let output = format!(
-        "**Output**\n{}\n\n**Language Chain**\n{}",
-        translated.result.text, chain
-    );
     context.reply_with_text(output).await?;
     Ok(())
 }

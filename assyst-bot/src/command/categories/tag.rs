@@ -29,19 +29,22 @@ const DESCRIPTION: &str = r#"
 -t delete <name>             :: Delete a tag by its name
 -t edit <name> <content>     :: Edit a tag by its name and new content
 -t list [<page, default=0>]  :: List tags created in this guild
--t info <name>               :: Get information about a tag"#;
+-t info <name>               :: Get information about a tag
+
+Tag documentation: https://gist.github.com/y21/bd58942059ca9f1162b1616ee049be19
+"#;
 
 lazy_static! {
     pub static ref TAG_COMMAND: Command = CommandBuilder::new("tag")
         .category(CATEGORY_NAME)
         .alias("t")
         .description(DESCRIPTION)
-        .availability(CommandAvailability::Private)
         .cooldown(Duration::from_secs(1))
+        .availability(CommandAvailability::Public)
         .arg(Argument::String)
         .arg(Argument::Optional(Box::new(Argument::String)))
         .arg(Argument::Optional(Box::new(Argument::StringRemaining)))
-        .usage("[create|delete|edit|list|info|<tag name>] [<tag name>] [<tag content>]")
+        .usage("[create|delete|edit|list|info|raw|<tag name>] [<tag name>] [<tag content>]")
         .example("create test hello, this is a tag")
         .example("delete test")
         .example("edit test new content")
@@ -49,6 +52,7 @@ lazy_static! {
         .example("list 2")
         .example("info test")
         .example("test")
+        .example("raw test")
         .build();
 }
 
@@ -203,6 +207,26 @@ async fn run_info_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -
     Ok(())
 }
 
+async fn run_raw_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
+    let guild_id = context.message.guild_id.unwrap().0;
+    let name = args
+        .get(1)
+        .map(|t| t.as_text())
+        .context("No tag name provided.")?;
+
+    let tag = context
+        .assyst
+        .database
+        .get_tag(guild_id.try_into()?, name)
+        .await?
+        .context("No tag found.")?;
+
+    let raw = util::codeblock(&tag.data, "");
+
+    context.reply_with_text(raw).await?;
+    Ok(())
+}
+
 async fn run_tag_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
     let guild_id = context.message.guild_id.unwrap().0;
     let name = args
@@ -268,6 +292,7 @@ pub async fn run_tag_command(
         "edit" => run_edit_subcommand(context, args).await,
         "list" => run_list_subcommand(context, args).await,
         "info" => run_info_subcommand(context, args).await,
+        "raw" => run_raw_subcommand(context, args).await,
         _ => run_tag_subcommand(context, args).await,
     }
 }
