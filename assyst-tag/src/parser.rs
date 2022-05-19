@@ -333,6 +333,7 @@ impl<'a> Parser<'a> {
             "repeat" => subtags::repeat(args),
             "range" => subtags::range(self, args),
             "eval" => subtags::eval(self, args),
+            "tryarg" => subtags::tryarg(self, args),
             "arg" => subtags::arg(self, args),
             "args" => subtags::args(self),
             "set" => subtags::set(self, args),
