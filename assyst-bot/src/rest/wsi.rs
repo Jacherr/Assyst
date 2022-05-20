@@ -869,6 +869,16 @@ pub async fn set_loop(
     run_wsi_job(assyst, job, user_id).await
 }
 
+pub async fn speechbubble(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    let job = FifoSend::SpeechBubble(FifoData::new(image.to_vec(), NoneQuery {}));
+
+    run_wsi_job(assyst, job, user_id).await
+}
+
 pub async fn spin(
     assyst: Arc<Assyst>,
     image: Bytes,
