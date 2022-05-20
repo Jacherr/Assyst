@@ -113,11 +113,11 @@ pub struct Pagination {
 pub struct Patron {
     pub user_id: UserId,
     pub tier: usize,
+    pub admin: bool,
 }
 
-
-/// I am not proud of this code but at the same time I am not proud
-/// of Patreon for making such a terrible API
+/// I am not proud of this code, but at the same time,
+/// I am not proud of Patreon for making such a terrible API
 pub async fn get_patrons(assyst: Arc<Assyst>, api_key: &str) -> Result<Vec<Patron>, Error> {
     let response = assyst
         .reqwest_client
@@ -166,6 +166,7 @@ pub async fn get_patrons(assyst: Arc<Assyst>, api_key: &str) -> Result<Vec<Patro
                 patrons.push(Patron {
                     user_id: d.clone(),
                     tier,
+                    admin: false,
                 });
             }
             _ => (),
@@ -176,6 +177,7 @@ pub async fn get_patrons(assyst: Arc<Assyst>, api_key: &str) -> Result<Vec<Patro
         patrons.push(Patron {
             user_id: UserId::from(*i),
             tier: 3,
+            admin: true,
         })
     }
 

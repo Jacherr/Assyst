@@ -56,6 +56,11 @@ pub struct Tag {
     pub created_at: i64,
 }
 
+#[derive(sqlx::FromRow, Debug)]
+pub struct DatabaseSize {
+    pub size: String,
+}
+
 impl From<DatabaseReminder> for Reminder {
     fn from(r: DatabaseReminder) -> Self {
         Reminder {
@@ -911,6 +916,14 @@ impl Database {
             .bind(offset)
             .bind(limit)
             .fetch_all(&self.pool)
+            .await
+    }
+
+    pub async fn fetch_database_size(&self) -> Result<DatabaseSize, sqlx::Error> {
+        let query = r#"SELECT pg_size_pretty(pg_database_size('assyst')) as size"#;
+
+        sqlx::query_as::<_, DatabaseSize>(query)
+            .fetch_one(&self.pool)
             .await
     }
 }
