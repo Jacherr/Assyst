@@ -438,6 +438,13 @@ pub async fn run_stats_command(
     let commands = context.assyst.registry.get_command_count().to_string();
     let proc_time = (context.assyst.get_average_processing_time().await / 1e3).to_string();
     let events = context.assyst.metrics.get_events();
+    let db_size = context
+        .assyst
+        .database
+        .fetch_database_size()
+        .await
+        .unwrap()
+        .size;
 
     let total_command_calls = context
         .assyst
@@ -480,6 +487,7 @@ pub async fn run_stats_command(
             format!("Total: {}, Server: {}", total, guild)
         }),
         ("Sessions", &sessions),
+        ("Database Size", &db_size),
     ]);
 
     let annmarie_info = info(context.assyst.clone()).await?;
