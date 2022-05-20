@@ -427,6 +427,17 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
+    pub static ref SPEECHBUBBLE_COMMAND: Command = CommandBuilder::new("speechbubble")
+        .alias("bubble")
+        .alias("speech")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("add speechbubble to image")
+        .example(consts::Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref SPIN_COMMAND: Command = CommandBuilder::new("spin")
         .arg(Argument::ImageBuffer)
         .public()
@@ -1484,6 +1495,21 @@ pub async fn run_siren_command(
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
+}
+
+pub async fn run_speechbubble_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    let raw_image = args[0].as_bytes();
+    let wsi_fn = wsi::speechbubble;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes, user_id| Box::pin(wsi_fn(assyst, bytes, user_id))),
+    )
+    .await
 }
 
 pub async fn run_spin_command(

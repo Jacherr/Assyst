@@ -179,6 +179,7 @@ impl CommandRegistry {
         register_command!(self, SIREN_COMMAND, run_siren_command);
         register_command!(self, SKETCH_COMMAND, run_sketch_command);
         register_command!(self, SOFTGLOW_COMMAND, run_bloom_command);
+        register_command!(self, SPEECHBUBBLE_COMMAND, run_speechbubble_command);
         register_command!(self, SPIN_COMMAND, run_spin_command);
         register_command!(self, SPREAD_COMMAND, run_spread_command);
         register_command!(self, STATS_COMMAND, run_stats_command);

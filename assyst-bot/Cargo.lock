@@ -1190,7 +1190,7 @@ dependencies = [
 [[package]]
 name = "magick_rust"
 version = "0.16.0"
-source = "git+https://github.com/nlfiedler/magick-rust?branch=master#faaf9acdbfb340f2bc2847940b0ca222567497bd"
+source = "git+https://github.com/nlfiedler/magick-rust?branch=master#54a35a2dab307216c13ab8dc4c2d178db71db807"
 dependencies = [
  "bindgen",
  "libc",
@@ -2078,7 +2078,7 @@ dependencies = [
 [[package]]
 name = "shared"
 version = "0.1.0"
-source = "git+https://github.com/jacherr/wsi-shared#5810b6705c6605a5f2ae45f2992a28d30138e7d0"
+source = "git+https://github.com/jacherr/wsi-shared#410cae8677bb14971c32e8c1fe9380c49e8d01df"
 dependencies = [
  "image",
  "lazy_static",
