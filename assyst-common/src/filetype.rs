@@ -76,27 +76,10 @@ pub fn get_sig(buf: &[u8]) -> Option<Type> {
         Some(Type::PNG)
     } else if check_webp(buf) {
         Some(Type::WEBP)
-    } else if sig(buf, &WEBM) {
-        Some(Type::WEBM)
-    } else {
-        None
-    }
-}
-
-pub fn get_sig_incl_mp4(buf: &[u8]) -> Option<Type> {
-    if buf.len() < 8 {
-        return None;
-    };
-    if sig(buf, &GIF) {
-        Some(Type::GIF)
-    } else if sig(buf, &JPEG) {
-        Some(Type::JPEG)
-    } else if sig(buf, &PNG) {
-        Some(Type::PNG)
-    } else if check_webp(buf) {
-        Some(Type::WEBP)
     } else if check_mp4(buf) {
         Some(Type::MP4)
+    } else if sig(buf, &WEBM) {
+        Some(Type::WEBM)
     } else {
         None
     }
