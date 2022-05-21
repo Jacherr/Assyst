@@ -31,7 +31,7 @@ const DESCRIPTION: &str = r#"
 -t list [<page, default=0>]  :: List tags created in this guild
 -t info <name>               :: Get information about a tag
 
-Tag documentation: https://gist.github.com/y21/bd58942059ca9f1162b1616ee049be19
+Tag documentation: https://jacher.io/tags
 "#;
 
 lazy_static! {
