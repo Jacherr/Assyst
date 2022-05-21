@@ -26,6 +26,7 @@ use shared::{fifo::FifoSend, job::JobResult};
 use std::{
     borrow::{Borrow, Cow},
     collections::{HashMap, HashSet},
+    iter::FromIterator,
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc,
@@ -104,6 +105,7 @@ fn message_mention_prefix(content: &str) -> Option<String> {
 ///
 /// apina
 pub struct Assyst {
+    pub blacklist: RwLock<HashSet<u64>>,
     pub guilds: Mutex<HashSet<u32>>,
     pub top_guilds: Mutex<TopGuilds>,
     pub badtranslator: BadTranslator,
@@ -144,6 +146,7 @@ impl Assyst {
             tokio::sync::mpsc::unbounded_channel::<(Sender<JobResult>, FifoSend, usize)>();
 
         let mut assyst = Assyst {
+            blacklist: RwLock::new(HashSet::new()),
             guilds: Mutex::new(HashSet::new()),
             top_guilds: Mutex::new(TopGuilds::new()),
             badtranslator: BadTranslator::new(),
@@ -171,6 +174,39 @@ impl Assyst {
 
         assyst.registry.register_commands();
         assyst
+    }
+
+    pub async fn blacklist(&self, user_id: u64) -> Result<bool, sqlx::Error> {
+        let is_new = self.blacklist.write().await.insert(user_id);
+
+        // only actually write to db if the user wasn't already blacklisted
+        if is_new {
+            self.database.add_blacklist(user_id).await.map(|_| true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub async fn unblacklist(&self, user_id: u64) -> Result<bool, sqlx::Error> {
+        let is_removed = self.blacklist.write().await.remove(&user_id);
+
+        // sync with db if it was found
+        if is_removed {
+            self.database.remove_blacklist(user_id).await.map(|_| true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub async fn is_blacklisted(&self, user_id: u64) -> bool {
+        self.blacklist.read().await.contains(&user_id)
+    }
+
+    pub async fn initialize_blacklist(&self) -> Result<(), sqlx::Error> {
+        let remote_blacklist = self.database.get_blacklisted_users().await?;
+        let blacklist = HashSet::from_iter(remote_blacklist.into_iter().map(|(u,)| u as u64));
+        *self.blacklist.write().await = blacklist;
+        Ok(())
     }
 
     pub fn send_to_wsi(&self, sender: Sender<JobResult>, job: FifoSend, premium_level: usize) {
@@ -220,8 +256,7 @@ impl Assyst {
             return Ok(());
         }
 
-        // checking if user is blackisted from bot
-        if self.config.user.blacklist.contains(&message.author.id.0) {
+        if self.is_blacklisted(message.author.id.0).await {
             return Ok(());
         }
 

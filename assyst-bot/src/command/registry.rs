@@ -1,6 +1,6 @@
 use super::command::{Command, ParsedArgument, ParsedCommand, ParsedFlags};
 use super::{
-    categories::{codesprint::*, fun::*, image_annmarie::*, image_wsi::*, misc::*, tag::*},
+    categories::{fun::*, image_annmarie::*, image_wsi::*, misc::*, tag::*},
     command::CommandAvailability,
 };
 use crate::command::context::Context;
@@ -120,7 +120,6 @@ impl CommandRegistry {
         register_command!(self, CARD_COMMAND, run_card_command);
         register_command!(self, CHARS_COMMAND, run_chars_command);
         register_command!(self, CIRCUITBOARD_COMMAND, run_circuitboard_command);
-        register_command!(self, CODESPRINT_COMMAND, run_codesprint_command);
         register_command!(self, COLOR_COMMAND, run_color_command);
         register_command!(self, COMMAND_COMMAND, run_command_command);
         register_command!(self, DRIP_COMMAND, run_drip_command);
@@ -201,5 +200,7 @@ impl CommandRegistry {
         register_command!(self, UNCAPTION_COMMAND, run_uncaption_command);
         register_command!(self, TAG_COMMAND, run_tag_command);
         register_command!(self, TOP_GUILDS_COMMAND, run_top_guilds_command);
+        register_command!(self, BLACKLIST_COMMAND, run_blacklist_command);
+        register_command!(self, UNBLACKLIST_COMMAND, run_unblacklist_command);
     }
 }

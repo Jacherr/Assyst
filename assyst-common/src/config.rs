@@ -65,7 +65,6 @@ pub struct Url {
 #[derive(Clone, Deserialize)]
 pub struct User {
     pub admins: HashSet<u64>,
-    pub blacklist: HashSet<u64>,
 }
 
 #[derive(Clone, Deserialize)]
