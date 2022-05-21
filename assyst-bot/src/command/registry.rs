@@ -129,7 +129,6 @@ impl CommandRegistry {
         register_command!(self, FAKE_EVAL_COMMAND, run_fake_eval_command);
         register_command!(self, FEMURBREAKER_COMMAND, run_femurbreaker_command);
         register_command!(self, FISHEYE_COMMAND, run_fisheye_command);
-        register_command!(self, FIX_TRANSPARENCY_COMMAND, run_fix_transparency_command);
         register_command!(self, FLAG_COMMAND, run_flag_command);
         register_command!(self, FLIP_COMMAND, run_flip_command);
         register_command!(self, FLOP_COMMAND, run_flop_command);
@@ -202,5 +201,6 @@ impl CommandRegistry {
         register_command!(self, TOP_GUILDS_COMMAND, run_top_guilds_command);
         register_command!(self, BLACKLIST_COMMAND, run_blacklist_command);
         register_command!(self, UNBLACKLIST_COMMAND, run_unblacklist_command);
+        register_command!(self, VIDEOTOGIF_COMMAND, run_videotogif_command);
     }
 }

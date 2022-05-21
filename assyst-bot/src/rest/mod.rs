@@ -423,10 +423,7 @@ pub async fn healthcheck(assyst: Arc<Assyst>) -> Vec<HealthcheckResult> {
     ));
 
     let status = downloader::healthcheck(&assyst).await;
-    results.push(HealthcheckResult::new(
-        "Content download proxy".into(),
-        status,
-    ));
+    results.push(HealthcheckResult::new("Content Proxy".into(), status));
 
     results
 }

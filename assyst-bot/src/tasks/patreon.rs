@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use tokio::time::sleep;
-use twilight_model::id::{ChannelId, GuildId, RoleId, UserId};
+use twilight_model::id::ChannelId;
 
 use crate::{assyst::Assyst, rest::patreon::get_patrons};
 
