@@ -872,19 +872,14 @@ impl Database {
         let query =
             r#"UPDATE tags SET data = $1 WHERE name = $2 AND author = $3 AND guild_id = $4"#;
 
-        let result = sqlx::query(query)
+        sqlx::query(query)
             .bind(new_content)
             .bind(name)
             .bind(author)
             .bind(guild_id)
             .execute(&self.pool)
-            .await;
-
-        match result {
-            Ok(_) => Ok(true),
-            Err(sqlx::Error::RowNotFound) => Ok(false),
-            Err(e) => Err(e),
-        }
+            .await
+            .map(|r| r.rows_affected() > 0)
     }
 
     pub async fn get_tag(&self, guild_id: i64, name: &str) -> Result<Option<Tag>, sqlx::Error> {
