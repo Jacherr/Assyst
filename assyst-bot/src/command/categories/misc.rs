@@ -151,6 +151,18 @@ lazy_static! {
         .cooldown(Duration::from_secs(2))
         .category(CATEGORY_NAME)
         .build();
+    pub static ref BLACKLIST_COMMAND: Command = CommandBuilder::new("blacklist")
+        .availability(CommandAvailability::Private)
+        .arg(Argument::String)
+        .description("blacklist a user from using the bot")
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref UNBLACKLIST_COMMAND: Command = CommandBuilder::new("unblacklist")
+        .availability(CommandAvailability::Private)
+        .arg(Argument::String)
+        .description("unblacklist a user")
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref TOP_GUILDS_COMMAND: Command = CommandBuilder::new("topguilds")
         .alias("tg")
         .availability(CommandAvailability::Private)
@@ -1139,4 +1151,40 @@ pub async fn run_healthcheck_command(
         .await?;
 
     Ok(())
+}
+
+pub async fn run_blacklist_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    let user_id = args[0].as_text().parse::<u64>()?;
+    let added = context.assyst.blacklist(user_id).await?;
+
+    if !added {
+        bail!("User is already blacklisted");
+    }
+
+    context
+        .reply_with_text("Successfully blacklisted user")
+        .await
+        .map(|_| ())
+}
+
+pub async fn run_unblacklist_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    let user_id = args[0].as_text().parse::<u64>()?;
+    let removed = context.assyst.unblacklist(user_id).await?;
+
+    if !removed {
+        bail!("User is not blacklisted");
+    }
+
+    context
+        .reply_with_text("Successfully unblacklisted user")
+        .await
+        .map(|_| ())
 }

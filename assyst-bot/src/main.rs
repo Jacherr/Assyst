@@ -106,6 +106,8 @@ async fn main() -> anyhow::Result<()> {
         assyst.initialize_bt().await;
     }
 
+    assyst.initialize_blacklist().await?;
+
     // Event loop
     while let Some((_, event)) = events.next().await {
         let assyst_clone = assyst.clone();

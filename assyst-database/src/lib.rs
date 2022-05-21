@@ -926,6 +926,34 @@ impl Database {
             .fetch_one(&self.pool)
             .await
     }
+
+    pub async fn get_blacklisted_users(&self) -> Result<Vec<(i64,)>, sqlx::Error> {
+        let query = r#"SELECT user_id FROM blacklist"#;
+
+        sqlx::query_as::<_, (i64,)>(query)
+            .fetch_all(&self.pool)
+            .await
+    }
+
+    pub async fn add_blacklist(&self, user_id: u64) -> Result<(), sqlx::Error> {
+        let query = r#"INSERT INTO blacklist VALUES ($1)"#;
+
+        sqlx::query(query)
+            .bind(user_id as i64)
+            .execute(&self.pool)
+            .await
+            .map(|_| ())
+    }
+
+    pub async fn remove_blacklist(&self, user_id: u64) -> Result<(), sqlx::Error> {
+        let query = r#"DELETE FROM blacklist WHERE user_id = $1"#;
+
+        sqlx::query(query)
+            .bind(user_id as i64)
+            .execute(&self.pool)
+            .await
+            .map(|_| ())
+    }
 }
 
 fn is_unique_violation(error: &sqlx::Error) -> bool {
