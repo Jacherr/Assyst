@@ -936,6 +936,16 @@ pub async fn uncaption(
     run_wsi_job(assyst, job, user_id).await
 }
 
+pub async fn videotogif(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    let job = FifoSend::VideoToGif(FifoData::new(image.to_vec(), NoneQuery {}));
+
+    run_wsi_job(assyst, job, user_id).await
+}
+
 pub async fn wall(
     assyst: Arc<Assyst>,
     image: Bytes,

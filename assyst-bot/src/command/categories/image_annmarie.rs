@@ -116,6 +116,7 @@ lazy_static! {
         .usage("[image]")
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
+        .disable()
         .build();
     pub static ref QUOTE_COMMAND: Command = CommandBuilder::new("quote")
         .arg(Argument::StringRemaining)

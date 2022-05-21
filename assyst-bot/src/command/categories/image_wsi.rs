@@ -85,16 +85,6 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
-    pub static ref FIX_TRANSPARENCY_COMMAND: Command = CommandBuilder::new("fixtransparency")
-        .alias("ft")
-        .arg(Argument::ImageBuffer)
-        .public()
-        .description("if a command breaks image transparency, this command may fix it")
-        .example(consts::Y21)
-        .usage("[image]")
-        .cooldown(Duration::from_secs(4))
-        .category(CATEGORY_NAME)
-        .build();
     /*pub static ref FLASH_COMMAND: Command = CommandBuilder::new("flash")
         .arg(Argument::ImageBuffer)
         .public()
@@ -502,6 +492,18 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
+    pub static ref VIDEOTOGIF_COMMAND: Command = CommandBuilder::new("video2gif")
+        .alias("vid2gif")
+        .alias("v2g")
+        .alias("togif")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("turn a video to a gif")
+        .example(consts::Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref WALL_COMMAND: Command = CommandBuilder::new("wall")
         .arg(Argument::ImageBuffer)
         .public()
@@ -872,21 +874,6 @@ pub async fn run_drip_command(
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
-}
-
-pub async fn run_fix_transparency_command(
-    context: Arc<Context>,
-    args: Vec<ParsedArgument>,
-    _flags: ParsedFlags,
-) -> CommandResult {
-    let raw_image = args[0].as_bytes();
-    let wsi_fn = wsi::fix_transparency;
-    run_wsi_noarg_command(
-        context,
-        raw_image,
-        Box::new(move |assyst, bytes, user_id| Box::pin(wsi_fn(assyst, bytes, user_id))),
-    )
-    .await
 }
 
 /*pub async fn run_flash_command(context: Arc<Context>, args: Vec<ParsedArgument>, _flags: ParsedFlags,
@@ -1617,6 +1604,21 @@ pub async fn run_terraria_command(
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())
+}
+
+pub async fn run_videotogif_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    let raw_image = args[0].as_bytes();
+    let wsi_fn = wsi::videotogif;
+    run_wsi_noarg_command(
+        context,
+        raw_image,
+        Box::new(move |assyst, bytes, user_id| Box::pin(wsi_fn(assyst, bytes, user_id))),
+    )
+    .await
 }
 
 pub async fn run_wall_command(

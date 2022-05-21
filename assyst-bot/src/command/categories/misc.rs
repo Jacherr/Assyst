@@ -66,7 +66,7 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .build();
     pub static ref HEALTHCHECK_COMMAND: Command = CommandBuilder::new("healthcheck")
-        .availability(CommandAvailability::GuildOwner)
+        .availability(CommandAvailability::Public)
         .description("check health of apis assyst uses")
         .cooldown(Duration::from_secs(5))
         .category(CATEGORY_NAME)
@@ -316,7 +316,7 @@ pub async fn run_help_command(
             .registry
             .commands
             .values()
-            .filter(|a| a.availability != CommandAvailability::Private)
+            .filter(|a| a.availability != CommandAvailability::Private && a.disabled == false)
         {
             if unique_command_names.contains(&&i.name) {
                 continue;

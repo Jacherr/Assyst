@@ -264,7 +264,7 @@ async fn run_tag_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) ->
                 let output = (!output.is_empty()).then(|| output);
 
                 context
-                    .reply_with_image_and_text(ty.as_mime_str(), buffer, output)
+                    .reply_with_image_and_text(ty.as_mime(), buffer, output)
                     .await?;
             } else {
                 context.reply_with_text(output).await?;
