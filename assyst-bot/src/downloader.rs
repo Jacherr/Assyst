@@ -24,7 +24,7 @@ impl fmt::Display for DownloadError {
         match self {
             DownloadError::ProxyNetworkError => write!(f, "Failed to connect to proxy"),
             DownloadError::InvalidStatus => write!(f, "Invalid status received from proxy"),
-            DownloadError::LimitExceeded(b) => write!(f, "Content download exceeded byte limit ({})", b),
+            DownloadError::LimitExceeded(b) => write!(f, "The output file exceeded the maximum file size limit of {}MB. Try using a smaller input. ({})", b / 1000 / 1000),
             DownloadError::Url(e) => write!(f, "Failed to parse URL: {}", e),
             DownloadError::NoHost => write!(f, "No host found in URL"),
             DownloadError::Reqwest(e) => write!(f, "{}", e),
