@@ -1,5 +1,5 @@
 use anyhow::Context as _;
-use assyst_common::consts;
+use assyst_common::consts::{self, ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES};
 use bytes::Bytes;
 use std::time::Instant;
 use tokio::sync::Mutex;
@@ -115,6 +115,12 @@ impl Context {
         }
 
         if buffer.len() > consts::WORKING_FILESIZE_LIMIT_BYTES {
+            if buffer.len() > ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES {
+                return Err(anyhow::anyhow!(
+                    "The output file exceeded the maximum file size limit of {}MB. Try using a smaller input.",
+                    ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES / 1000 / 1000
+                ));
+            }
             let url = crate::rest::upload_to_filer(self.assyst.clone(), buffer, &format).await?;
             let builder = builder.content(url.into_boxed_str());
             self.reply(builder).await
