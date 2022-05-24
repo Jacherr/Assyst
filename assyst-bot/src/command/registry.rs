@@ -202,5 +202,6 @@ impl CommandRegistry {
         register_command!(self, BLACKLIST_COMMAND, run_blacklist_command);
         register_command!(self, UNBLACKLIST_COMMAND, run_unblacklist_command);
         register_command!(self, VIDEOTOGIF_COMMAND, run_videotogif_command);
+        register_command!(self, DREAM_COMMAND, run_dream_command);
     }
 }
