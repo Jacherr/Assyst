@@ -40,7 +40,7 @@ pub fn init_metrics_collect_loop(cluster: Cluster, assyst: Arc<Assyst>) -> anyho
             for shard in cluster.shards() {
                 if !up_shards.contains(&i) {
                     logger::info(&assyst, &format!("Shard {} is starting", i));
-                    shard.start().await;
+                    shard.start().await.unwrap();
                 }
 
                 match shard.info() {
