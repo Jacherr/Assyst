@@ -118,7 +118,7 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .build();
     pub static ref DREAM_COMMAND: Command = CommandBuilder::new("dream")
-        .arg(Argument::String)
+        .arg(Argument::StringRemaining)
         .flag("style", Some(FlagKind::Text))
         .public()
         .description("generates art based on a prompt")
