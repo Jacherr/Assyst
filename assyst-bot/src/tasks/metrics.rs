@@ -27,7 +27,7 @@ pub fn init_metrics_collect_loop(cluster: Cluster, assyst: Arc<Assyst>) -> anyho
                 }
             };
 
-            let up_shards = Vec::<u64>::new();
+            let mut up_shards = Vec::<u64>::new();
             let cluster_info = cluster.info();
             for shard in cluster_info {
                 if shard.1.stage() == Stage::Connected {
