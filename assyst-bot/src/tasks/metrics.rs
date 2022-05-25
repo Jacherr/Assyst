@@ -4,7 +4,7 @@ use crate::{assyst::Assyst, logger, util};
 use prometheus::{register_gauge, register_int_gauge_vec};
 use std::time::Duration;
 use tokio::time::sleep;
-use twilight_gateway::Cluster;
+use twilight_gateway::{Cluster, shard::Stage};
 
 pub fn init_metrics_collect_loop(cluster: Cluster, assyst: Arc<Assyst>) -> anyhow::Result<()> {
     let memory_counter = register_gauge!("memory_usage", "Memory usage in MB")?;
