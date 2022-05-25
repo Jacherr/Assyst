@@ -39,9 +39,10 @@ pub fn init_metrics_collect_loop(cluster: Cluster, assyst: Arc<Assyst>) -> anyho
             let mut i: u64 = 0;
             for shard in cluster.shards() {
                 if !up_shards.contains(&i) {
-                    logger::info(&assyst, &format!("Shard {} is starting", i));
+                    logger::info(&assyst, &format!("Shard {} is starting", i)).await;
                     shard.start().await.unwrap();
                 }
+                i += 1;
 
                 match shard.info() {
                     Ok(info) => {
