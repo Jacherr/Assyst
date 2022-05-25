@@ -126,6 +126,7 @@ lazy_static! {
         .example("haunted forest -style psychic")
         .usage("[prompt]")
         .category(CATEGORY_NAME)
+        .cooldown(Duration::from_secs(6))
         .build();
 }
 
