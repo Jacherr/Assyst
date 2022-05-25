@@ -13,7 +13,7 @@ pub fn init_metrics_collect_loop(cluster: Cluster, assyst: Arc<Assyst>) -> anyho
     tokio::spawn(async move {
         loop {
             // gives time for shards to start before collecting info about them
-            sleep(Duration::from_secs(15)).await;
+            sleep(Duration::from_secs(150)).await;
 
             // collect memory usage
             match util::get_memory_usage_num() {
