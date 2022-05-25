@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
 use crate::{assyst::Assyst, logger, util};
 use prometheus::{register_gauge, register_int_gauge_vec};

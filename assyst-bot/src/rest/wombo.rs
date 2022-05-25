@@ -1,6 +1,6 @@
-use std::str::FromStr;
-
+use reqwest::Error;
 use serde::Deserialize;
+use std::str::FromStr;
 
 use crate::assyst::Assyst;
 
@@ -95,15 +95,35 @@ pub const STYLE_LIST: &[&str] = &[
     "rosegold",
 ];
 
+#[derive(Debug)]
+pub enum WomboError {
+    Reqwest(Error),
+    Wombo(String),
+}
+impl From<Error> for WomboError {
+    fn from(e: Error) -> Self {
+        WomboError::Reqwest(e)
+    }
+}
+impl std::fmt::Display for WomboError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WomboError::Reqwest(e) => write!(f, "Reqwest error: {}", e),
+            WomboError::Wombo(s) => write!(f, "Wombo error: {}", s),
+        }
+    }
+}
+impl std::error::Error for WomboError {}
+
 pub async fn generate(
     assyst: &Assyst,
     style: WomboStyle,
     prompt: &str,
-) -> reqwest::Result<WomboResponse> {
+) -> Result<WomboResponse, WomboError> {
     let style = style as u8;
     let url = assyst.config.url.wombo.as_ref();
 
-    assyst
+    let req = assyst
         .reqwest_client
         .get(url)
         .query(&[
@@ -111,7 +131,14 @@ pub async fn generate(
             ("message", prompt.to_string()),
         ])
         .send()
-        .await?
-        .json()
-        .await
+        .await?;
+
+    match req.status() {
+        reqwest::StatusCode::OK => Ok(req.json().await?),
+        _ => Err(WomboError::Wombo(format!(
+            "Error {}: {}",
+            req.status(),
+            req.text().await?
+        ))),
+    }
 }
