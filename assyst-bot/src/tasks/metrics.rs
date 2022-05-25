@@ -1,10 +1,10 @@
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use crate::{assyst::Assyst, logger, util};
 use prometheus::{register_gauge, register_int_gauge_vec};
 use std::time::Duration;
 use tokio::time::sleep;
-use twilight_gateway::{Cluster, shard::Stage};
+use twilight_gateway::{shard::Stage, Cluster};
 
 pub fn init_metrics_collect_loop(cluster: Cluster, assyst: Arc<Assyst>) -> anyhow::Result<()> {
     let memory_counter = register_gauge!("memory_usage", "Memory usage in MB")?;
@@ -27,8 +27,22 @@ pub fn init_metrics_collect_loop(cluster: Cluster, assyst: Arc<Assyst>) -> anyho
                 }
             };
 
+            let up_shards = Vec::<u64>::new();
+            let cluster_info = cluster.info();
+            for shard in cluster_info {
+                if shard.1.stage() == Stage::Ready {
+                    up_shards.push(shard.0);
+                }
+            }
+
             // collect latency of each shard
+            let mut i: u64 = 0;
             for shard in cluster.shards() {
+                if !up_shards.contains(&i) {
+                    logger::info(&assyst, &format!("Shard {} is starting", i));
+                    shard.start().await;
+                }
+
                 match shard.info() {
                     Ok(info) => {
                         let lat = match info.latency().average().map(|d| d.as_millis()) {
