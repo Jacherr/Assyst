@@ -69,13 +69,14 @@ async fn main() -> anyhow::Result<()> {
         .await?;
 
     let spawned_cluster = cluster.clone();
-    tokio::spawn(async move { spawned_cluster.up().await });
-
-    let cluster_info = cluster.info();
-    for shard in cluster_info {
-        logger::info(&assyst, &format!("Shard {} is {}", shard.0, shard.1.stage()))
-            .await;
-    }
+    let a = assyst.clone();
+    tokio::spawn(async move {
+        spawned_cluster.up().await;
+        let cluster_info = spawned_cluster.info();
+        for shard in cluster_info {
+            logger::info(&a, &format!("Shard {} is {}", shard.0, shard.1.stage())).await;
+        }
+    });
 
     // Tasks
     tasks::init_bot_list_posting_loop(assyst.clone());
