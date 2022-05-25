@@ -33,6 +33,7 @@ pub mod identify;
 pub mod maryjane;
 pub mod patreon;
 pub mod rust;
+pub mod wombo;
 pub mod wsi;
 
 mod routes {

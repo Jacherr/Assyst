@@ -1,13 +1,15 @@
 use crate::{
     command::{
-        command::{Argument, Command, CommandBuilder, ParsedArgument, ParsedFlags},
+        command::{Argument, Command, CommandBuilder, FlagKind, ParsedArgument, ParsedFlags},
         context::Context,
         registry::CommandResult,
     },
+    downloader,
     rest::{
         self,
         bt::translate_single,
         bt::{bad_translate, TranslateResult, Translation},
+        wombo::{WomboResponse, WomboResponseResult, WomboStyle},
     },
     util::{codeblock, ensure_guild_manager, normalize_emojis},
 };
@@ -113,6 +115,16 @@ lazy_static! {
         .example("[file]")
         .usage("[file]")
         .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref DREAM_COMMAND: Command = CommandBuilder::new("dream")
+        .arg(Argument::StringRemaining)
+        .flag("style", Some(FlagKind::Text))
+        .public()
+        .description("generates art based on a prompt")
+        .example("haunted forest")
+        .example("haunted forest -style psychic")
+        .usage("[prompt]")
         .category(CATEGORY_NAME)
         .build();
 }
@@ -486,4 +498,38 @@ pub async fn run_towav_command(
     context.reply_with_file("audio/wav", output).await?;
 
     Ok(())
+}
+
+pub async fn run_dream_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    flags: ParsedFlags,
+) -> CommandResult {
+    context.reply_with_text("processing...").await?;
+
+    let prompt = args[0].as_text();
+
+    let style = match flags.get("style") {
+        Some(Some(flag)) => flag.as_text().parse::<WomboStyle>().map_err(|_| {
+            let styles = rest::wombo::STYLE_LIST.join(", ");
+            anyhow::anyhow!("Invalid style. Must be one of: {styles}")
+        })?,
+        _ => WomboStyle::None,
+    };
+
+    let WomboResponse {
+        result: WomboResponseResult { url },
+    } = rest::wombo::generate(&context.assyst, style, prompt).await?;
+
+    let file = downloader::download_content(
+        &context.assyst,
+        &url,
+        consts::ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES,
+    )
+    .await?;
+
+    context
+        .reply_with_image("jpg", file.into())
+        .await
+        .map(|_| ())
 }
