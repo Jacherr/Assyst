@@ -45,7 +45,7 @@ pub struct WomboErrorResponse {
 
 #[derive(Clone, Copy)]
 pub enum WomboStyle {
-    Psychadelic = 21,
+    Psychedelic = 21,
     Surreal = 23,
     Synthwave = 1,
     Ghibli = 22,
@@ -59,17 +59,17 @@ pub enum WomboStyle {
     Baroque = 13,
     Etching = 14,
     Sdali = 15,
-    Wuhercuhler = 16,
+    Wuhtercuhler = 16,
     Provenance = 17,
-    MoonWalker = 19,
-    BlackLight = 20,
+    Moonwalker = 19,
+    Blacklight = 20,
     None = 3,
     Ukiyoe = 2,
     RoseGold = 18,
 }
 
 static WOMBO_STYLES: phf::Map<&'static str, WomboStyle> = phf_map! {
-    "psychadelic" => WomboStyle::Psychadelic,
+    "psychedelic" => WomboStyle::Psychedelic,
     "surreal" => WomboStyle::Surreal,
     "synthwave" => WomboStyle::Synthwave,
     "ghibli" => WomboStyle::Ghibli,
@@ -83,10 +83,10 @@ static WOMBO_STYLES: phf::Map<&'static str, WomboStyle> = phf_map! {
     "baroque" => WomboStyle::Baroque,
     "etching" => WomboStyle::Etching,
     "sdali" => WomboStyle::Sdali,
-    "wuhercuhler" => WomboStyle::Wuhercuhler,
+    "wuhtercuhler" => WomboStyle::Wuhtercuhler,
     "provenance" => WomboStyle::Provenance,
-    "moonwalker" => WomboStyle::MoonWalker,
-    "blacklight" => WomboStyle::BlackLight,
+    "moonwalker" => WomboStyle::Moonwalker,
+    "blacklight" => WomboStyle::Blacklight,
     "none" => WomboStyle::None,
     "ukiyoe" => WomboStyle::Ukiyoe,
     "rosegold" => WomboStyle::RoseGold,
