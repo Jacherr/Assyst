@@ -71,6 +71,7 @@ dependencies = [
  "jemallocator",
  "lazy_static",
  "phf 0.10.1",
+ "phf_macros 0.10.0",
  "prometheus",
  "rand 0.8.5",
  "regex",
@@ -1537,9 +1538,7 @@ version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fabbf1ead8a5bcbc20f5f8b939ee3f5b0f6f281b6ad3468b84656b658b455259"
 dependencies = [
- "phf_macros 0.10.0",
  "phf_shared 0.10.0",
- "proc-macro-hack",
 ]
 
 [[package]]
