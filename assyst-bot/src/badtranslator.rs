@@ -138,18 +138,18 @@ impl BadTranslator {
 
     /// Returns true if given user ID is ratelimited
     pub async fn try_ratelimit(&self, id: &UserId) -> bool {
-        let cache = self.ratelimits.read().await;
+        let mut cache = self.ratelimits.write().await;
 
         if let Some(entry) = cache.get(&id.0) {
             let expired = entry.expired();
+
             if !expired {
                 return true;
+            } else {
+                cache.remove(&id.0);
+                return false;
             }
         }
-
-        drop(cache);
-
-        let mut cache = self.ratelimits.write().await;
 
         cache.insert(id.0, BadTranslatorRatelimit::new());
 
