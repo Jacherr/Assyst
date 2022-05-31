@@ -511,10 +511,7 @@ pub async fn run_dream_command(
     let prompt = args[0].as_text();
 
     let style = match flags.get("style") {
-        Some(Some(flag)) => flag.as_text().parse::<WomboStyle>().map_err(|_| {
-            let styles = rest::wombo::STYLE_LIST.join(", ");
-            anyhow::anyhow!("Invalid style. Must be one of: {styles}")
-        })?,
+        Some(Some(flag)) => flag.as_text().parse::<WomboStyle>()?,
         _ => WomboStyle::None,
     };
 

@@ -1,5 +1,7 @@
+use phf::phf_map;
 use reqwest::Error;
 use serde::Deserialize;
+use serde_repr::Deserialize_repr;
 use std::str::FromStr;
 
 use crate::assyst::Assyst;
@@ -15,9 +17,35 @@ pub struct WomboResponse {
     pub result: WomboResponseResult,
 }
 
+// https://github.com/y21/wombo-dream-api/blob/server/src/server.ts#L9
+#[derive(Deserialize_repr, Debug)]
+#[repr(u8)]
+pub enum WomboErrorCode {
+    MalformedQuery = 0,
+    Timeout = 1,
+    Ratelimit = 2,
+    TaskFail = 3,
+}
+
+impl std::fmt::Display for WomboErrorCode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WomboErrorCode::MalformedQuery => write!(f, "Malformed query parameters"),
+            WomboErrorCode::Timeout => write!(f, "Task timed out"),
+            WomboErrorCode::Ratelimit => write!(f, "Bot is currently rate limited"),
+            WomboErrorCode::TaskFail => write!(f, "Task failed due to an unknown reason"),
+        }
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct WomboErrorResponse {
+    pub code: WomboErrorCode,
+}
+
 #[derive(Clone, Copy)]
 pub enum WomboStyle {
-    Psychadelic = 21,
+    Psychedelic = 21,
     Surreal = 23,
     Synthwave = 1,
     Ghibli = 22,
@@ -31,75 +59,74 @@ pub enum WomboStyle {
     Baroque = 13,
     Etching = 14,
     Sdali = 15,
-    Wuhercuhler = 16,
+    Wuhtercuhler = 16,
     Provenance = 17,
-    MoonWalker = 19,
-    BlackLight = 20,
+    Moonwalker = 19,
+    Blacklight = 20,
     None = 3,
     Ukiyoe = 2,
     RoseGold = 18,
 }
 
-impl FromStr for WomboStyle {
-    type Err = ();
+static WOMBO_STYLES: phf::Map<&'static str, WomboStyle> = phf_map! {
+    "psychedelic" => WomboStyle::Psychedelic,
+    "surreal" => WomboStyle::Surreal,
+    "synthwave" => WomboStyle::Synthwave,
+    "ghibli" => WomboStyle::Ghibli,
+    "steampunk" => WomboStyle::Steampunk,
+    "fantasy" => WomboStyle::Fantasy,
+    "vibrant" => WomboStyle::Vibrant,
+    "hd" => WomboStyle::Hd,
+    "psychic" => WomboStyle::Psychic,
+    "darkfantasy" => WomboStyle::DarkFantasy,
+    "mystical" => WomboStyle::Mystical,
+    "baroque" => WomboStyle::Baroque,
+    "etching" => WomboStyle::Etching,
+    "sdali" => WomboStyle::Sdali,
+    "wuhtercuhler" => WomboStyle::Wuhtercuhler,
+    "provenance" => WomboStyle::Provenance,
+    "moonwalker" => WomboStyle::Moonwalker,
+    "blacklight" => WomboStyle::Blacklight,
+    "none" => WomboStyle::None,
+    "ukiyoe" => WomboStyle::Ukiyoe,
+    "rosegold" => WomboStyle::RoseGold,
+};
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "psychadelic" => Ok(WomboStyle::Psychadelic),
-            "surreal" => Ok(WomboStyle::Surreal),
-            "synthwave" => Ok(WomboStyle::Synthwave),
-            "ghibli" => Ok(WomboStyle::Ghibli),
-            "steampunk" => Ok(WomboStyle::Steampunk),
-            "fantasy" => Ok(WomboStyle::Fantasy),
-            "vibrant" => Ok(WomboStyle::Vibrant),
-            "hd" => Ok(WomboStyle::Hd),
-            "psychic" => Ok(WomboStyle::Psychic),
-            "darkfantasy" => Ok(WomboStyle::DarkFantasy),
-            "mystical" => Ok(WomboStyle::Mystical),
-            "baroque" => Ok(WomboStyle::Baroque),
-            "etching" => Ok(WomboStyle::Etching),
-            "sdali" => Ok(WomboStyle::Sdali),
-            "wuhercuhler" => Ok(WomboStyle::Wuhercuhler),
-            "provenance" => Ok(WomboStyle::Provenance),
-            "moonwalker" => Ok(WomboStyle::MoonWalker),
-            "blacklight" => Ok(WomboStyle::BlackLight),
-            "none" => Ok(WomboStyle::None),
-            "ukiyoe" => Ok(WomboStyle::Ukiyoe),
-            "rosegold" => Ok(WomboStyle::RoseGold),
-            _ => Err(()),
+#[derive(Debug)]
+pub struct UnknownStyle;
+
+impl std::fmt::Display for UnknownStyle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Unknown style provided. Valid styles: ")?;
+
+        for (index, key) in WOMBO_STYLES.keys().enumerate() {
+            if index > 0 {
+                write!(f, ", ")?;
+            }
+
+            write!(f, "{key}")?;
         }
+
+        Ok(())
     }
 }
 
-pub const STYLE_LIST: &[&str] = &[
-    "psychadelic",
-    "surreal",
-    "synthwave",
-    "ghibli",
-    "steampunk",
-    "fantasy",
-    "vibrant",
-    "hd",
-    "psychic",
-    "darkfantasy",
-    "mystical",
-    "baroque",
-    "etching",
-    "sdali",
-    "wuhercuhler",
-    "provenance",
-    "moonwalker",
-    "blacklight",
-    "none",
-    "ukiyoe",
-    "rosegold",
-];
+impl std::error::Error for UnknownStyle {}
+
+impl FromStr for WomboStyle {
+    type Err = UnknownStyle;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        WOMBO_STYLES.get(s).copied().ok_or(UnknownStyle)
+    }
+}
 
 #[derive(Debug)]
 pub enum WomboError {
     Reqwest(Error),
-    Wombo(String),
+    Wombo(WomboErrorCode),
 }
+
 impl From<Error> for WomboError {
     fn from(e: Error) -> Self {
         WomboError::Reqwest(e)
@@ -108,8 +135,8 @@ impl From<Error> for WomboError {
 impl std::fmt::Display for WomboError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            WomboError::Reqwest(e) => write!(f, "Reqwest error: {}", e),
-            WomboError::Wombo(s) => write!(f, "Wombo error: {}", s),
+            WomboError::Reqwest(e) => write!(f, "Reqwest error: {e}"),
+            WomboError::Wombo(s) => write!(f, "Wombo error: {s}"),
         }
     }
 }
@@ -133,12 +160,11 @@ pub async fn generate(
         .send()
         .await?;
 
-    match req.status() {
-        reqwest::StatusCode::OK => Ok(req.json().await?),
-        _ => Err(WomboError::Wombo(format!(
-            "Error {}: {}",
-            req.status(),
-            req.text().await?
-        ))),
+    if req.status().is_success() {
+        let resp = req.json::<WomboResponse>().await?;
+        Ok(resp)
+    } else {
+        let resp = req.json::<WomboErrorResponse>().await?;
+        Err(WomboError::Wombo(resp.code))
     }
 }
