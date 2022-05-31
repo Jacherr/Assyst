@@ -11,6 +11,7 @@ pub fn init_metrics_collect_loop(cluster: Cluster, assyst: Arc<Assyst>) -> anyho
     let latency = register_int_gauge_vec!("latency", "Gateway latency", &["shard"])?;
     let health = register_int_gauge_vec!("service_ping", "Service ping", &["service"])?;
     let commands_usage = register_int_gauge_vec!("commands_usage", "Commands usage", &["command"])?;
+    let cache_size = register_int_gauge_vec!("cache_sizes", "Cache sizes", &["cache"])?;
 
     tokio::spawn(async move {
         loop {
@@ -82,6 +83,27 @@ pub fn init_metrics_collect_loop(cluster: Cluster, assyst: Arc<Assyst>) -> anyho
                 let counter = commands_usage.with_label_values(&[&command.command_name]);
                 counter.set(command.uses as i64);
             }
+
+            let replies_size = assyst.replies.read().await.size();
+            let ratelimits_size = assyst.command_ratelimits.read().await.size();
+            let prefixes_size = assyst.database.cache.read().await.prefixes.keys().len();
+            let disabled_commands_size = assyst
+                .database
+                .cache
+                .read()
+                .await
+                .disabled_commands
+                .cache
+                .keys()
+                .len();
+            let counter = cache_size.with_label_values(&["replies"]);
+            counter.set(replies_size as i64);
+            let counter = cache_size.with_label_values(&["ratelimits"]);
+            counter.set(ratelimits_size as i64);
+            let counter = cache_size.with_label_values(&["prefixes"]);
+            counter.set(prefixes_size as i64);
+            let counter = cache_size.with_label_values(&["disabled_commands"]);
+            counter.set(disabled_commands_size as i64);
         }
     });
 
