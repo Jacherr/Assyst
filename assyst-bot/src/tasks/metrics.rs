@@ -69,7 +69,7 @@ pub fn init_metrics_collect_loop(cluster: Cluster, assyst: Arc<Assyst>) -> anyho
             let healthcheck_result = assyst.healthcheck_result.lock().await.1;
             for result in healthcheck_result {
                 let counter = health.with_label_values(&[&result.service]);
-                if let ServiceStatus::Online(x) = result {
+                if let ServiceStatus::Online(x) = result.status {
                     counter.set(x as i64);
                 } else {
                     counter.set(-100);
