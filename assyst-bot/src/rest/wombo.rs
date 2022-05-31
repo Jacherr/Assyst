@@ -1,4 +1,3 @@
-use phf::phf_map;
 use reqwest::Error;
 use serde::Deserialize;
 use serde_repr::Deserialize_repr;
@@ -68,7 +67,7 @@ pub enum WomboStyle {
     RoseGold = 18,
 }
 
-static WOMBO_STYLES: phf::Map<&'static str, WomboStyle> = phf_map! {
+static WOMBO_STYLES: phf::Map<&'static str, WomboStyle> = phf_macros::proc_macro_hack_phf_map! {
     "psychedelic" => WomboStyle::Psychedelic,
     "surreal" => WomboStyle::Surreal,
     "synthwave" => WomboStyle::Synthwave,
