@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{assyst::Assyst, logger, util};
+use crate::{assyst::Assyst, logger, rest::ServiceStatus, util};
 use prometheus::{register_gauge, register_int_gauge_vec};
 use std::time::Duration;
 use tokio::time::sleep;
@@ -9,6 +9,7 @@ use twilight_gateway::{shard::Stage, Cluster};
 pub fn init_metrics_collect_loop(cluster: Cluster, assyst: Arc<Assyst>) -> anyhow::Result<()> {
     let memory_counter = register_gauge!("memory_usage", "Memory usage in MB")?;
     let latency = register_int_gauge_vec!("latency", "Gateway latency", &["shard"])?;
+    let health = register_int_gauge_vec!("service_ping", "Service ping", &["service"])?;
 
     tokio::spawn(async move {
         loop {
@@ -63,6 +64,16 @@ pub fn init_metrics_collect_loop(cluster: Cluster, assyst: Arc<Assyst>) -> anyho
                         continue;
                     }
                 };
+            }
+
+            let healthcheck_result = assyst.healthcheck_result.lock().await.1;
+            for result in healthcheck_result {
+                let counter = health.with_label_values(&[&result.service]);
+                if let ServiceStatus::Online(x) = result {
+                    counter.set(x as i64);
+                } else {
+                    counter.set(-100);
+                }
             }
         }
     });
