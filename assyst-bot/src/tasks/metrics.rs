@@ -10,6 +10,7 @@ pub fn init_metrics_collect_loop(cluster: Cluster, assyst: Arc<Assyst>) -> anyho
     let memory_counter = register_gauge!("memory_usage", "Memory usage in MB")?;
     let latency = register_int_gauge_vec!("latency", "Gateway latency", &["shard"])?;
     let health = register_int_gauge_vec!("service_ping", "Service ping", &["service"])?;
+    let commands_usage = register_int_gauge_vec!("commands_usage", "Commands usage", &["command"])?;
 
     tokio::spawn(async move {
         loop {
@@ -74,6 +75,12 @@ pub fn init_metrics_collect_loop(cluster: Cluster, assyst: Arc<Assyst>) -> anyho
                 } else {
                     counter.set(-100);
                 }
+            }
+
+            let top_commands = assyst.database.get_command_usage_stats().await.unwrap();
+            for command in top_commands {
+                let counter = commands_usage.with_label_values(&[&command.command_name]);
+                counter.set(command.uses as i64);
             }
         }
     });
