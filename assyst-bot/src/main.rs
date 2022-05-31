@@ -73,9 +73,11 @@ async fn main() -> anyhow::Result<()> {
     tokio::spawn(async move {
         spawned_cluster.up().await;
         let cluster_info = spawned_cluster.info();
+        let mut text = String::new();
         for shard in cluster_info {
-            logger::info(&a, &format!("Shard {} is {}", shard.0, shard.1.stage())).await;
+            text.push_str(&format!("Shard {} is {}\n", shard.0, shard.1.stage()));
         }
+        logger::info(&a, &text).await;
     });
 
     // Tasks
