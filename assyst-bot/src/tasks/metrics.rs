@@ -13,6 +13,8 @@ pub fn init_metrics_collect_loop(cluster: Cluster, assyst: Arc<Assyst>) -> anyho
     let commands_usage = register_int_gauge_vec!("commands_usage", "Commands usage", &["command"])?;
     let cache_size = register_int_gauge_vec!("cache_sizes", "Cache sizes", &["cache"])?;
 
+    let a = assyst.clone();
+
     tokio::spawn(async move {
         loop {
             // gives time for shards to start before collecting info about them
@@ -22,11 +24,7 @@ pub fn init_metrics_collect_loop(cluster: Cluster, assyst: Arc<Assyst>) -> anyho
             match util::get_memory_usage_num() {
                 Some(memory) => memory_counter.set(memory as f64),
                 None => {
-                    logger::fatal(
-                        &assyst,
-                        "Failed to scrape memory usage in metrics collector",
-                    )
-                    .await
+                    logger::fatal(&a, "Failed to scrape memory usage in metrics collector").await
                 }
             };
 
@@ -42,7 +40,7 @@ pub fn init_metrics_collect_loop(cluster: Cluster, assyst: Arc<Assyst>) -> anyho
             let mut i: u64 = 0;
             for shard in cluster.shards() {
                 if !up_shards.contains(&i) {
-                    logger::info(&assyst, &format!("Shard {} is starting", i)).await;
+                    logger::info(&a, &format!("Shard {} is starting", i)).await;
                     shard.start().await.unwrap();
                     // wait to avoid spamming identifies
                     tokio::time::sleep(Duration::from_secs(10)).await;
@@ -62,13 +60,13 @@ pub fn init_metrics_collect_loop(cluster: Cluster, assyst: Arc<Assyst>) -> anyho
                         counter.set(lat);
                     }
                     Err(e) => {
-                        logger::fatal(&assyst, &format!("Failed to get shard info: {}", e)).await;
+                        logger::fatal(&a, &format!("Failed to get shard info: {}", e)).await;
                         continue;
                     }
                 };
             }
 
-            let healthcheck_result = &assyst.healthcheck_result.lock().await.1;
+            let healthcheck_result = &a.healthcheck_result.lock().await.1;
             for result in healthcheck_result {
                 let counter = health.with_label_values(&[&result.service]);
                 if let ServiceStatus::Online(x) = result.status {
@@ -77,6 +75,12 @@ pub fn init_metrics_collect_loop(cluster: Cluster, assyst: Arc<Assyst>) -> anyho
                     counter.set(-100);
                 }
             }
+        }
+    });
+
+    tokio::spawn(async move {
+        loop {
+            sleep(Duration::from_secs(10)).await;
 
             let top_commands = assyst.database.get_command_usage_stats().await.unwrap();
             for command in top_commands {
