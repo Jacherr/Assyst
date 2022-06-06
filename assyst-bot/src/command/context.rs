@@ -5,11 +5,15 @@ use std::time::Instant;
 use tokio::sync::Mutex;
 use twilight_http::Client as HttpClient;
 use twilight_model::{
-    channel::{message::AllowedMentions, Message},
-    id::{MessageId, UserId},
+    channel::{embed::Embed, message::AllowedMentions, Message},
+    http::attachment::Attachment as TwilightAttachment,
 };
 
-use crate::{caching::Reply, Assyst};
+use crate::{
+    caching::Reply,
+    util::{MessageId, UserId},
+    Assyst,
+};
 use std::sync::Arc;
 
 use super::messagebuilder::MessageBuilder;
@@ -67,6 +71,7 @@ impl Context {
             if reply.attachments.len() > 0 || message_builder.attachment.is_some() {
                 self.http()
                     .delete_message(reply.channel_id, reply.id)
+                    .exec()
                     .await?;
 
                 let result = self.create_new_message(message_builder).await?;
@@ -153,27 +158,38 @@ impl Context {
         &self,
         message_builder: MessageBuilder,
     ) -> anyhow::Result<Arc<Message>> {
+        let allowed_mentions = AllowedMentions::default();
+
         let mut create_message = self
             .assyst
             .http
             .create_message(self.message.channel_id)
-            .allowed_mentions(AllowedMentions::default());
+            .allowed_mentions(Some(&allowed_mentions));
+
+        let attachments: [TwilightAttachment; 1];
 
         if let Some(attachment) = message_builder.attachment {
-            create_message = create_message.files([(attachment.name, attachment.data)]);
+            attachments = [TwilightAttachment::from_bytes(
+                attachment.name.to_string(),
+                attachment.data,
+                0,
+            )];
+            create_message = create_message.attachments(&attachments)?;
         };
+        let chars: String;
         if let Some(content) = message_builder.content {
-            create_message = create_message.content(
-                &content
-                    .chars()
-                    .take(consts::MESSAGE_CHARACTER_LIMIT)
-                    .collect::<String>(),
-            )?
+            chars = content
+                .chars()
+                .take(consts::MESSAGE_CHARACTER_LIMIT)
+                .collect::<String>();
+            create_message = create_message.content(&chars)?
         };
+        let embeds: [Embed; 1];
         if let Some(embed) = message_builder.embed {
-            create_message = create_message.embeds([embed])?;
+            embeds = [embed];
+            create_message = create_message.embeds(&embeds)?;
         };
-        let message = create_message.await?;
+        let message = create_message.exec().await?.model().await?;
         let result = Arc::new(message);
         Ok(result)
     }
@@ -188,20 +204,27 @@ impl Context {
             .http
             .update_message(self.message.channel_id, message_id);
 
+        let chars: String;
+
         match message_builder.content {
             Some(content) => {
-                update_message =
-                    update_message.content(Some(content.chars().take(1999).collect::<String>()))?
+                chars = content.chars().take(1999).collect::<String>();
+                update_message = update_message.content(Some(&chars))?
             }
             None => update_message = update_message.content(None)?,
         };
 
+        let e: [Embed; 1];
+
         match message_builder.embed {
-            Some(embed) => update_message = update_message.embeds([embed])?,
-            None => update_message = update_message.embeds([])?,
+            Some(embed) => {
+                e = [embed];
+                update_message = update_message.embeds(Some(&e))?
+            }
+            None => update_message = update_message.embeds(Some(&[]))?,
         };
 
-        let result = Arc::new(update_message.await?);
+        let result = Arc::new(update_message.exec().await?.model().await?);
         Ok(result)
     }
 

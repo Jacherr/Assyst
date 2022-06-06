@@ -13,7 +13,6 @@ use shared::{
     query_params::NoneQuery,
 };
 use tokio::time::Instant;
-use twilight_model::id::UserId;
 
 use std::error::Error as StdError;
 
@@ -22,6 +21,7 @@ use crate::{
     assyst::Assyst,
     downloader,
     rest::{annmarie::info, wsi::run_wsi_job},
+    util::UserId,
 };
 
 use self::rust::OptimizationLevel;
@@ -311,7 +311,7 @@ pub async fn healthcheck(assyst: Arc<Assyst>) -> Vec<HealthcheckResult> {
     let wsi_result = run_wsi_job(
         assyst.clone(),
         FifoSend::Stats(FifoData::new(vec![], NoneQuery {})),
-        UserId::from(0),
+        UserId::new(1),
     )
     .await;
     results.push(HealthcheckResult::new_from_result(

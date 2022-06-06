@@ -1,10 +1,14 @@
 use crate::{logger, Assyst};
 use std::sync::Arc;
-use twilight_model::gateway::payload::MessageCreate;
+use twilight_model::gateway::payload::incoming::MessageCreate;
 
 pub async fn handle(assyst: Arc<Assyst>, message: Box<MessageCreate>) {
     // Bad translate channel
-    if assyst.badtranslator.is_channel(message.channel_id.0).await {
+    if assyst
+        .badtranslator
+        .is_channel(message.channel_id.get())
+        .await
+    {
         let result = assyst.badtranslator.handle_message(&assyst, message).await;
         handle_result(&assyst, result, "BT execution failed").await;
         return;
@@ -26,5 +30,5 @@ async fn handle_result<T>(assyst: &Assyst, result: anyhow::Result<T>, message: &
 }
 
 async fn should_handle_message(message: &MessageCreate) -> bool {
-    !message.author.bot && message.author.discriminator != "0000" && message.guild_id.is_some()
+    !message.author.bot && message.author.discriminator != 0 && message.guild_id.is_some()
 }

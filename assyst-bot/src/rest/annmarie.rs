@@ -1,4 +1,4 @@
-use crate::assyst::Assyst;
+use crate::{assyst::Assyst, util::UserId};
 use bytes::Bytes;
 use futures::Future;
 use rand::Rng;
@@ -9,7 +9,7 @@ use shared::{
     query_params::AnnmarieQueryParams,
 };
 use std::{error::Error as StdError, fmt::Display, pin::Pin, sync::Arc};
-use twilight_model::{channel::Message, guild::Guild, id::UserId};
+use twilight_model::{channel::Message, guild::Guild};
 
 use super::wsi::run_wsi_job;
 

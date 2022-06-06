@@ -139,11 +139,8 @@ pub mod argument_type {
 pub mod image_lookups {
     use std::borrow::Cow;
 
-    use crate::util::regexes;
-    use twilight_model::{
-        channel::{message::sticker::StickerFormatType, Message},
-        id::UserId,
-    };
+    use crate::util::{regexes, UserId};
+    use twilight_model::channel::{message::sticker::StickerFormatType, Message};
 
     pub fn emoji(argument: &str) -> Option<String> {
         let unicode_emoji = emoji::lookup_by_glyph::lookup(argument);
@@ -181,18 +178,29 @@ pub mod image_lookups {
             .and_then(|id| Some(id.as_str()))
             .and_then(|id| id.parse::<u64>().ok())?;
 
-        let user = http.user(UserId::from(user_id)).await.ok()??;
+        let user = http
+            .user(UserId::new(user_id))
+            .exec()
+            .await
+            .ok()?
+            .model()
+            .await
+            .ok()?;
         let avatar_hash = user.avatar;
         match avatar_hash {
             Some(hash) => {
-                let format = if hash.starts_with("a_") { "gif" } else { "png" };
+                let format = if hash.to_string().starts_with("a_") {
+                    "gif"
+                } else {
+                    "png"
+                };
                 Some(format!(
                     "https://cdn.discordapp.com/avatars/{}/{}.{}?size=1024",
                     user_id, hash, format
                 ))
             }
             None => {
-                let discrim = user.discriminator.parse::<u16>().ok()?;
+                let discrim = user.discriminator;
                 let avatar_number = discrim % 5;
                 Some(format!(
                     "https://cdn.discordapp.com/embed/avatars/{}.png",
@@ -230,12 +238,12 @@ pub mod image_lookups {
         embed
             .image
             .as_ref()
-            .and_then(|img| Some(img.url.as_deref()?))
+            .and_then(|img| Some(&img.url[..]))
             .or_else(|| {
                 embed
                     .thumbnail
                     .as_ref()
-                    .and_then(|thumbnail| Some(thumbnail.url.as_deref()?))
+                    .and_then(|thumbnail| Some(&thumbnail.url[..]))
                     .or_else(|| {
                         embed
                             .video
@@ -269,7 +277,14 @@ pub mod image_lookups {
         http: &twilight_http::Client,
         message: &'m Message,
     ) -> Option<Cow<'m, str>> {
-        let messages = http.channel_messages(message.channel_id).await.ok()?;
+        let messages = http
+            .channel_messages(message.channel_id)
+            .exec()
+            .await
+            .ok()?
+            .models()
+            .await
+            .ok()?;
 
         for message in messages {
             if !message.embeds.is_empty() {

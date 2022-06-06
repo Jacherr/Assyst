@@ -16,8 +16,9 @@ pub fn root() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
 pub fn parts(
     config: Arc<Config>,
     database: Arc<Database>,
-    client: HttpClient,
-) -> impl Filter<Extract = (Arc<Config>, Arc<Database>, HttpClient), Error = Infallible> + Clone {
+    client: Arc<HttpClient>,
+) -> impl Filter<Extract = (Arc<Config>, Arc<Database>, Arc<HttpClient>), Error = Infallible> + Clone
+{
     warp::any()
         .map(move || config.clone())
         .and(warp::any().map(move || database.clone()))
@@ -34,7 +35,7 @@ pub fn dbl_redirect() -> impl Filter<Extract = impl Reply, Error = Rejection> + 
 pub fn dbl(
     config: Arc<Config>,
     database: Arc<Database>,
-    client: HttpClient,
+    client: Arc<HttpClient>,
     auth: &'static str,
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path(DISCORD_BOT_LIST_ENDPOINT)
@@ -56,7 +57,7 @@ pub fn topgg_redirect() -> impl Filter<Extract = impl Reply, Error = Rejection> 
 pub fn topgg(
     config: Arc<Config>,
     database: Arc<Database>,
-    client: HttpClient,
+    client: Arc<HttpClient>,
     auth: &'static str,
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path(TOP_GG_ENDPOINT)

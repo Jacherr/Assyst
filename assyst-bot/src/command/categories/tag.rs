@@ -1,6 +1,6 @@
 use std::{convert::TryInto, sync::Arc, time::Duration};
 
-use anyhow::{ensure, Context as _};
+use anyhow::{anyhow, ensure, Context as _};
 use assyst_common::{consts, eval::FakeEvalImageResponse};
 use assyst_tag as tag;
 use lazy_static::lazy_static;
@@ -18,7 +18,7 @@ use crate::{
     },
     downloader,
     rest::fake_eval,
-    util,
+    util::{self, UserId},
 };
 
 const CATEGORY_NAME: &str = "misc";
@@ -57,8 +57,8 @@ lazy_static! {
 }
 
 async fn run_create_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
-    let author = context.message.author.id.0;
-    let guild_id = context.message.guild_id.unwrap().0;
+    let author = context.message.author.id.get();
+    let guild_id = context.message.guild_id.unwrap().get();
     let name = args
         .get(1)
         .and_then(|t| t.maybe_text())
@@ -87,8 +87,8 @@ async fn run_create_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>)
 }
 
 async fn run_delete_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
-    let author = context.message.author.id.0;
-    let guild_id = context.message.guild_id.unwrap().0;
+    let author = context.message.author.id.get();
+    let guild_id = context.message.guild_id.unwrap().get();
     let name = args
         .get(1)
         .and_then(|t| t.maybe_text())
@@ -113,8 +113,8 @@ async fn run_delete_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>)
 }
 
 async fn run_edit_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
-    let author = context.message.author.id.0;
-    let guild_id = context.message.guild_id.unwrap().0;
+    let author = context.message.author.id.get();
+    let guild_id = context.message.guild_id.unwrap().get();
     let name = args
         .get(1)
         .and_then(|t| t.maybe_text())
@@ -143,7 +143,7 @@ async fn run_edit_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -
 }
 
 async fn run_list_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
-    let guild_id = context.message.guild_id.unwrap().0;
+    let guild_id = context.message.guild_id.unwrap().get();
     let page = args
         .get(1)
         .and_then(|t| t.maybe_text())
@@ -183,7 +183,7 @@ async fn run_list_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -
 }
 
 async fn run_info_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
-    let guild_id = context.message.guild_id.unwrap().0;
+    let guild_id = context.message.guild_id.unwrap().get();
     let name = args
         .get(1)
         .map(|t| t.as_text())
@@ -208,7 +208,7 @@ async fn run_info_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -
 }
 
 async fn run_raw_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
-    let guild_id = context.message.guild_id.unwrap().0;
+    let guild_id = context.message.guild_id.unwrap().get();
     let name = args
         .get(1)
         .map(|t| t.as_text())
@@ -228,7 +228,7 @@ async fn run_raw_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) ->
 }
 
 async fn run_tag_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
-    let guild_id = context.message.guild_id.unwrap().0;
+    let guild_id = context.message.guild_id.unwrap().get();
     let name = args
         .get(0)
         .map(|t| t.as_text())
@@ -323,13 +323,17 @@ impl tag::Context for TagContext {
     }
 
     fn get_avatar(&self, user_id: Option<u64>) -> anyhow::Result<String> {
-        let http = &self.ccx.assyst.http;
-        let user_id = user_id.unwrap_or(self.ccx.message.author.id.0);
+        let user_id = user_id.unwrap_or(self.ccx.message.author.id.get());
 
         let user = self
             .tokio
-            .block_on(http.user(user_id.into()))?
-            .context("User not found")?;
+            .block_on(self.ccx.http().user(UserId::new(user_id)).exec())?;
+
+        if user.status().get() == 404 {
+            return Err(anyhow!("User not found"));
+        }
+
+        let user = self.tokio.block_on(user.model())?;
 
         Ok(util::get_avatar_url(&user))
     }
@@ -346,7 +350,7 @@ impl tag::Context for TagContext {
     }
 
     fn channel_id(&self) -> anyhow::Result<u64> {
-        Ok(self.ccx.message.channel_id.0)
+        Ok(self.ccx.message.channel_id.get())
     }
 
     fn guild_id(&self) -> anyhow::Result<u64> {
@@ -354,19 +358,24 @@ impl tag::Context for TagContext {
             .message
             .guild_id
             .context("Missing Guild ID")
-            .map(|s| s.0)
+            .map(|s| s.get())
     }
 
     fn user_id(&self) -> anyhow::Result<u64> {
-        Ok(self.ccx.message.author.id.0)
+        Ok(self.ccx.message.author.id.get())
     }
 
     fn user_tag(&self, id: Option<u64>) -> anyhow::Result<String> {
         if let Some(id) = id {
             let user = self
                 .tokio
-                .block_on(self.ccx.http().user(id.into()))?
-                .context("User not found")?;
+                .block_on(self.ccx.http().user(UserId::new(id)).exec())?;
+
+            if user.status().get() == 404 {
+                return Err(anyhow!("User not found"));
+            }
+
+            let user = self.tokio.block_on(user.model())?;
 
             Ok(util::format_tag(&user))
         } else {

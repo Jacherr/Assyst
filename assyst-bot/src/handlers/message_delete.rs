@@ -1,6 +1,6 @@
 use crate::Assyst;
 use std::sync::Arc;
-use twilight_model::gateway::payload::MessageDelete;
+use twilight_model::gateway::payload::incoming::MessageDelete;
 
 pub async fn handle(assyst: Arc<Assyst>, message: MessageDelete) -> () {
     let try_reply = assyst
@@ -14,7 +14,11 @@ pub async fn handle(assyst: Arc<Assyst>, message: MessageDelete) -> () {
         lock.set_invocation_deleted();
         if !lock.in_use {
             if let Some(r) = &lock.reply {
-                let _ = assyst.http.delete_message(message.channel_id, r.id).await;
+                let _ = assyst
+                    .http
+                    .delete_message(message.channel_id, r.id)
+                    .exec()
+                    .await;
             }
         }
     }

@@ -11,7 +11,9 @@ use assyst_common::{
 use futures::StreamExt;
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use tokio::sync::RwLock;
-use twilight_model::id::GuildId;
+use twilight_model::id::{marker::GuildMarker, Id};
+
+type GuildId = Id<GuildMarker>;
 
 #[derive(sqlx::FromRow, Debug)]
 pub struct BadTranslatorChannel {
@@ -433,7 +435,7 @@ impl Database {
         let query = "select * from disabled_commands where guild_id = $1";
 
         let result: Vec<DisabledCommandEntry> = sqlx::query_as::<_, DisabledCommandEntry>(query)
-            .bind(guild_id.0 as i64)
+            .bind(guild_id.get() as i64)
             .fetch_all(&self.pool)
             .await
             .unwrap();
@@ -463,7 +465,7 @@ impl Database {
         let query = "insert into disabled_commands(guild_id, command_name) values($1, $2)";
 
         sqlx::query(query)
-            .bind(guild_id.0 as i64)
+            .bind(guild_id.get() as i64)
             .bind(command)
             .execute(&self.pool)
             .await?;
@@ -486,7 +488,7 @@ impl Database {
         let query = "delete from disabled_commands where guild_id = $1 and command_name = $2";
 
         sqlx::query(query)
-            .bind(guild_id.0 as i64)
+            .bind(guild_id.get() as i64)
             .bind(command)
             .execute(&self.pool)
             .await?;

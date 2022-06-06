@@ -1,5 +1,5 @@
 use crate::rest::wsi::run_wsi_job;
-use crate::util::get_buffer_filetype;
+use crate::util::{get_buffer_filetype, MessageId};
 use crate::{
     command::{
         command::{
@@ -174,10 +174,12 @@ pub async fn run_quote_command(
 
         let message = context
             .http()
-            .message(context.message.channel_id, id.into())
+            .message(context.message.channel_id, MessageId::new(id))
+            .exec()
+            .await?
+            .model()
             .await
-            .map_err(|_| CommandError::new_boxed(format!("Failed to fetch `{}`", id)))?
-            .ok_or_else(|| CommandError::new_boxed("Message not found"))?;
+            .map_err(|_| CommandError::new_boxed(format!("Failed to fetch `{}`", id)))?;
 
         messages.push(message);
     }
@@ -185,8 +187,11 @@ pub async fn run_quote_command(
     let guild = context
         .http()
         .guild(guild_id)
+        .exec()
         .await?
-        .ok_or_else(|| CommandError::new_boxed("Failed to fetch guild"))?;
+        .model()
+        .await
+        .map_err(|_| CommandError::new_boxed("Failed to fetch guild"))?;
 
     let bytes = annmarie::quote(&context.assyst, &messages, guild, white).await?;
 

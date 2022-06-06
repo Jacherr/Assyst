@@ -13,10 +13,10 @@ use crate::{
     logger,
     metrics::GlobalMetrics,
     rest::{patreon::Patron, wsi::wsi_listen, HealthcheckResult},
-    util::{get_current_millis, get_guild_owner, is_guild_manager, regexes, Uptime},
+    util::{get_current_millis, get_guild_owner, is_guild_manager, regexes, GuildId, Uptime},
 };
 
-use anyhow::{bail, Context as _};
+use anyhow::bail;
 use assyst_common::{config::Config, consts::BOT_ID};
 use assyst_database::Database;
 use async_recursion::async_recursion;
@@ -35,7 +35,7 @@ use std::{
 };
 use tokio::sync::{mpsc::UnboundedSender, oneshot::Sender, Mutex, RwLock};
 use twilight_http::Client as HttpClient;
-use twilight_model::channel::{Channel, GuildChannel, Message};
+use twilight_model::channel::Message;
 
 fn get_command(content: &str, prefix: &str) -> Option<String> {
     get_raw_args(content, prefix, 0)
@@ -112,7 +112,7 @@ pub struct Assyst {
     pub command_ratelimits: RwLock<Ratelimits>,
     pub config: Arc<Config>,
     pub database: Arc<Database>,
-    pub http: HttpClient,
+    pub http: Arc<HttpClient>,
     pub metrics: GlobalMetrics,
     pub patrons: RwLock<Vec<Patron>>,
     pub registry: CommandRegistry,
@@ -133,7 +133,7 @@ impl Assyst {
     /// Assyst configuration exists in the config.toml file at the root
     /// of this project. Use that to configure the behaviour of the bot.
     pub async fn new(token: &str) -> Self {
-        let http = HttpClient::new(token);
+        let http = Arc::new(HttpClient::new(token.to_owned()));
         let reqwest_client = ReqwestClient::new();
         let config = Arc::new(Config::new());
         let database = Database::new(2, config.database.to_url())
@@ -256,12 +256,12 @@ impl Assyst {
             return Ok(());
         }
 
-        if self.is_blacklisted(message.author.id.0).await {
+        if self.is_blacklisted(message.author.id.get()).await {
             return Ok(());
         }
 
         // unwrapping is fine because handle_message checks for that already
-        let guild_id = message.guild_id.unwrap().0;
+        let guild_id = message.guild_id.unwrap().get();
 
         // parsing prefix from start of content
         let prefix;
@@ -376,13 +376,13 @@ impl Assyst {
         // checking if the command is disabled
         let is_guild_disabled = self
             .database
-            .is_command_disabled(command_instance.name, guild_id.into())
+            .is_command_disabled(command_instance.name, GuildId::new(guild_id))
             .await;
 
         if is_guild_disabled {
-            let owner = get_guild_owner(&self.http, guild_id.into()).await?;
+            let owner = get_guild_owner(&self.http, GuildId::new(guild_id)).await?;
 
-            if owner != message.author.id && !self.user_is_admin(context.author_id().0) {
+            if owner != message.author.id && !self.user_is_admin(context.author_id().get()) {
                 return Ok(());
             };
         };
@@ -391,20 +391,13 @@ impl Assyst {
             let channel = self
                 .http
                 .channel(message.channel_id)
-                .await
-                .context("fetching channel for nsfw check failed")?
-                .context("channel not found")?;
+                .exec()
+                .await?
+                .model()
+                .await?;
 
-            if let Channel::Guild(guild) = channel {
-                if let GuildChannel::Text(guild_text) = guild {
-                    if !guild_text.nsfw {
-                        context
-                            .reply_err("This command is limited to NSFW text channels only.")
-                            .await?;
-
-                        return Ok(());
-                    }
-                } else {
+            if let Some(_) = channel.guild_id {
+                if !channel.nsfw.unwrap_or(false) {
                     context
                         .reply_err("This command is limited to NSFW text channels only.")
                         .await?;
@@ -418,7 +411,7 @@ impl Assyst {
 
         let is_global_disabled = command_instance.disabled;
 
-        if is_global_disabled && !self.user_is_admin(context.author_id().0) {
+        if is_global_disabled && !self.user_is_admin(context.author_id().get()) {
             context
                 .reply_err("This command is globally disabled. :(")
                 .await?;
@@ -430,8 +423,8 @@ impl Assyst {
 
         // checking if this command violates the ratelimits
         let mut ratelimit_lock = self.command_ratelimits.write().await;
-        let command_ratelimit =
-            ratelimit_lock.time_until_guild_command_usable(guild_id.into(), &command_instance.name);
+        let command_ratelimit = ratelimit_lock
+            .time_until_guild_command_usable(GuildId::new(guild_id), &command_instance.name);
 
         if let Some(r) = command_ratelimit {
             reply.lock().await.in_use = false;
@@ -443,7 +436,7 @@ impl Assyst {
 
             return Ok(());
         };
-        ratelimit_lock.set_command_expire_at(guild_id.into(), &command_instance);
+        ratelimit_lock.set_command_expire_at(GuildId::new(guild_id), &command_instance);
         drop(ratelimit_lock);
 
         self.metrics.add_command();
@@ -519,7 +512,7 @@ impl Assyst {
             CommandAvailability::Public => Ok(()), // everyone can run
             CommandAvailability::Private => {
                 // bot admins can run (config-defined)
-                if !self.user_is_admin(context.author_id().0) {
+                if !self.user_is_admin(context.author_id().get()) {
                     Err(CommandParseError::without_reply(
                         "Insufficient Permissions".to_owned(),
                         CommandParseErrorType::MissingPermissions,
@@ -537,7 +530,7 @@ impl Assyst {
                 .await
                 .map_err(|_| CommandParseError::permission_validator_failed())?;
 
-                let is_bot_admin = self.user_is_admin(context.author_id().0);
+                let is_bot_admin = self.user_is_admin(context.author_id().get());
 
                 if is_manager || is_bot_admin {
                     Ok(())

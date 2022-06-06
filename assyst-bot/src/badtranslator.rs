@@ -1,22 +1,20 @@
 use crate::assyst::Assyst;
 use crate::util::{self, normalize_mentions};
 use crate::{
-    rest::bt, util::get_current_millis, util::normalize_emojis, util::sanitize_message_content,
+    rest::bt,
+    util::get_current_millis,
+    util::sanitize_message_content,
+    util::{normalize_emojis, ChannelId, UserId},
 };
 use anyhow::Context;
 use assyst_common::bt::{BadTranslatorEntry, ChannelCache};
 use assyst_common::consts;
-use reqwest::StatusCode;
 use std::collections::HashMap;
 use std::{borrow::Cow, time::Duration};
 use tokio::sync::RwLock;
 use twilight_http::error::ErrorType;
-use twilight_model::gateway::payload::MessageCreate;
-use twilight_model::{
-    channel::Webhook,
-    id::{ChannelId, UserId},
-    user::User,
-};
+use twilight_model::gateway::payload::incoming::MessageCreate;
+use twilight_model::{channel::Webhook, user::User};
 
 mod flags {
     pub const DISABLED: u32 = 0x1;
@@ -99,7 +97,7 @@ impl BadTranslator {
             let cache = self.channels.read().await;
 
             // In the perfect case where we already have the webhook cached, we can just return early
-            if let Some(entry) = cache.get(&id.0).cloned() {
+            if let Some(entry) = cache.get(&id.get()).cloned() {
                 if let Some(entry) = entry.zip() {
                     return Some(entry);
                 }
@@ -107,13 +105,21 @@ impl BadTranslator {
         }
 
         // TODO: maybe return Result?
-        let webhooks = assyst.http.channel_webhooks(*id).await.ok()?;
+        let webhooks = assyst
+            .http
+            .channel_webhooks(*id)
+            .exec()
+            .await
+            .ok()?
+            .models()
+            .await
+            .ok()?;
 
         let webhook = webhooks.into_iter().find(|w| w.token.is_some())?;
 
         let mut cache = self.channels.write().await;
         let mut entry = cache
-            .get_mut(&id.0)
+            .get_mut(&id.get())
             .expect("This can't fail, and if it does then that's a problem.");
 
         entry.webhook = Some(webhook.clone());
@@ -128,11 +134,11 @@ impl BadTranslator {
     pub async fn delete_bt_channel(&self, assyst: &Assyst, id: &ChannelId) -> anyhow::Result<()> {
         assyst
             .database
-            .delete_bt_channel(id.0)
+            .delete_bt_channel(id.get())
             .await
             .context("Deleting BT channel failed")?;
 
-        self.channels.write().await.remove(&id.0);
+        self.channels.write().await.remove(&id.get());
         Ok(())
     }
 
@@ -140,18 +146,18 @@ impl BadTranslator {
     pub async fn try_ratelimit(&self, id: &UserId) -> bool {
         let mut cache = self.ratelimits.write().await;
 
-        if let Some(entry) = cache.get(&id.0) {
+        if let Some(entry) = cache.get(&id.get()) {
             let expired = entry.expired();
 
             if !expired {
                 return true;
             } else {
-                cache.remove(&id.0);
+                cache.remove(&id.get());
                 return false;
             }
         }
 
-        cache.insert(id.0, BadTranslatorRatelimit::new());
+        cache.insert(id.get(), BadTranslatorRatelimit::new());
 
         false
     }
@@ -175,6 +181,7 @@ impl BadTranslator {
             let _ = assyst
                 .http
                 .delete_message(message.channel_id, message.id)
+                .exec()
                 .await;
 
             return Ok(());
@@ -187,6 +194,7 @@ impl BadTranslator {
             let _ = assyst
                 .http
                 .delete_message(message.channel_id, message.id)
+                .exec()
                 .await;
 
             let response = assyst
@@ -194,9 +202,12 @@ impl BadTranslator {
                 .create_message(message.channel_id)
                 .content(&format!(
                     "<@{}>, {}",
-                    message.author.id.0,
+                    message.author.id.get(),
                     consts::BT_RATELIMIT_MESSAGE
                 ))?
+                .exec()
+                .await?
+                .model()
                 .await?;
 
             tokio::time::sleep(Duration::from_secs(5)).await;
@@ -204,6 +215,7 @@ impl BadTranslator {
             assyst
                 .http
                 .delete_message(message.channel_id, response.id)
+                .exec()
                 .await?;
 
             return Ok(());
@@ -220,8 +232,8 @@ impl BadTranslator {
         let translation = match bt::bad_translate_debug(
             &assyst.reqwest_client,
             &content,
-            message.author.id.0,
-            guild_id.0,
+            message.author.id.get(),
+            guild_id.get(),
             &language,
         )
         .await
@@ -234,6 +246,7 @@ impl BadTranslator {
         let delete_state = assyst
             .http
             .delete_message(message.channel_id, message.id)
+            .exec()
             .await;
 
         // dont respond with translation if the source was prematurely deleted
@@ -243,7 +256,7 @@ impl BadTranslator {
             error: _,
         }) = delete_state.as_ref().map_err(|e| e.kind())
         {
-            if *status == StatusCode::NOT_FOUND {
+            if status.get() == 404 {
                 return Ok(());
             }
         }
@@ -256,14 +269,15 @@ impl BadTranslator {
         assyst
             .http
             .execute_webhook(webhook.id, token)
-            .content(translation)
-            .username(&message.author.name)
-            .avatar_url(util::get_avatar_url(&message.author))
+            .content(&translation)?
+            .username(&message.author.name)?
+            .avatar_url(&util::get_avatar_url(&message.author))
+            .exec()
             .await
             .context("Executing webhook failed")?;
 
         // Increase metrics counter for this guild
-        register_badtranslated_message_to_db(&assyst, guild_id.0)
+        register_badtranslated_message_to_db(&assyst, guild_id.get())
             .await
             .with_context(|| format!("Error updating BT message metric for {}", guild_id))?;
 
@@ -282,11 +296,11 @@ async fn register_badtranslated_message_to_db(
 }
 
 fn is_webhook(user: &User) -> bool {
-    user.system.unwrap_or(false) || user.discriminator == "0000"
+    user.system.unwrap_or(false) || user.discriminator == 0
 }
 
 fn is_ratelimit_message(assyst: &Assyst, message: &MessageCreate) -> bool {
     // TODO: check if message was sent by the bot itself
     message.content.contains(consts::BT_RATELIMIT_MESSAGE)
-        && message.author.id.0 == assyst.config.bot_id
+        && message.author.id.get() == assyst.config.bot_id
 }

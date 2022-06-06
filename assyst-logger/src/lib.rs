@@ -1,9 +1,9 @@
 use std::error::Error;
 
 use assyst_common::{config::Config, consts::MESSAGE_CHARACTER_LIMIT};
-use twilight_embed_builder::EmbedBuilder;
 use twilight_http::Client as HttpClient;
-use twilight_model::id::WebhookId;
+use twilight_model::id::{marker::WebhookMarker, Id};
+use twilight_util::builder::embed::EmbedBuilder;
 
 pub async fn panic(config: &Config, client: &HttpClient, message: &str) {
     let url: &str = config.logs.fatal.as_ref();
@@ -87,16 +87,19 @@ async fn exec_webhook_with(
                 .collect::<String>(),
         )
         .color(color)
-        .build()?;
+        .build();
+
+    let embeds = vec![embed];
 
     let mut builder = client
-        .execute_webhook(WebhookId::from(id.parse::<u64>().unwrap()), *token)
-        .embeds(vec![embed]);
+        .execute_webhook(Id::<WebhookMarker>::new(id.parse::<u64>().unwrap()), *token)
+        .embeds(&embeds)
+        .unwrap();
 
     if let Some(content) = content {
-        builder = builder.content(content);
+        builder = builder.content(content).unwrap();
     }
 
-    builder.await?;
+    builder.exec().await?;
     Ok(())
 }

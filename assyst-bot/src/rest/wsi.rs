@@ -1,4 +1,4 @@
-use crate::util::get_wsi_request_tier;
+use crate::util::{get_wsi_request_tier, UserId};
 use crate::{assyst::Assyst, util::handle_job_result};
 use bincode::{deserialize, serialize};
 use bytes::Bytes;
@@ -34,7 +34,6 @@ use tokio::{
     },
     time::sleep,
 };
-use twilight_model::id::UserId;
 
 pub type NoArgFunction = Box<
     dyn Fn(
@@ -597,7 +596,7 @@ pub async fn gif_speed(
 pub async fn image_info(assyst: Arc<Assyst>, image: Bytes) -> Result<ImageInfo, RequestError> {
     let job = FifoSend::ImageInfo(FifoData::new(image.to_vec(), NoneQuery {}));
 
-    let result = run_wsi_job(assyst, job, UserId::from(0)).await?;
+    let result = run_wsi_job(assyst, job, UserId::new(1)).await?;
     let v = result.to_vec();
     let de = deserialize::<ImageInfo>(&v).unwrap().clone();
 
@@ -902,7 +901,7 @@ pub async fn spread(
 pub async fn stats(assyst: Arc<Assyst>) -> Result<Stats, RequestError> {
     let job = FifoSend::Stats(FifoData::new(vec![], NoneQuery {}));
 
-    let result = run_wsi_job(assyst, job, UserId::from(0)).await?;
+    let result = run_wsi_job(assyst, job, UserId::new(1)).await?;
     Ok(deserialize::<Stats>(&result).unwrap())
 }
 
