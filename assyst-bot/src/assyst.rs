@@ -224,8 +224,8 @@ impl Assyst {
     }
 
     /// Remove a guild from cached guild list
-    pub async fn remove_guild_from_list(&self, guild: u64) {
-        self.guilds.lock().await.remove(&((guild >> 22) as u32));
+    pub async fn remove_guild_from_list(&self, guild: u64) -> bool {
+        self.guilds.lock().await.remove(&((guild >> 22) as u32))
     }
 
     /// Add guild to top guilds list
