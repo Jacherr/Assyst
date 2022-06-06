@@ -13,7 +13,7 @@ mod handlers;
 mod server;
 
 #[rustfmt::skip]
-pub fn run(config: Arc<Config>, database: Arc<Database>, client: HttpClient) {
+pub fn run(config: Arc<Config>, database: Arc<Database>, client: Arc<HttpClient>) {
     // TODO(y21): this can be done without leaking, but it's low priority because the webserver will run forever anyway
     let auth = to_static_str(&config.auth.bot_list_webhook);
 

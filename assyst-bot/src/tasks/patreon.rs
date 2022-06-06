@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
+use crate::util::ChannelId;
 use tokio::time::sleep;
-use twilight_model::id::ChannelId;
 
 use crate::{assyst::Assyst, rest::patreon::get_patrons};
 
@@ -16,17 +16,18 @@ pub fn update_patrons(assyst: Arc<Assyst>) {
 
             assyst
                 .http
-                .create_message(ChannelId::from(833758252427640892))
-                .content(format!(
+                .create_message(ChannelId::new(833758252427640892))
+                .content(&format!(
                     "patrons:\n{}",
                     patrons
                         .iter()
                         .filter(|x| !x.admin)
-                        .map(|x| x.user_id.0.to_string())
+                        .map(|x| x.user_id.get().to_string())
                         .collect::<Vec<_>>()
                         .join("\n")
                 ))
                 .unwrap()
+                .exec()
                 .await
                 .unwrap();
 

@@ -3,9 +3,9 @@ use std::sync::Arc;
 use std::{collections::HashMap, u64, usize};
 use tokio::sync::Mutex;
 use twilight_model::channel::Message;
-use twilight_model::id::MessageId;
 use util::get_current_millis;
 
+use crate::util::MessageId;
 use crate::{box_str, command::command::Command, util};
 
 #[derive(Debug)]
@@ -21,11 +21,11 @@ impl Ratelimits {
 
     pub fn set_command_expire_at(
         &mut self,
-        guild_id: twilight_model::id::GuildId,
+        guild_id: crate::util::GuildId,
         command: &Command,
     ) -> () {
         self.cache
-            .entry(guild_id.0)
+            .entry(guild_id.get())
             .or_insert_with(|| GuildRatelimits::new())
             .set_command_expiry(
                 &command.name,
@@ -35,10 +35,10 @@ impl Ratelimits {
 
     pub fn time_until_guild_command_usable(
         &self,
-        guild_id: twilight_model::id::GuildId,
+        guild_id: crate::util::GuildId,
         command: &str,
     ) -> Option<u64> {
-        let guild_ratelimits = self.cache.get(&guild_id.0)?;
+        let guild_ratelimits = self.cache.get(&guild_id.get())?;
         let command_ratelimit = guild_ratelimits.get_command_expiry(command)?;
         let millis = get_current_millis();
         if millis > *command_ratelimit {
@@ -96,12 +96,12 @@ impl Replies {
 
     pub fn get_or_set_reply(&mut self, reply_to_insert: Reply) -> &mut Arc<Mutex<Reply>> {
         self.cache
-            .entry(reply_to_insert.invocation.id.0)
+            .entry(reply_to_insert.invocation.id.get())
             .or_insert_with(|| Arc::new(Mutex::new(reply_to_insert)))
     }
 
     pub async fn get_reply_from_invocation_id(&self, id: MessageId) -> Option<Arc<Mutex<Reply>>> {
-        self.cache.get(&id.0).and_then(|r| Some(r.clone()))
+        self.cache.get(&id.get()).and_then(|r| Some(r.clone()))
     }
 
     pub fn size(&self) -> usize {

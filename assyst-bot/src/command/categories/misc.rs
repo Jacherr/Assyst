@@ -17,7 +17,7 @@ use crate::{
     util::{
         bytes_to_readable, codeblock, ensure_same_guild, exec_sync, extract_page_title,
         format_discord_timestamp, format_time, generate_list, generate_table, get_buffer_filetype,
-        get_memory_usage, parse_codeblock,
+        get_memory_usage, parse_codeblock, ChannelId,
     },
 };
 use crate::{
@@ -30,7 +30,6 @@ use assyst_common::{
     eval::{FakeEvalImageResponse, FakeEvalResponse},
 };
 use assyst_database::Reminder;
-use futures::TryFutureExt;
 use lazy_static::lazy_static;
 use shared::query_params::ResizeMethod;
 use shared::response_data::Stats;
@@ -261,12 +260,12 @@ pub async fn run_ping_command(
         .assyst
         .http
         .update_message(message.channel_id, message.id)
-        .content(format!(
+        .content(Some(&format!(
             "pong!\nprocessing time: {} µs\nresponse time: {} ms",
             processing_time,
             start.elapsed().as_millis()
-        ))?
-        .into_future()
+        )))?
+        .exec()
         .await?;
     Ok(())
 }
@@ -427,7 +426,7 @@ pub async fn run_prefix_command(
     context
         .assyst
         .database
-        .set_prefix_for(context.message.guild_id.unwrap().0, new_prefix)
+        .set_prefix_for(context.message.guild_id.unwrap().get(), new_prefix)
         .await?;
 
     context
@@ -444,7 +443,7 @@ pub async fn run_stats_command(
 ) -> CommandResult {
     let guild_count = context.assyst.metrics.get_guild_count();
 
-    let guild_id = context.message.guild_id.unwrap().0;
+    let guild_id = context.message.guild_id.unwrap().get();
 
     let memory = bytes_to_readable(get_memory_usage().unwrap_or(0));
     let commands = context.assyst.registry.get_command_count().to_string();
@@ -472,7 +471,15 @@ pub async fn run_stats_command(
         context.assyst.commands_executed.load(Ordering::Relaxed) as f32 / uptime_minutes;
 
     let assyst_uptime = context.assyst.uptime().format();
-    let assyst_gateway = context.assyst.http.gateway().authed().await?;
+    let assyst_gateway = context
+        .assyst
+        .http
+        .gateway()
+        .authed()
+        .exec()
+        .await?
+        .model()
+        .await?;
     let sessions = format!(
         "Total: {}, Remaining: {}",
         assyst_gateway.session_start_limit.total, assyst_gateway.session_start_limit.remaining,
@@ -587,7 +594,7 @@ pub async fn run_remind_command(
 
     match time {
         "list" => {
-            let user_id = context.message.author.id.0;
+            let user_id = context.message.author.id.get();
 
             // If the first argument is "list", then we want to fetch a list of reminders
             let reminders = context
@@ -616,7 +623,7 @@ pub async fn run_remind_command(
             return Ok(());
         }
         "remove" | "delete" => {
-            let user_id = context.message.author.id.0;
+            let user_id = context.message.author.id.get();
             let reminder_id = args[1].as_text().parse::<i32>()?;
 
             let was_deleted = context
@@ -663,12 +670,12 @@ pub async fn run_remind_command(
         .assyst
         .database
         .add_reminder(Reminder {
-            channel_id: context.message.channel_id.0 as i64,
+            channel_id: context.message.channel_id.get() as i64,
             message: comment.to_owned(),
-            message_id: context.message.id.0 as i64,
-            user_id: context.message.author.id.0 as i64,
+            message_id: context.message.id.get() as i64,
+            user_id: context.message.author.id.get() as i64,
             timestamp: time as i64,
-            guild_id: guild_id.0 as i64,
+            guild_id: guild_id.get() as i64,
         })
         .await?;
 
@@ -786,7 +793,7 @@ pub async fn run_btchannel_command(
     let ty = args.next().map(|a| a.as_choice()).unwrap();
 
     // safe to unwrap - we can only use it in a guild
-    let guild_id = context.message.guild_id.unwrap().0;
+    let guild_id = context.message.guild_id.unwrap().get();
 
     match ty {
         "add" => {
@@ -794,7 +801,7 @@ pub async fn run_btchannel_command(
                 .next()
                 .and_then(|a| a.maybe_text())
                 .map(str::parse::<u64>)
-                .unwrap_or(Ok(context.message.channel_id.0))?;
+                .unwrap_or(Ok(context.message.channel_id.get()))?;
 
             ensure_same_guild(&context, channel_id, guild_id).await?;
 
@@ -809,7 +816,9 @@ pub async fn run_btchannel_command(
 
             context
                 .http()
-                .create_webhook(channel_id.into(), "Bad Translator")
+                .create_webhook(ChannelId::new(channel_id), "Bad Translator")
+                .context("Failed to create webhook")?
+                .exec()
                 .await?;
 
             let success = context.assyst.database.add_bt_channel(channel_id, language)
@@ -836,7 +845,7 @@ pub async fn run_btchannel_command(
                 .next()
                 .and_then(|a| a.maybe_text())
                 .map(str::parse::<u64>)
-                .unwrap_or(Ok(context.message.channel_id.0))?;
+                .unwrap_or(Ok(context.message.channel_id.get()))?;
 
             ensure_same_guild(&context, channel_id, guild_id).await?;
 
@@ -1081,7 +1090,7 @@ pub async fn run_patron_status_command(
     let user_free_requests = context
         .assyst
         .database
-        .get_user_free_tier1_requests(context.author_id().0 as i64)
+        .get_user_free_tier1_requests(context.author_id().get() as i64)
         .await?;
 
     if user_free_requests == 0 {

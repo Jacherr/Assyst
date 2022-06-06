@@ -11,7 +11,7 @@ use crate::{
         bt::{bad_translate, TranslateResult, Translation},
         wombo::{WomboResponse, WomboResponseResult, WomboStyle},
     },
-    util::{codeblock, ensure_guild_manager, normalize_emojis},
+    util::{codeblock, ensure_guild_manager, normalize_emojis, GuildId, RoleId},
 };
 use anyhow::{bail, Context as _};
 use assyst_common::consts;
@@ -231,7 +231,7 @@ pub async fn run_color_command(
     let guild_id = context
         .message
         .guild_id
-        .map(|x| x.0)
+        .map(|x| x.get())
         .context("This command can only be used in servers")?;
 
     let mut args = args.iter();
@@ -239,7 +239,7 @@ pub async fn run_color_command(
 
     match ty {
         Some("add") => {
-            ensure_guild_manager(&context, guild_id).await?;
+            ensure_guild_manager(&context, GuildId::new(guild_id)).await?;
 
             let maybe_name = args.next().and_then(ParsedArgument::maybe_text);
 
@@ -254,22 +254,32 @@ pub async fn run_color_command(
                 let role = context
                     .assyst
                     .http
-                    .create_role(guild_id.into())
+                    .create_role(GuildId::new(guild_id))
                     .name(name)
                     .color(color)
+                    .exec()
+                    .await?
+                    .model()
                     .await?;
 
                 context
                     .assyst
                     .database
-                    .add_color_role(role.id.0 as i64, name, guild_id as i64)
+                    .add_color_role(role.id.get() as i64, name, guild_id as i64)
                     .await?;
 
                 context
                     .reply_with_text("Successfully added color role")
                     .await?;
             } else {
-                let guild_roles = context.assyst.http.roles(guild_id.into()).await?;
+                let guild_roles = context
+                    .assyst
+                    .http
+                    .roles(GuildId::new(guild_id))
+                    .exec()
+                    .await?
+                    .models()
+                    .await?;
 
                 let mut roles = Vec::new();
 
@@ -280,12 +290,15 @@ pub async fn run_color_command(
                         let role = context
                             .assyst
                             .http
-                            .create_role(guild_id.into())
+                            .create_role(GuildId::new(guild_id))
                             .name(*name)
                             .color(*color)
+                            .exec()
+                            .await?
+                            .model()
                             .await?;
 
-                        roles.push((String::from(*name), role.id.0 as i64));
+                        roles.push((String::from(*name), role.id.get() as i64));
                     }
                 }
 
@@ -295,7 +308,7 @@ pub async fn run_color_command(
                         .any(|(name, _)| role.name.eq(name));
 
                     if is_color_role {
-                        roles.push((role.name, role.id.0 as i64));
+                        roles.push((role.name, role.id.get() as i64));
                     }
                 }
 
@@ -316,7 +329,7 @@ pub async fn run_color_command(
             }
         }
         Some("remove") => {
-            ensure_guild_manager(&context, guild_id).await?;
+            ensure_guild_manager(&context, GuildId::new(guild_id)).await?;
 
             let name = args
                 .next()
@@ -333,7 +346,8 @@ pub async fn run_color_command(
             context
                 .assyst
                 .http
-                .delete_role(guild_id.into(), (role.role_id as u64).into())
+                .delete_role(GuildId::new(guild_id), RoleId::new(role.role_id as u64))
+                .exec()
                 .await?;
 
             context.reply_with_text("Color role removed.").await?;
@@ -355,23 +369,26 @@ pub async fn run_color_command(
             let user_roles = context
                 .assyst
                 .http
-                .guild_member(guild_id.into(), user_id)
+                .guild_member(GuildId::new(guild_id), user_id)
+                .exec()
                 .await?
-                .map(|x| x.roles)
-                .expect("Can't happen");
+                .model()
+                .await?
+                .roles;
 
             let mut roles_without_colors = user_roles
                 .iter()
-                .filter(|r| roles.iter().all(|x| x.role_id as u64 != r.0))
+                .filter(|r| roles.iter().all(|x| x.role_id as u64 != r.get()))
                 .copied()
                 .collect::<Vec<_>>();
-            roles_without_colors.push((role.role_id as u64).into());
+            roles_without_colors.push(RoleId::new(role.role_id as u64));
 
             context
                 .assyst
                 .http
-                .update_guild_member(guild_id.into(), user_id)
-                .roles(roles_without_colors)
+                .update_guild_member(GuildId::new(guild_id), user_id)
+                .roles(&roles_without_colors)
+                .exec()
                 .await?;
 
             context

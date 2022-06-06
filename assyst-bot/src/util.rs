@@ -14,11 +14,23 @@ use std::{
 };
 use twilight_http::{error::Error, Client};
 use twilight_model::{
-    channel::{message::Mention, Channel},
+    channel::message::Mention,
     guild::Permissions,
-    id::{GuildId, UserId},
+    id::{
+        marker::{
+            ChannelMarker, GuildMarker, MessageMarker, RoleMarker, UserMarker, WebhookMarker,
+        },
+        Id,
+    },
     user::User,
 };
+
+pub type ChannelId = Id<ChannelMarker>;
+pub type GuildId = Id<GuildMarker>;
+pub type UserId = Id<UserMarker>;
+pub type WebhookId = Id<WebhookMarker>;
+pub type MessageId = Id<MessageMarker>;
+pub type RoleId = Id<RoleMarker>;
 
 #[macro_export]
 macro_rules! box_str {
@@ -103,16 +115,17 @@ pub async fn is_same_guild(
     channel_id: u64,
     guild_id: u64,
 ) -> Result<bool, twilight_http::Error> {
-    let real_guild_id = client
-        .channel(channel_id.into())
+    let ch = client
+        .channel(ChannelId::new(channel_id))
+        .exec()
         .await?
-        .and_then(|c| match c {
-            Channel::Guild(g) => g.guild_id(),
-            _ => None,
-        })
-        .map(|g| g.0);
+        .model()
+        .await
+        .unwrap();
 
-    Ok(real_guild_id == Some(guild_id))
+    let real_guild_id = ch.guild_id.map_or(0, |z| z.get());
+
+    Ok(real_guild_id == guild_id)
 }
 
 /// Generates a list given a list of tuples containing strings
@@ -411,7 +424,14 @@ pub fn exec_sync(command: &str) -> Result<CommandOutput, std::io::Error> {
 
 /// Attempts to resolve the guild owner
 pub async fn get_guild_owner(http: &Client, guild_id: GuildId) -> Result<UserId, Error> {
-    Ok(http.guild(guild_id).await?.unwrap().owner_id)
+    Ok(http
+        .guild(guild_id)
+        .exec()
+        .await?
+        .model()
+        .await
+        .unwrap()
+        .owner_id)
 }
 
 pub async fn is_guild_manager(
@@ -424,9 +444,21 @@ pub async fn is_guild_manager(
     let owner = get_guild_owner(http, guild_id).await?;
 
     // figure out permissions of the user through bitwise operations
-    let member = http.guild_member(guild_id, user_id).await?.unwrap();
+    let member = http
+        .guild_member(guild_id, user_id)
+        .exec()
+        .await?
+        .model()
+        .await
+        .unwrap();
 
-    let roles = http.roles(guild_id).await?;
+    let roles = http
+        .roles(guild_id)
+        .exec()
+        .await?
+        .models()
+        .await
+        .expect("Failed to deserialize body when fetching guild roles");
 
     let member_roles = roles
         .iter()
@@ -477,7 +509,7 @@ pub async fn get_wsi_request_tier(assyst: &Assyst, user_id: UserId) -> Result<us
 
     let has_free_tier_1 = assyst
         .database
-        .get_and_subtract_free_tier_1_request(user_id.0 as i64)
+        .get_and_subtract_free_tier_1_request(user_id.get() as i64)
         .await?;
 
     if has_free_tier_1 {
@@ -511,7 +543,7 @@ pub fn get_default_avatar_url(user: &User) -> String {
     // Unwrapping discrim parsing is ok, it should never be out of range or non-numeric
     format!(
         "https://cdn.discordapp.com/embed/avatars/{}.png",
-        user.discriminator.parse::<u16>().unwrap() % 5
+        user.discriminator % 5
     )
 }
 
@@ -521,7 +553,7 @@ pub fn get_avatar_url(user: &User) -> String {
         None => return get_default_avatar_url(user),
     };
 
-    let ext = if avatar.starts_with("a_") {
+    let ext = if avatar.bytes().starts_with("a_".as_bytes()) {
         "gif"
     } else {
         "png"

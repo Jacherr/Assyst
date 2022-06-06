@@ -1,11 +1,12 @@
-use crate::{assyst::Assyst, logger, util::message_link};
+use crate::{
+    assyst::Assyst,
+    logger,
+    util::{message_link, ChannelId, UserId},
+};
 use assyst_database::DatabaseReminder;
 use std::{sync::Arc, time::Duration};
 use tokio::time::sleep;
-use twilight_model::{
-    channel::message::AllowedMentions,
-    id::{ChannelId, UserId},
-};
+use twilight_model::channel::message::AllowedMentions;
 
 const FETCH_INTERVAL: i64 = 30000;
 
@@ -15,12 +16,12 @@ async fn process_single_reminder(
 ) -> Result<(), Box<dyn std::error::Error>> {
     assyst
         .http
-        .create_message(ChannelId(reminder.channel_id as u64))
-        .allowed_mentions(
-            AllowedMentions::builder()
-                .user_ids(vec![UserId::from(reminder.user_id as u64)])
+        .create_message(ChannelId::new(reminder.channel_id as u64))
+        .allowed_mentions(Some(
+            &AllowedMentions::builder()
+                .user_ids(vec![UserId::new(reminder.user_id as u64)])
                 .build(),
-        )
+        ))
         .content(&format!(
             "<@{}> Reminder: {}\n{}",
             reminder.user_id,
@@ -31,6 +32,7 @@ async fn process_single_reminder(
                 reminder.message_id as u64
             )
         ))?
+        .exec()
         .await?;
 
     Ok(())

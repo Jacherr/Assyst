@@ -22,8 +22,8 @@ use futures::stream::StreamExt;
 use handler::handle_event;
 use std::env;
 use std::sync::Arc;
-use twilight_gateway::cluster::{Cluster, ShardScheme};
-use twilight_model::gateway::payload::update_presence::UpdatePresencePayload;
+use twilight_gateway::cluster::Cluster;
+use twilight_model::gateway::payload::outgoing::update_presence::UpdatePresencePayload;
 use twilight_model::gateway::{
     presence::{Activity, ActivityType, Status},
     Intents,
@@ -60,15 +60,18 @@ async fn main() -> anyhow::Result<()> {
     let presence = UpdatePresencePayload::new(vec![activity], false, None, Status::Online)?;
 
     // spawn as many shards as discord recommends
-    let scheme = ShardScheme::Auto;
-    let (cluster, mut events) = Cluster::builder(&token, Intents::GUILD_MESSAGES | Intents::GUILDS)
-        .shard_scheme(scheme)
-        .http_client(assyst.http.clone())
-        .presence(presence)
-        .build()
-        .await?;
+    let (cluster, mut events) = Cluster::builder(
+        token,
+        Intents::MESSAGE_CONTENT | Intents::GUILD_MESSAGES | Intents::GUILDS,
+    )
+    .http_client(assyst.http.clone())
+    .presence(presence)
+    .build()
+    .await?;
 
-    let spawned_cluster = cluster.clone();
+    let arced_cluster = Arc::new(cluster);
+
+    let spawned_cluster = arced_cluster.clone();
     let a = assyst.clone();
     tokio::spawn(async move {
         spawned_cluster.up().await;
@@ -86,7 +89,7 @@ async fn main() -> anyhow::Result<()> {
     tasks::init_caching_gc_loop(assyst.clone());
     tasks::update_patrons(assyst.clone());
     tasks::init_healthcheck(assyst.clone());
-    tasks::init_metrics_collect_loop(cluster, assyst.clone())
+    tasks::init_metrics_collect_loop(arced_cluster.clone(), assyst.clone())
         .context("Failed to initialize metrics collect loop")?;
 
     // Bot list webhooks and metrics

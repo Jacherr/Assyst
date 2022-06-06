@@ -6,7 +6,7 @@ use std::time::Duration;
 use tokio::time::sleep;
 use twilight_gateway::{shard::Stage, Cluster};
 
-pub fn init_metrics_collect_loop(cluster: Cluster, assyst: Arc<Assyst>) -> anyhow::Result<()> {
+pub fn init_metrics_collect_loop(cluster: Arc<Cluster>, assyst: Arc<Assyst>) -> anyhow::Result<()> {
     let memory_counter = register_gauge!("memory_usage", "Memory usage in MB")?;
     let latency = register_int_gauge_vec!("latency", "Gateway latency", &["shard"])?;
     let health = register_int_gauge_vec!("service_ping", "Service ping", &["service"])?;

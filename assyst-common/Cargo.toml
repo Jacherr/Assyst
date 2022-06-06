@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-twilight-model = "0.5.0"
+twilight-model = "0.11.0"
 serde = { version = "1.0.123", features = ["derive"] }
 toml = "0.5.8"
 bytes = "1.0.1"

@@ -16,14 +16,14 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
         Event::GuildCreate(guild) => {
             assyst
                 .add_guild_to_top_guilds(
-                    guild.id.0,
+                    guild.id.get(),
                     guild.name.clone(),
                     guild.member_count.unwrap_or(0) as u32,
                 )
                 .await;
 
-            if !assyst.guild_in_list(guild.id.0).await {
-                assyst.add_guild_to_list(guild.id.0).await;
+            if !assyst.guild_in_list(guild.id.get()).await {
+                assyst.add_guild_to_list(guild.id.get()).await;
 
                 if !guild.unavailable {
                     assyst.metrics.add_guild();
@@ -47,13 +47,13 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) {
 
                 logger::info(&assyst, &format!("Removed from guild: {}", guild.id)).await;
 
-                assyst.remove_guild_from_list(guild.id.0).await;
+                assyst.remove_guild_from_list(guild.id.get()).await;
             }
         }
         Event::Ready(r) => {
             let mut new_guilds = 0;
             for guild in &r.guilds {
-                if assyst.add_guild_to_list(guild.id.0).await {
+                if assyst.add_guild_to_list(guild.id.get()).await {
                     // count the number of new unique guilds,
                     // so we can add a number of guilds to the metrics in one call
                     // (one atomic store instead of a lot of them)

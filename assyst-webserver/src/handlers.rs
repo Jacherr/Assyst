@@ -5,8 +5,10 @@ use prometheus::TextEncoder;
 use serde::Deserialize;
 use std::sync::Arc;
 use twilight_http::Client as HttpClient;
-use twilight_model::id::UserId;
+use twilight_model::id::{marker::UserMarker, Id};
 use warp::{hyper::Uri, Rejection, Reply};
+
+type UserId = Id<UserMarker>;
 
 const VOTE_FREE_TIER_1_REQUESTS: i64 = 5;
 
@@ -31,7 +33,7 @@ pub struct TopGgWebhookBody {
 pub async fn handle_vote(
     config: &Config,
     database: &Database,
-    client: &HttpClient,
+    client: &Arc<HttpClient>,
     user_id: i64,
     service: &str,
 ) {
@@ -50,34 +52,31 @@ pub async fn handle_vote(
         )
         .await;
     } else {
-        let user = client.user(UserId::from(user_id as u64)).await.unwrap();
+        let user = client
+            .user(UserId::new(user_id as u64))
+            .exec()
+            .await
+            .unwrap()
+            .model()
+            .await
+            .unwrap();
+
         let message;
+        database
+            .increment_user_votes(user_id, &user.name, &user.discriminator.to_string())
+            .await;
 
-        match user {
-            Some(u) => {
-                database
-                    .increment_user_votes(user_id, &u.name, &u.discriminator)
-                    .await;
+        let user_votes_entry = database.get_voter(user_id).await;
+        let user_votes = if let Some(u) = user_votes_entry {
+            u.count
+        } else {
+            0
+        };
 
-                let user_votes_entry = database.get_voter(user_id).await;
-                let user_votes = if let Some(u) = user_votes_entry {
-                    u.count
-                } else {
-                    0
-                };
-
-                message = format!(
+        message = format!(
                     "{0}#{1} voted for Assyst on {2} and got {3} free tier 1 requests!\n{0}#{1} has voted {4} total times.",
-                    u.name, u.discriminator, service, VOTE_FREE_TIER_1_REQUESTS, user_votes
-                )
-            }
-            None => {
-                message = format!(
-                    "An unknown user voted for Assyst on {} and got {} free tier 1 requests!",
-                    service, VOTE_FREE_TIER_1_REQUESTS
-                )
-            }
-        }
+                    user.name, user.discriminator, service, VOTE_FREE_TIER_1_REQUESTS, user_votes
+                );
 
         logger::log_vote(config, client, &message).await;
     }
@@ -106,7 +105,7 @@ pub async fn dbl(
     body: DiscordBotListWebhookBody,
     config: Arc<Config>,
     database: Arc<Database>,
-    client: HttpClient,
+    client: Arc<HttpClient>,
 ) -> Result<impl Reply, Rejection> {
     handle_vote(
         &config,
@@ -130,7 +129,7 @@ pub async fn topgg(
     body: TopGgWebhookBody,
     config: Arc<Config>,
     database: Arc<Database>,
-    client: HttpClient,
+    client: Arc<HttpClient>,
 ) -> Result<impl Reply, Rejection> {
     handle_vote(
         &config,

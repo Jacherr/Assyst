@@ -2,9 +2,8 @@ use std::{collections::HashMap, sync::Arc};
 
 use reqwest::Error;
 use serde::{Deserialize, Serialize};
-use twilight_model::id::UserId;
 
-use crate::assyst::Assyst;
+use crate::{assyst::Assyst, util::UserId};
 
 pub mod routes {
     pub const PATREON_PATRONS: &str = "https://api.patreon.com/api/oauth2/v2/campaigns/4568373/members?include=user,currently_entitled_tiers&fields%5Buser%5D=social_connections,full_name&fields%5Bmember%5D=is_follower,last_charge_date,last_charge_status,lifetime_support_cents,currently_entitled_amount_cents,patron_status";
@@ -148,7 +147,7 @@ pub async fn get_patrons(assyst: Arc<Assyst>, api_key: &str) -> Result<Vec<Patro
 
         match discord {
             Some(Some(d)) => {
-                discord_connections.insert(id, UserId::from(d.parse::<u64>().unwrap()));
+                discord_connections.insert(id, UserId::new(d.parse::<u64>().unwrap()));
             }
             _ => (),
         };
@@ -175,7 +174,7 @@ pub async fn get_patrons(assyst: Arc<Assyst>, api_key: &str) -> Result<Vec<Patro
 
     for i in assyst.config.user.admins.iter() {
         patrons.push(Patron {
-            user_id: UserId::from(*i),
+            user_id: UserId::new(*i),
             tier: 3,
             admin: true,
         })

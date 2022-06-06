@@ -58,12 +58,12 @@ impl CommandRegistry {
             sleep(Duration::from_millis(500)).await;
             let lock = *command_processed_c.lock().await;
             if lock == false {
-                context_c
+                let _ = context_c
                     .assyst
                     .http
                     .create_typing_trigger(context_c.message.channel_id)
-                    .await
-                    .unwrap();
+                    .exec()
+                    .await;
             }
         });
 
