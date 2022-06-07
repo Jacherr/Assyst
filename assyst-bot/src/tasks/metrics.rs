@@ -41,7 +41,7 @@ pub fn init_metrics_collect_loop(cluster: Arc<Cluster>, assyst: Arc<Assyst>) -> 
             for shard in cluster.shards() {
                 if !up_shards.contains(&i) {
                     logger::info(&a, &format!("Shard {} is starting", i)).await;
-                    shard.start().await.unwrap();
+                    let _ = shard.start().await;
                     // wait to avoid spamming identifies
                     tokio::time::sleep(Duration::from_secs(10)).await;
                 }
