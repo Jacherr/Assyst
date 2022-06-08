@@ -21,7 +21,7 @@ use crate::{
     assyst::Assyst,
     downloader,
     rest::{annmarie::info, wsi::run_wsi_job},
-    util::UserId,
+    util::{self, UserId},
 };
 
 use self::rust::OptimizationLevel;
@@ -100,9 +100,8 @@ pub async fn ocr_image(client: &Client, url: &str) -> Result<String, OcrError> {
         .text()
         .await
         .map_err(|_| OcrError::NetworkError)?;
-    text.make_ascii_lowercase();
 
-    if text.starts_with("<!doctype html>") {
+    if util::starts_with_case_insensitive(text.as_bytes(), b"<!doctype html>") {
         return Err(OcrError::HtmlResponse);
     }
 
