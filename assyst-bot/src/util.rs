@@ -567,3 +567,11 @@ pub fn get_avatar_url(user: &User) -> String {
 pub fn format_tag(user: &User) -> String {
     format!("{}#{}", user.name, user.discriminator)
 }
+
+pub fn starts_with_case_insensitive(haystack: &[u8], needle: &[u8]) -> bool {
+    if haystack.len() < needle.len() {
+        false
+    } else {
+        needle.iter().zip(haystack.iter()).all(|(a, b)| a.to_ascii_lowercase() == b.to_ascii_lowercase())
+    }
+}
