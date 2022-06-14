@@ -109,11 +109,13 @@ impl CommandRegistry {
         // register_command!(self, FLASH_COMMAND, run_flash_command);
         register_command!(self, AHSHIT_COMMAND, run_ahshit_command);
         register_command!(self, APRIL_FOOLS_COMMAND, run_aprilfools_command);
+        register_command!(self, BACK_TATTOO_COMMAND, run_back_tattoo_command);
         register_command!(self, BILLBOARD_COMMAND, run_billboard_command);
         register_command!(self, BLUR_COMMAND, run_blur_command);
         register_command!(self, BT_CHANNEL_COMMAND, run_btchannel_command);
         register_command!(self, BT_COMMAND, run_bt_command);
         register_command!(self, BURNTEXT_COMMAND, run_burntext_command);
+        register_command!(self, BOOK_COMMAND, run_book_command);
         register_command!(self, CACHE_STATUS_COMMAND, run_cache_status_command);
         register_command!(self, CAPTION_COMMAND, run_caption_command);
         register_command!(self, CHARS_COMMAND, run_chars_command);
@@ -128,9 +130,11 @@ impl CommandRegistry {
         register_command!(self, FEMURBREAKER_COMMAND, run_femurbreaker_command);
         register_command!(self, FISHEYE_COMMAND, run_fisheye_command);
         register_command!(self, FLAG_COMMAND, run_flag_command);
+        register_command!(self, FLAG2_COMMAND, run_flag2_command);
         register_command!(self, FLIP_COMMAND, run_flip_command);
         register_command!(self, FLOP_COMMAND, run_flop_command);
         register_command!(self, FRAMES_COMMAND, run_frames_command);
+        register_command!(self, FORTUNE_COOKIE_COMMAND, run_fortune_cookie_command);
         register_command!(self, GHOST_COMMAND, run_ghost_command);
         register_command!(self, GIF_LOOP_COMMAND, run_gif_loop_command);
         register_command!(self, GIF_MAGIK_COMMAND, run_gif_magik_command);
@@ -183,6 +187,7 @@ impl CommandRegistry {
         register_command!(self, TOP_COMMANDS_COMMAND, run_top_commands_command);
         register_command!(self, TOWAV_COMMAND, run_towav_command);
         register_command!(self, TRANSLATE_COMMAND, run_translate_command);
+        register_command!(self, VALENTINE_COMMAND, run_valentine_command);
         register_command!(self, WALL_COMMAND, run_wall_command);
         register_command!(self, WAVE_COMMAND, run_wave_command);
         register_command!(self, WORMHOLE_COMMAND, run_wormhole_command);

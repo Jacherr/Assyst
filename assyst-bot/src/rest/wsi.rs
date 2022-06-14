@@ -322,6 +322,38 @@ pub async fn audio(
     run_wsi_job(assyst, job, user_id).await
 }
 
+pub async fn back_tattoo(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    let job = FifoSend::Makesweet(FifoData::new(
+        vec![],
+        MakesweetQueryParams {
+            template: "back-tattoo".to_string(),
+            images: vec![image.to_vec()],
+        },
+    ));
+
+    run_wsi_job(assyst, job, user_id).await
+}
+
+pub async fn book(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    let job = FifoSend::Makesweet(FifoData::new(
+        vec![],
+        MakesweetQueryParams {
+            template: "book".to_string(),
+            images: vec![image.to_vec()],
+        },
+    ));
+
+    run_wsi_job(assyst, job, user_id).await
+}
+
 pub async fn billboard(
     assyst: Arc<Assyst>,
     image: Bytes,
@@ -500,12 +532,44 @@ pub async fn flag(
     run_wsi_job(assyst, job, user_id).await
 }
 
+pub async fn flag2(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    let job = FifoSend::Makesweet(FifoData::new(
+        vec![],
+        MakesweetQueryParams {
+            template: "flag2".to_string(),
+            images: vec![image.to_vec()],
+        },
+    ));
+
+    run_wsi_job(assyst, job, user_id).await
+}
+
 pub async fn frames(
     assyst: Arc<Assyst>,
     image: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
     let job = FifoSend::Frames(FifoData::new(image.to_vec(), NoneQuery {}));
+
+    run_wsi_job(assyst, job, user_id).await
+}
+
+pub async fn fortune_cookie(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    let job = FifoSend::Makesweet(FifoData::new(
+        vec![],
+        MakesweetQueryParams {
+            template: "fortune-cookie".to_string(),
+            images: vec![image.to_vec()],
+        },
+    ));
 
     run_wsi_job(assyst, job, user_id).await
 }
@@ -946,6 +1010,22 @@ pub async fn uncaption(
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
     let job = FifoSend::Uncaption(FifoData::new(image.to_vec(), NoneQuery {}));
+
+    run_wsi_job(assyst, job, user_id).await
+}
+
+pub async fn valentine(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    let job = FifoSend::Makesweet(FifoData::new(
+        vec![],
+        MakesweetQueryParams {
+            template: "valentine".to_string(),
+            images: vec![image.to_vec()],
+        },
+    ));
 
     run_wsi_job(assyst, job, user_id).await
 }
