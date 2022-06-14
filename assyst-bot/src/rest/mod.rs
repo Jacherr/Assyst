@@ -20,17 +20,15 @@ use crate::{
     ansi::Ansi,
     assyst::Assyst,
     downloader,
-    rest::{annmarie::info, wsi::run_wsi_job},
+    rest::wsi::run_wsi_job,
     util::{self, UserId},
 };
 
 use self::rust::OptimizationLevel;
 
-pub mod annmarie;
 pub mod bt;
 pub mod codesprint;
 pub mod identify;
-pub mod maryjane;
 pub mod patreon;
 pub mod rust;
 pub mod wombo;
@@ -90,7 +88,7 @@ pub struct Rule34Result {
 }
 
 pub async fn ocr_image(client: &Client, url: &str) -> Result<String, OcrError> {
-    let mut text = client
+    let text = client
         .get(format!("{}{}", routes::OCR, url))
         .send()
         .await
@@ -259,7 +257,7 @@ pub async fn get_random_rule34(assyst: &Assyst, tags: &str) -> Result<Vec<Rule34
         .get(&*assyst.config.url.rule34)
         .query(&[
             ("tags", tags),
-            ("limit", "1"),
+            ("limit", "10"),
             ("rating", "e"),
             ("formats", "jpeg png gif jpg webm mp4"),
         ])
@@ -316,14 +314,6 @@ pub async fn healthcheck(assyst: Arc<Assyst>) -> Vec<HealthcheckResult> {
     results.push(HealthcheckResult::new_from_result(
         "WSI",
         wsi_result,
-        timer.elapsed().as_millis() as _,
-    ));
-
-    let timer = Instant::now();
-    let annmarie_result = info(assyst.clone()).await;
-    results.push(HealthcheckResult::new_from_result(
-        "Annmarie",
-        annmarie_result,
         timer.elapsed().as_millis() as _,
     ));
 

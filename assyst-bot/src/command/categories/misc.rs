@@ -8,7 +8,6 @@ use crate::{
     },
     logger,
     rest::{
-        annmarie::info,
         bt::{get_languages, validate_language},
         fake_eval,
         rust::OptimizationLevel,
@@ -509,9 +508,6 @@ pub async fn run_stats_command(
         ("Database Size", &db_size),
     ]);
 
-    let annmarie_info = info(context.assyst.clone()).await?;
-    let annmarie_uptime = format_time(annmarie_info.uptime.floor() as u64 * 1000);
-
     let wsi_info = wsi::stats(context.assyst.clone()).await.unwrap_or(Stats {
         uptime_ms: 0,
         current_requests: 0,
@@ -522,7 +518,6 @@ pub async fn run_stats_command(
 
     let uptimes_table = generate_table(&[
         ("Assyst", &assyst_uptime),
-        ("Annmarie", &annmarie_uptime),
         ("WSI", &wsi_uptime),
     ]);
 

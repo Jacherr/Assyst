@@ -1,6 +1,6 @@
 use super::command::{Command, ParsedArgument, ParsedCommand, ParsedFlags};
 use super::{
-    categories::{fun::*, image_annmarie::*, image_wsi::*, misc::*, tag::*},
+    categories::{fun::*, image_makesweet::*, image_wsi::*, misc::*, tag::*},
     command::CommandAvailability,
 };
 use crate::command::context::Context;
@@ -108,7 +108,6 @@ impl CommandRegistry {
         // register_command!(self, _3D_ROTATE_COMMAND, run_3d_rotate_command);
         // register_command!(self, FLASH_COMMAND, run_flash_command);
         register_command!(self, AHSHIT_COMMAND, run_ahshit_command);
-        register_command!(self, ANNMARIE_COMMAND, run_annmarie_command);
         register_command!(self, APRIL_FOOLS_COMMAND, run_aprilfools_command);
         register_command!(self, BILLBOARD_COMMAND, run_billboard_command);
         register_command!(self, BLUR_COMMAND, run_blur_command);
@@ -117,7 +116,6 @@ impl CommandRegistry {
         register_command!(self, BURNTEXT_COMMAND, run_burntext_command);
         register_command!(self, CACHE_STATUS_COMMAND, run_cache_status_command);
         register_command!(self, CAPTION_COMMAND, run_caption_command);
-        register_command!(self, CARD_COMMAND, run_card_command);
         register_command!(self, CHARS_COMMAND, run_chars_command);
         register_command!(self, CIRCUITBOARD_COMMAND, run_circuitboard_command);
         register_command!(self, COLOR_COMMAND, run_color_command);
@@ -133,7 +131,6 @@ impl CommandRegistry {
         register_command!(self, FLIP_COMMAND, run_flip_command);
         register_command!(self, FLOP_COMMAND, run_flop_command);
         register_command!(self, FRAMES_COMMAND, run_frames_command);
-        register_command!(self, FRINGE_COMMAND, run_fringe_command);
         register_command!(self, GHOST_COMMAND, run_ghost_command);
         register_command!(self, GIF_LOOP_COMMAND, run_gif_loop_command);
         register_command!(self, GIF_MAGIK_COMMAND, run_gif_magik_command);
@@ -149,7 +146,6 @@ impl CommandRegistry {
         register_command!(self, INVERT_COMMAND, run_invert_command);
         register_command!(self, INVITE_COMMAND, run_invite_command);
         register_command!(self, JPEG_COMMAND, run_jpeg_command);
-        register_command!(self, LABELS_COMMAND, run_labels_command);
         register_command!(self, MAGIK_COMMAND, run_magik_command);
         register_command!(self, MEME_COMMAND, run_meme_command);
         register_command!(self, MOTIVATE_COMMAND, run_motivate_command);
@@ -164,7 +160,6 @@ impl CommandRegistry {
         register_command!(self, PIXELATE_COMMAND, run_pixelate_command);
         register_command!(self, PREFIX_COMMAND, run_prefix_command);
         register_command!(self, PRINTER_COMMAND, run_printer_command);
-        register_command!(self, QUOTE_COMMAND, run_quote_command);
         register_command!(self, RAINBOW_COMMAND, run_rainbow_command);
         register_command!(self, RANDOMIZE_COMMAND, run_randomize_command);
         register_command!(self, REMINDER_COMMAND, run_remind_command);
@@ -175,7 +170,6 @@ impl CommandRegistry {
         register_command!(self, RUST_COMMAND, run_rust_command);
         register_command!(self, SET_LOOP_COMMAND, run_set_loop_command);
         register_command!(self, SIREN_COMMAND, run_siren_command);
-        register_command!(self, SKETCH_COMMAND, run_sketch_command);
         register_command!(self, SOFTGLOW_COMMAND, run_bloom_command);
         register_command!(self, SPEECHBUBBLE_COMMAND, run_speechbubble_command);
         register_command!(self, SPIN_COMMAND, run_spin_command);
