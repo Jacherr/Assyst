@@ -6,7 +6,6 @@ use reqwest::Error;
 use serde::Deserialize;
 use shared::errors::ProcessingError;
 use shared::response_data::{ImageInfo, Stats};
-use shared::util::encode_frames;
 use shared::{
     fifo::{FifoData, FifoSend, WsiRequest},
     job::JobResult,
@@ -243,14 +242,6 @@ impl From<ProcessingError> for RequestError {
         })
     }
 }
-impl From<crate::rest::annmarie::RequestError> for RequestError {
-    fn from(e: crate::rest::annmarie::RequestError) -> Self {
-        RequestError::Wsi(WsiError {
-            code: 0,
-            message: e.to_string().into(),
-        })
-    }
-}
 
 impl std::fmt::Display for RequestError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -331,6 +322,22 @@ pub async fn audio(
     run_wsi_job(assyst, job, user_id).await
 }
 
+pub async fn billboard(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    let job = FifoSend::Makesweet(FifoData::new(
+        vec![],
+        MakesweetQueryParams {
+            template: "billboard-cityscape".to_string(),
+            images: vec![image.to_vec()],
+        },
+    ));
+
+    run_wsi_job(assyst, job, user_id).await
+}
+
 pub async fn blur(
     assyst: Arc<Assyst>,
     image: Bytes,
@@ -377,6 +384,22 @@ pub async fn caption(
         image.to_vec(),
         CaptionQueryParams {
             text: text.to_string(),
+        },
+    ));
+
+    run_wsi_job(assyst, job, user_id).await
+}
+
+pub async fn circuitboard(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    let job = FifoSend::Makesweet(FifoData::new(
+        vec![],
+        MakesweetQueryParams {
+            template: "circuitboard".to_string(),
+            images: vec![image.to_vec()],
         },
     ));
 
@@ -455,6 +478,22 @@ pub async fn motivate(
         MotivateQueryParams {
             top: top_text.to_string(),
             bottom: Some(bottom_text.to_string()),
+        },
+    ));
+
+    run_wsi_job(assyst, job, user_id).await
+}
+
+pub async fn flag(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    let job = FifoSend::Makesweet(FifoData::new(
+        vec![],
+        MakesweetQueryParams {
+            template: "flag".to_string(),
+            images: vec![image.to_vec()],
         },
     ));
 
@@ -552,29 +591,15 @@ pub async fn heart_locket(
     ));
     let resized = run_wsi_job(assyst.clone(), resized, user_id).await?;
 
-    let ann_buffer = encode_frames(vec![text.to_vec(), resized.to_vec()]);
-
-    let gif_job = FifoSend::ConstructGif(FifoData::new(
-        ann_buffer,
-        ConstructGifQueryParams {
-            delays: vec![],
-            repeat: -1,
-            audio: None,
-        },
-    ));
-    let gif = run_wsi_job(assyst.clone(), gif_job, user_id).await?;
-
-    let job = FifoSend::Annmarie(FifoData::new(
-        gif.to_vec(),
-        AnnmarieQueryParams {
-            route: crate::rest::annmarie::routes::MAKESWEET.to_string(),
-            query_params: vec![("template".to_string(), "heart-locket".to_string())],
-            images: vec![],
-            preprocess: true,
+    let heartlocket = FifoSend::Makesweet(FifoData::new(
+        resized.to_vec(),
+        MakesweetQueryParams {
+            template: "heart-locket".to_string(),
+            images: vec![image.to_vec(), text.to_vec()],
         },
     ));
 
-    run_wsi_job(assyst, job, user_id).await
+    run_wsi_job(assyst, heartlocket, user_id).await
 }
 
 pub async fn gif_speed(
@@ -718,16 +743,6 @@ pub async fn pixelate(
         image.to_vec(),
         PixelateQueryParams { downscaled_height },
     ));
-
-    run_wsi_job(assyst, job, user_id).await
-}
-
-pub async fn preprocess(
-    assyst: Arc<Assyst>,
-    image: Bytes,
-    user_id: UserId,
-) -> Result<Bytes, RequestError> {
-    let job = FifoSend::Preprocess(FifoData::new(image.to_vec(), NoneQuery {}));
 
     run_wsi_job(assyst, job, user_id).await
 }

@@ -17,6 +17,7 @@ use anyhow::{bail, Context as _};
 use assyst_common::consts;
 use bytes::Bytes;
 use lazy_static::lazy_static;
+use rand::{prelude::SliceRandom, thread_rng};
 use std::fmt::Write;
 use std::{sync::Arc, time::Duration};
 
@@ -86,15 +87,6 @@ lazy_static! {
         .example("")
         .usage("red")
         .cooldown(Duration::from_secs(10))
-        .category(CATEGORY_NAME)
-        .build();
-    pub static ref LABELS_COMMAND: Command = CommandBuilder::new("labels")
-        .arg(Argument::ImageBuffer)
-        .public()
-        .description("create labels from image")
-        .example(consts::Y21)
-        .usage("[image]")
-        .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
     pub static ref OCR_COMMAND: Command = CommandBuilder::new("ocr")
@@ -212,8 +204,11 @@ pub async fn run_rule34_command(
     _flags: ParsedFlags,
 ) -> CommandResult {
     let query = args[0].as_text();
-    let result = rest::get_random_rule34(&context.assyst, query).await?;
+    let mut result = rest::get_random_rule34(&context.assyst, query).await?;
 
+    result
+        .shuffle(&mut thread_rng());
+    
     let result = result
         .first()
         .map(|first| format!("**Score: {}**\n{}", first.score, first.url))
@@ -420,29 +415,6 @@ pub async fn run_color_command(
         }
     };
 
-    Ok(())
-}
-
-pub async fn run_labels_command(
-    context: Arc<Context>,
-    args: Vec<ParsedArgument>,
-    _flags: ParsedFlags,
-) -> CommandResult {
-    let image = args[0].as_bytes();
-    let result = rest::annmarie::labels(context.assyst.clone(), image, context.author_id()).await?;
-
-    let output = if result.is_empty() {
-        "No text detected".to_owned()
-    } else {
-        let x = result
-            .iter()
-            .take(15)
-            .map(|x| format!("{:.2}% - {}", x.score * 100.0, x.description))
-            .collect::<Vec<_>>();
-        x.join("\n")
-    };
-
-    context.reply_with_text(codeblock(&output, "")).await?;
     Ok(())
 }
 

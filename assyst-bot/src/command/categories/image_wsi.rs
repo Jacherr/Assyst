@@ -1733,7 +1733,7 @@ pub async fn run_identify_command(
     Ok(())
 }
 
-async fn run_wsi_noarg_command(
+pub async fn run_wsi_noarg_command(
     context: Arc<Context>,
     raw_image: Bytes,
     function: wsi::NoArgFunction,
