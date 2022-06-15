@@ -40,7 +40,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-const USEFUL_LINKS_TEXT: &str = "Invite the bot: <https://jacher.io/assyst>\nSupport server: <https://discord.gg/VRPGgMEhGk>\nVote for Assyst for some sweet perks! <https://vote.jacher.io/topgg> & <https://vote.jacher.io/dbl>";
+const USEFUL_LINKS_TEXT: &str = "**Invite the bot: <https://jacher.io/assyst>**\nSupport server: <https://discord.gg/VRPGgMEhGk>\nVote for Assyst for some sweet perks! <https://vote.jacher.io/topgg> & <https://vote.jacher.io/dbl>";
 
 const CATEGORY_NAME: &str = "misc";
 
@@ -329,13 +329,16 @@ pub async fn run_help_command(
             };
         }
 
-        command_categories.iter().for_each(|(name, commands)| {
+        command_categories.iter_mut().for_each(|(name, commands)| {
+            commands.sort();
             command_help_entries.push(format!("**{}**\n```\n{}\n```", name, commands.join(", ")))
         });
 
+        command_help_entries.sort();
+
         context
             .reply_with_text(format!(
-                "{}\n*Do {}help [command] for more info on a command.*\n{}",
+                "{}\n**Do {}help [command] for more info on a command.**\n{}",
                 &command_help_entries.join("\n"),
                 context.prefix,
                 USEFUL_LINKS_TEXT
