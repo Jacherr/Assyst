@@ -933,6 +933,29 @@ pub async fn rotate(
     run_wsi_job(assyst, job, user_id).await
 }
 
+pub async fn rubiks(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    let job = FifoSend::Makesweet(FifoData::new(
+        vec![],
+        MakesweetQueryParams {
+            template: "rubix".to_string(),
+            images: vec![
+                image.to_vec(),
+                image.to_vec(),
+                image.to_vec(),
+                image.to_vec(),
+                image.to_vec(),
+                image.to_vec(),
+            ],
+        },
+    ));
+
+    run_wsi_job(assyst, job, user_id).await
+}
+
 pub async fn set_loop(
     assyst: Arc<Assyst>,
     image: Bytes,
@@ -1000,6 +1023,22 @@ pub async fn tehi(
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
     let job = FifoSend::Tehi(FifoData::new(image.to_vec(), NoneQuery {}));
+
+    run_wsi_job(assyst, job, user_id).await
+}
+
+pub async fn toaster(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    let job = FifoSend::Makesweet(FifoData::new(
+        vec![],
+        MakesweetQueryParams {
+            template: "toaster".to_string(),
+            images: vec![image.to_vec(), image.to_vec()],
+        },
+    ));
 
     run_wsi_job(assyst, job, user_id).await
 }
