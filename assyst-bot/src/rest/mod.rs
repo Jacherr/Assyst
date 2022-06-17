@@ -209,8 +209,24 @@ pub async fn post_bot_stats(
     guild_count: u32,
 ) -> Result<(), Error> {
     client
+        .post(routes::discord_bot_list_stats_url())
+        .header("authorization", discord_bot_list_token)
+        .json(&json!({ "guilds": guild_count }))
+        .send()
+        .await?
+        .error_for_status()?;
+
+    client
         .post(routes::top_gg_stats_url())
         .header("authorization", top_gg_token)
+        .json(&json!({ "server_count": guild_count }))
+        .send()
+        .await?
+        .error_for_status()?;
+
+    client
+        .post(routes::discords_stats_url())
+        .header("authorization", discords_token)
         .json(&json!({ "server_count": guild_count }))
         .send()
         .await?

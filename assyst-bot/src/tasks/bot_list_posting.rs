@@ -13,8 +13,6 @@ pub fn init_bot_list_posting_loop(assyst: Arc<Assyst>) {
 
             let guild_count = assyst.metrics.get_guild_count();
 
-            if guild_count < 1000 { break; }
-
             let result = post_bot_stats(
                 &assyst.reqwest_client,
                 &assyst.config.auth.discord_bot_list_post_stats,
