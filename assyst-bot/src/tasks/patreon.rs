@@ -14,22 +14,29 @@ pub fn update_patrons(assyst: Arc<Assyst>) {
                 .await
                 .unwrap();
 
-            assyst
+            let msg = format!(
+                "patrons:\n{}",
+                patrons
+                    .iter()
+                    .filter(|x| !x.admin)
+                    .map(|x| x.user_id.get().to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            );
+
+            let x = assyst
                 .http
                 .create_message(ChannelId::new(833758252427640892))
-                .content(&format!(
-                    "patrons:\n{}",
-                    patrons
-                        .iter()
-                        .filter(|x| !x.admin)
-                        .map(|x| x.user_id.get().to_string())
-                        .collect::<Vec<_>>()
-                        .join("\n")
-                ))
-                .unwrap()
-                .exec()
-                .await
-                .unwrap();
+                .content(&msg);
+
+            match x {
+                Ok(x) => {
+                    let _ = x.exec().await;
+                },
+                Err(_) => {},
+            }
+
+
 
             *assyst.patrons.write().await = patrons;
 
