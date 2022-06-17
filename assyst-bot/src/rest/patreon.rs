@@ -175,7 +175,7 @@ pub async fn get_patrons(assyst: Arc<Assyst>, api_key: &str) -> Result<Vec<Patro
     for i in assyst.config.user.admins.iter() {
         patrons.push(Patron {
             user_id: UserId::new(*i),
-            tier: 3,
+            tier: 4,
             admin: true,
         })
     }
@@ -185,10 +185,12 @@ pub async fn get_patrons(assyst: Arc<Assyst>, api_key: &str) -> Result<Vec<Patro
 
 fn get_tier_from_pledge(pledge: usize) -> usize {
     if pledge >= 2000 {
-        3
+        4
     } else if pledge >= 1000 {
-        2
+        3
     } else if pledge >= 500 {
+        2
+    } else if pledge >= 300 {
         1
     } else {
         0
