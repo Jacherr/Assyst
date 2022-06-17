@@ -203,9 +203,7 @@ pub async fn burning_text(text: &str) -> Result<Bytes, Error> {
 
 pub async fn post_bot_stats(
     client: &Client,
-    discord_bot_list_token: &str,
     top_gg_token: &str,
-    discords_token: &str,
     guild_count: u32,
 ) -> Result<(), Error> {
     client

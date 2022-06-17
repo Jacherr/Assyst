@@ -17,9 +17,7 @@ pub fn init_bot_list_posting_loop(assyst: Arc<Assyst>) {
 
             let result = post_bot_stats(
                 &assyst.reqwest_client,
-                &assyst.config.auth.discord_bot_list_post_stats,
                 &assyst.config.auth.top_gg_post_stats,
-                &assyst.config.auth.discords_post_stats,
                 guild_count as u32,
             )
             .await;
