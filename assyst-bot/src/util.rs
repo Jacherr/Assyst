@@ -513,7 +513,7 @@ pub async fn get_wsi_request_tier(assyst: &Assyst, user_id: UserId) -> Result<us
         .await?;
 
     if has_free_tier_1 {
-        Ok(1)
+        Ok(2)
     } else {
         Ok(0)
     }
