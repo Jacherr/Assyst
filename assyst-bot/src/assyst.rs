@@ -132,10 +132,10 @@ impl Assyst {
     /// Assyst itself is not configurable using this method.
     /// Assyst configuration exists in the config.toml file at the root
     /// of this project. Use that to configure the behaviour of the bot.
-    pub async fn new(token: &str) -> Self {
-        let http = Arc::new(HttpClient::new(token.to_owned()));
-        let reqwest_client = ReqwestClient::new();
+    pub async fn new() -> Self {
         let config = Arc::new(Config::new());
+        let http = Arc::new(HttpClient::new(config.auth.discord.to_string()));
+        let reqwest_client = ReqwestClient::new();
         let database = Database::new(2, config.database.to_url())
             .await
             .map(Arc::new)
