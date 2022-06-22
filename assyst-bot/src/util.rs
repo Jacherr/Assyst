@@ -5,6 +5,7 @@ use regex::Captures;
 use shared::job::JobResult;
 
 use anyhow::bail;
+use twilight_gateway::Event;
 use std::{
     borrow::Cow,
     convert::TryInto,
@@ -22,7 +23,7 @@ use twilight_model::{
         },
         Id,
     },
-    user::User,
+    user::User, gateway::event::GatewayEvent,
 };
 
 pub type ChannelId = Id<ChannelMarker>;
