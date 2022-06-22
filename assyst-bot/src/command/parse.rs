@@ -273,8 +273,8 @@ pub mod image_lookups {
         Some(Cow::Borrowed(embed))
     }
 
-    pub async fn previous_message_attachment<'m>(
-        http: &twilight_http::Client,
+    pub async fn previous_message_attachment<'c, 'm>(
+        http: &'c twilight_http::Client,
         message: &'m Message,
     ) -> Option<Cow<'m, str>> {
         let messages = http
