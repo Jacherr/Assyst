@@ -19,7 +19,7 @@ use assyst_common::consts::EVENT_PIPE;
 use assyst_webserver::run as webserver_run;
 use handler::handle_event;
 use serde::de::DeserializeSeed;
-use tokio::{io::AsyncReadExt, net::UnixStream};
+use tokio::{io::AsyncReadExt, net::{UnixStream, UnixListener}};
 use twilight_model::gateway::event::GatewayEventDeserializer;
 use std::sync::Arc;
 
@@ -68,7 +68,9 @@ async fn main() -> anyhow::Result<()> {
 
     assyst.initialize_blacklist().await?;
 
-    let mut stream = UnixStream::connect(EVENT_PIPE).await?;
+    let mut listener = UnixListener::bind(EVENT_PIPE)?;
+
+    let (mut stream, _) = listener.accept().await?;
 
     // Event loop
     loop {

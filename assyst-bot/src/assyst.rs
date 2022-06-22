@@ -505,7 +505,7 @@ impl Assyst {
         // get all other arguments from the fake context we've just created
         let args = get_raw_args(&context.message.content, prefix, 1).unwrap_or_else(Vec::new);
 
-        let args_refs = args.iter().map(|x| x.as_str()).collect::<Vec<&str>>();
+        let args_refs = args.iter().map(|x| x.as_str()).collect::<Vec<_>>();
 
         // check relevant permissions for the command
         match command.availability {
@@ -625,7 +625,7 @@ impl Assyst {
         &self,
         context: &Arc<Context>,
         command: &'a Command,
-        args: Vec<&str>,
+        args: Vec<&'a str>,
     ) -> Result<Vec<ParsedArgument>, CommandParseError<'a>> {
         let mut parsed_args: Vec<ParsedArgument> = vec![];
         let mut index: usize = 0;
@@ -653,7 +653,7 @@ impl Assyst {
         &self,
         context: &Arc<Context>,
         command: &'a Command,
-        args: &Vec<&str>,
+        args: &Vec<&'a str>,
         arg: &Argument,
         index: &usize,
     ) -> Result<ParsedArgumentResult, CommandParseError<'a>> {
