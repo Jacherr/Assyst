@@ -621,17 +621,17 @@ impl Assyst {
     /// Parses arguments from a context and a set of predefined, expected 'argument types'.
     /// Returns Ok with the parsed arguments on success and an Err with what failed to parse
     /// in the event of a failure.
-    async fn parse_arguments<'a>(
+    async fn parse_arguments<'a, 'b>(
         &self,
         context: &Arc<Context>,
         command: &'a Command,
-        args: Vec<&'a str>,
+        args: Vec<&'b str>,
     ) -> Result<Vec<ParsedArgument>, CommandParseError<'a>> {
         let mut parsed_args: Vec<ParsedArgument> = vec![];
         let mut index: usize = 0;
         for arg in &command.args {
             let result = self
-                .parse_argument(context, command, &args, arg, &index)
+                .parse_argument(context, command, &args, arg, index)
                 .await?;
             parsed_args.push(result.value);
             if result.should_break {
@@ -653,25 +653,25 @@ impl Assyst {
         &self,
         context: &Arc<Context>,
         command: &'a Command,
-        args: &Vec<&'a str>,
+        args: &Vec<&str>,
         arg: &Argument,
-        index: &usize,
+        index: usize,
     ) -> Result<ParsedArgumentResult, CommandParseError<'a>> {
         // check the next type of argument and parse as appropriate
         match arg {
             Argument::Integer | Argument::Decimal => {
-                return parse::argument_type::numerical(args, arg, command, *index);
+                return parse::argument_type::numerical(args, arg, command, index);
             }
 
             Argument::Choice(choices) => {
-                return parse::argument_type::choice(choices, args, command, *index);
+                return parse::argument_type::choice(choices, args, command, index);
             }
 
             Argument::ImageUrl | Argument::ImageBuffer => {
-                let argument_to_pass = if args.len() <= *index {
+                let argument_to_pass = if args.len() <= index {
                     ""
                 } else {
-                    args[*index]
+                    args[index]
                 };
                 parse::subsections::parse_image_argument(
                     context,
@@ -683,11 +683,11 @@ impl Assyst {
             }
 
             Argument::String => {
-                return parse::argument_type::string(args, command, *index);
+                return parse::argument_type::string(args, command, index);
             }
 
             Argument::StringRemaining => {
-                return parse::argument_type::string_remaining(context, args, command, *index);
+                return parse::argument_type::string_remaining(context, args, command, index);
             }
 
             Argument::Optional(a)
