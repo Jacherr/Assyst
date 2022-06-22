@@ -18,11 +18,10 @@ use assyst::Assyst;
 use assyst_common::consts::EVENT_PIPE;
 use assyst_webserver::run as webserver_run;
 use handler::handle_event;
-use libc::mkfifo;
 use serde::de::DeserializeSeed;
-use tokio::fs::read;
+use tokio::{io::AsyncReadExt, net::UnixStream};
 use twilight_model::gateway::event::GatewayEventDeserializer;
-use std::{sync::Arc, ffi::CString};
+use std::sync::Arc;
 
 #[cfg(target_os = "linux")]
 #[global_allocator]
@@ -69,12 +68,15 @@ async fn main() -> anyhow::Result<()> {
 
     assyst.initialize_blacklist().await?;
 
+    let mut stream = UnixStream::connect(EVENT_PIPE).await?;
+
     // Event loop
     loop {
+        let mut data: Vec<u8> = Vec::new();
         let assyst_clone = assyst.clone();
-        let d = read(EVENT_PIPE).await?;
+        stream.read_to_end(&mut data).await?;
         tokio::spawn(async move {
-            let json = String::from_utf8_lossy(&d);
+            let json = String::from_utf8_lossy(&data);
             let de = GatewayEventDeserializer::from_json(&json).unwrap();
             let mut json_de = serde_json::Deserializer::from_str(&json);
             match de.deserialize(&mut json_de) {

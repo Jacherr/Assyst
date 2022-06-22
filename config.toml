@@ -16,7 +16,7 @@ lottie_render = "ass"
 rapidapi = "9e26b961c5msh346b4b5ebc61105p1a5cdbjsn7d24ab7ae662"
 codesprint = ""
 cdn = "0192837465"
-discord = "NTcxNjYxMjIxODU0NzA3NzEz.XMQ_AA.eq2aAXVqCDocqWp5jJ3hoZ--GAM"#"Njc0MzY3NjYwNzEyMTMyNjA4.GL34uT.RwAl9eU_r4fPryLwKoDRVpXaak04052OZea2dw"
+discord = "Njc0MzY3NjYwNzEyMTMyNjA4.GL34uT.RwAl9eU_r4fPryLwKoDRVpXaak04052OZea2dw"#"NTcxNjYxMjIxODU0NzA3NzEz.XMQ_AA.eq2aAXVqCDocqWp5jJ3hoZ--GAM"
 
 [database]
 host = "65.108.47.241"

@@ -1,14 +1,13 @@
-use std::{ffi::CString, sync::Arc};
+use std::sync::Arc;
 
 use assyst_common::{config::Config, consts::EVENT_PIPE};
-use libc::mkfifo;
 use twilight_gateway::{Cluster, Intents, EventTypeFlags, Event};
 use twilight_model::gateway::{
     payload::outgoing::update_presence::UpdatePresencePayload,
     presence::{Activity, ActivityType, Status},
 };
 use futures_util::StreamExt;
-use tokio::fs::write;
+use tokio::{net::{UnixStream, UnixListener}, io::AsyncWriteExt};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -51,16 +50,14 @@ async fn main() -> anyhow::Result<()> {
         spawned_cluster.up().await;
     });
 
-    unsafe {
-        let path = CString::new(EVENT_PIPE).unwrap();
-        mkfifo(path.as_ptr(), 0o644);
-    }
+    let listener = UnixListener::bind(EVENT_PIPE)?;
+    let (mut stream, _) = listener.accept().await?;
 
     // Event loop
     while let Some((_, event)) = events.next().await {
         match event {
             Event::ShardPayload(x) => {
-                write(EVENT_PIPE, &x.bytes).await?; 
+                stream.write_all(&x.bytes).await?; 
             },
             o => {
                 println!("{:?}", o);
