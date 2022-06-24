@@ -85,6 +85,7 @@ dependencies = [
  "jemalloc-sys",
  "jemallocator",
  "lazy_static",
+ "libc",
  "phf 0.10.1",
  "phf_macros 0.10.0",
  "prometheus",

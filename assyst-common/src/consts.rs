@@ -30,3 +30,4 @@ pub const DEFAULT_COLORS: &[(&str, u32)] = &[
     ("green", 0x2ecc71),
     ("red", 0xe74c3c),
 ];
+pub const EVENT_PIPE: &str = "/tmp/assyst-events";

@@ -16,6 +16,7 @@ pub struct Auth {
     pub rapidapi: Box<str>,
     pub codesprint: Box<str>,
     pub cdn: Box<str>,
+    pub discord: Box<str>
 }
 
 #[derive(Clone, Deserialize)]
@@ -83,7 +84,7 @@ pub struct Config {
 }
 impl Config {
     pub fn new() -> Self {
-        let buffer = read_to_string("./config.toml").unwrap();
+        let buffer = read_to_string("../config.toml").unwrap();
         toml::from_str(&buffer).unwrap()
     }
 }

@@ -22,7 +22,7 @@ use twilight_model::{
         },
         Id,
     },
-    user::User,
+    user::User
 };
 
 pub type ChannelId = Id<ChannelMarker>;
