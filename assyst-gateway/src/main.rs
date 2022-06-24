@@ -1,16 +1,27 @@
 use std::sync::Arc;
 
-use assyst_common::{config::Config, consts::EVENT_PIPE};
-use twilight_gateway::{Cluster, Intents, EventTypeFlags, Event};
+use assyst_common::{config::Config, consts::{EVENT_PIPE, gateway}};
+use twilight_gateway::{Cluster, Intents, EventTypeFlags, Event, shard::Stage};
 use twilight_model::gateway::{
     payload::outgoing::update_presence::UpdatePresencePayload,
     presence::{Activity, ActivityType, Status},
 };
 use futures_util::StreamExt;
-use tokio::{net::{UnixStream, UnixListener}, io::AsyncWriteExt};
+use tokio::{net::UnixListener, io::{AsyncWriteExt, AsyncReadExt}, fs::remove_file, sync::Mutex};
+
+macro_rules! ok_or_break {
+    ($expression:expr) => {
+      match $expression {
+        Ok(v) => v,
+        Err(_) break
+      }
+    }
+  }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    remove_file(EVENT_PIPE).await?;
+
     let config = Config::new();
 
     let activity = Activity {
@@ -51,19 +62,50 @@ async fn main() -> anyhow::Result<()> {
     });
 
     let listener = UnixListener::bind(EVENT_PIPE)?;
-    let (mut stream, _) = listener.accept().await?;
 
-    // Event loop
-    while let Some((_, event)) = events.next().await {
-        match event {
-            Event::ShardPayload(x) => {
-                stream.write_all(&x.bytes).await?; 
-            },
-            o => {
-                println!("{:?}", o);
+    let arced_events = Arc::new(Mutex::new(events));
+
+    loop {
+        let (mut stream, _) = listener.accept().await?;
+
+        let (mut r, mut w) = stream.into_split();
+
+        let info = arced_cluster.info();
+        let mut up_shards: Vec<u64> = vec![];
+        for shard in info {
+            if shard.1.stage() == Stage::Connected {
+                up_shards.push(shard.0)
             }
         }
-    }
+        let shard_string = up_shards.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(",");
+        w.write_u8(gateway::GATEWAY_OP_UP_SHARD).await?;
+        w.write_u32(shard_string.len() as u32).await?;
+        w.write_all(&shard_string.as_bytes()).await?;
 
-    Ok(())
+        let events_clone = arced_events.clone();
+        tokio::spawn(async move {
+            while let Some((_, event)) = events_clone.lock().await.next().await {
+                match event {
+                    Event::ShardPayload(x) => {
+                        ok_or_break!(w.write_u8(gateway::GATEWAY_OP_EVENT).await);
+                        ok_or_break!(w.write_u32(x.bytes.len() as u32).await);
+                        ok_or_break!(w.write_all(&x.bytes).await)
+                    },
+                    o => {
+                        println!("{:?}", o);
+                    }
+                }
+            }
+        });
+
+        tokio::spawn(async move {
+            loop {
+                let op = ok_or_break!(r.read_u8().await);
+                let len = ok_or_break!(r.read_u32().await);
+                let mut data = vec![0; len as usize];
+                ok_or_break!(r.read_exact(&mut data).await);
+                
+            }
+        });
+    }
 }
