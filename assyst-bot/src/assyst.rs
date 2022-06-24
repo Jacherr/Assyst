@@ -132,10 +132,10 @@ impl Assyst {
     /// Assyst itself is not configurable using this method.
     /// Assyst configuration exists in the config.toml file at the root
     /// of this project. Use that to configure the behaviour of the bot.
-    pub async fn new(token: &str) -> Self {
-        let http = Arc::new(HttpClient::new(token.to_owned()));
-        let reqwest_client = ReqwestClient::new();
+    pub async fn new() -> Self {
         let config = Arc::new(Config::new());
+        let http = Arc::new(HttpClient::new(config.auth.discord.to_string()));
+        let reqwest_client = ReqwestClient::new();
         let database = Database::new(2, config.database.to_url())
             .await
             .map(Arc::new)
@@ -505,7 +505,7 @@ impl Assyst {
         // get all other arguments from the fake context we've just created
         let args = get_raw_args(&context.message.content, prefix, 1).unwrap_or_else(Vec::new);
 
-        let args_refs = args.iter().map(|x| x.as_str()).collect::<Vec<&str>>();
+        let args_refs = args.iter().map(|x| x.as_str()).collect::<Vec<_>>();
 
         // check relevant permissions for the command
         match command.availability {
@@ -621,17 +621,17 @@ impl Assyst {
     /// Parses arguments from a context and a set of predefined, expected 'argument types'.
     /// Returns Ok with the parsed arguments on success and an Err with what failed to parse
     /// in the event of a failure.
-    async fn parse_arguments<'a>(
+    async fn parse_arguments<'a, 'b>(
         &self,
         context: &Arc<Context>,
         command: &'a Command,
-        args: Vec<&str>,
+        args: Vec<&'b str>,
     ) -> Result<Vec<ParsedArgument>, CommandParseError<'a>> {
         let mut parsed_args: Vec<ParsedArgument> = vec![];
         let mut index: usize = 0;
         for arg in &command.args {
             let result = self
-                .parse_argument(context, command, &args, arg, &index)
+                .parse_argument(context, command, &args, arg, index)
                 .await?;
             parsed_args.push(result.value);
             if result.should_break {
@@ -655,23 +655,23 @@ impl Assyst {
         command: &'a Command,
         args: &Vec<&str>,
         arg: &Argument,
-        index: &usize,
+        index: usize,
     ) -> Result<ParsedArgumentResult, CommandParseError<'a>> {
         // check the next type of argument and parse as appropriate
         match arg {
             Argument::Integer | Argument::Decimal => {
-                return parse::argument_type::numerical(args, arg, command, *index);
+                return parse::argument_type::numerical(args, arg, command, index);
             }
 
             Argument::Choice(choices) => {
-                return parse::argument_type::choice(choices, args, command, *index);
+                return parse::argument_type::choice(choices, args, command, index);
             }
 
             Argument::ImageUrl | Argument::ImageBuffer => {
-                let argument_to_pass = if args.len() <= *index {
+                let argument_to_pass = if args.len() <= index {
                     ""
                 } else {
-                    args[*index]
+                    args[index]
                 };
                 parse::subsections::parse_image_argument(
                     context,
@@ -683,11 +683,11 @@ impl Assyst {
             }
 
             Argument::String => {
-                return parse::argument_type::string(args, command, *index);
+                return parse::argument_type::string(args, command, index);
             }
 
             Argument::StringRemaining => {
-                return parse::argument_type::string_remaining(context, args, command, *index);
+                return parse::argument_type::string_remaining(context, args, command, index);
             }
 
             Argument::Optional(a)
