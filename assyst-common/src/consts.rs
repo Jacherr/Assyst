@@ -30,4 +30,15 @@ pub const DEFAULT_COLORS: &[(&str, u32)] = &[
     ("green", 0x2ecc71),
     ("red", 0xe74c3c),
 ];
-pub const EVENT_PIPE: &str = "/tmp/assyst-events";
+pub const EVENT_PIPE: &str = "/tmp/assyst-events.sock";
+pub const CACHE_PIPE: &str = "/tmp/assyst-cache.sock";
+pub mod gateway {
+    use std::collections::HashMap;
+
+    use serde::{Serialize, Deserialize};
+
+    pub const OP_EVENT: u8 = 0;
+    pub const OP_LATENCIES: u8 = 1;
+    #[derive(Serialize, Deserialize)]
+    pub struct Latencies(pub HashMap<u64, i64>);
+}

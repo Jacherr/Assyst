@@ -15,13 +15,20 @@ mod tasks;
 mod util;
 
 use assyst::Assyst;
-use assyst_common::consts::EVENT_PIPE;
+use assyst_common::consts::{
+    gateway::{self, Latencies},
+    EVENT_PIPE,
+};
 use assyst_webserver::run as webserver_run;
+use bincode::deserialize;
 use handler::handle_event;
 use serde::de::DeserializeSeed;
-use tokio::{io::AsyncReadExt, net::{UnixStream, UnixListener}};
-use twilight_model::gateway::event::GatewayEventDeserializer;
 use std::sync::Arc;
+use tokio::{
+    io::{AsyncReadExt, BufReader},
+    net::UnixStream,
+};
+use twilight_model::gateway::event::GatewayEventDeserializer;
 
 #[cfg(target_os = "linux")]
 #[global_allocator]
@@ -68,26 +75,52 @@ async fn main() -> anyhow::Result<()> {
 
     assyst.initialize_blacklist().await?;
 
-    let mut listener = UnixListener::bind(EVENT_PIPE)?;
-
-    let (mut stream, _) = listener.accept().await?;
+    let stream = UnixStream::connect(EVENT_PIPE).await?;
+    let mut reader = BufReader::new(stream);
 
     // Event loop
     loop {
-        let mut data: Vec<u8> = Vec::new();
         let assyst_clone = assyst.clone();
-        stream.read_to_end(&mut data).await?;
-        tokio::spawn(async move {
-            let json = String::from_utf8_lossy(&data);
-            let de = GatewayEventDeserializer::from_json(&json).unwrap();
-            let mut json_de = serde_json::Deserializer::from_str(&json);
-            match de.deserialize(&mut json_de) {
-                Ok(x) => {
-                    handle_event(assyst_clone, x).await;
+        let op = reader.read_u8().await?;
+        let len = reader.read_u32().await?;
+        let mut data: Vec<u8> = vec![0; len as usize];
+        reader.read_exact(&mut data).await?;
+        match op {
+            gateway::OP_EVENT => {
+                assyst.metrics.add_event();
+                tokio::spawn(async move {
+                    let json = String::from_utf8_lossy(&data);
+                    let de = GatewayEventDeserializer::from_json(&json).unwrap();
+                    let mut json_de = serde_json::Deserializer::from_str(&json);
+                    match de.deserialize(&mut json_de) {
+                        Ok(x) => {
+                            handle_event(assyst_clone, x).await;
+                        }
+                        Err(_) => {}
+                    };
+                });
+            }
+            gateway::OP_LATENCIES => {
+                let deserialized: Latencies = match deserialize(&data) {
+                    Ok(d) => d,
+                    Err(e) => {
+                        logger::fatal(
+                            assyst.as_ref(),
+                            &format!(
+                                "Failed to deserialize latency information: {}",
+                                e.to_string()
+                            ),
+                        )
+                        .await;
+                        continue;
+                    }
+                };
+
+                for latency in deserialized.0 {
+                    assyst.metrics.set_shard_latency(latency.0, latency.1);
                 }
-                Err(_) => {}
-            };
-        });
-        assyst.metrics.add_event();
+            }
+            _ => {}
+        }
     }
 }

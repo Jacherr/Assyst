@@ -1,6 +1,6 @@
 use crate::{
     badtranslator::BadTranslator,
-    caching::{Ratelimits, Replies, Reply, TopGuilds},
+    caching::local_caching::{Ratelimits, Replies, Reply, TopGuilds},
     command::{
         command::{
             Argument, Command, CommandAvailability, CommandParseError, CommandParseErrorType,
@@ -469,10 +469,10 @@ impl Assyst {
     /// will not match the syntax of Assyst commands since users
     /// may not even be trying to run Assyst commands even if the
     /// message starts with the correct prefix.
-    pub async fn parse_command(
-        &self,
-        context: &Arc<Context>,
-        prefix: &str,
+    pub async fn parse_command<'a>(
+        &'a self,
+        context: &'a Arc<Context>,
+        prefix: &'a str,
     ) -> Result<Option<ParsedCommand>, CommandParseError<'_>> {
         // extract the command name
         let mut command = get_command(&context.message.content, prefix).unwrap_or_else(String::new);
@@ -622,7 +622,7 @@ impl Assyst {
     /// Returns Ok with the parsed arguments on success and an Err with what failed to parse
     /// in the event of a failure.
     async fn parse_arguments<'a, 'b>(
-        &self,
+        &'a self,
         context: &Arc<Context>,
         command: &'a Command,
         args: Vec<&'b str>,
