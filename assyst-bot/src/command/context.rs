@@ -10,7 +10,7 @@ use twilight_model::{
 };
 
 use crate::{
-    caching::Reply,
+    caching::local_caching::Reply,
     util::{MessageId, UserId},
     Assyst,
 };

@@ -1,16 +1,39 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
-use assyst_common::{config::Config, consts::EVENT_PIPE};
-use twilight_gateway::{Cluster, Intents, EventTypeFlags, Event};
+use assyst_common::{
+    config::Config,
+    consts::{
+        gateway::{self, Latencies},
+        EVENT_PIPE,
+    },
+};
+use bincode::serialize;
+use futures_util::StreamExt;
+use tokio::{
+    io::{AsyncWriteExt, BufWriter},
+    net::UnixListener,
+    sync::Mutex,
+    time::sleep, fs::remove_file,
+};
+use twilight_gateway::{cluster::Events, Cluster, Event, EventTypeFlags, Intents};
 use twilight_model::gateway::{
     payload::outgoing::update_presence::UpdatePresencePayload,
     presence::{Activity, ActivityType, Status},
 };
-use futures_util::StreamExt;
-use tokio::{net::{UnixStream, UnixListener}, io::AsyncWriteExt};
+
+macro_rules! ok_or_break {
+    ($expression:expr) => {
+        match $expression {
+            Ok(v) => v,
+            Err(_) => break,
+        }
+    };
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    remove_file(EVENT_PIPE).await?;
+
     let config = Config::new();
 
     let activity = Activity {
@@ -34,7 +57,7 @@ async fn main() -> anyhow::Result<()> {
     let presence = UpdatePresencePayload::new(vec![activity], false, None, Status::Online)?;
 
     // spawn as many shards as discord recommends
-    let (cluster, mut events) = Cluster::builder(
+    let (cluster, events) = Cluster::builder(
         config.auth.discord.to_string(),
         Intents::MESSAGE_CONTENT | Intents::GUILD_MESSAGES | Intents::GUILDS,
     )
@@ -43,27 +66,71 @@ async fn main() -> anyhow::Result<()> {
     .build()
     .await?;
 
-    let arced_cluster = Arc::new(cluster);
+    let events = Arc::new(Mutex::new(events));
+    let cluster = Arc::new(cluster);
 
-    let spawned_cluster = arced_cluster.clone();
+    let spawned_cluster = cluster.clone();
     tokio::spawn(async move {
         spawned_cluster.up().await;
     });
 
     let listener = UnixListener::bind(EVENT_PIPE)?;
-    let (mut stream, _) = listener.accept().await?;
+    let listener = Arc::new(listener);
+
+    loop {
+        let _ = supply_connection(listener.clone(), events.clone(), cluster.clone()).await;
+    }
+
+    Ok(())
+}
+
+pub async fn supply_connection(
+    listener: Arc<UnixListener>,
+    events: Arc<Mutex<Events>>,
+    cluster: Arc<Cluster>,
+) -> anyhow::Result<()> {
+    let (stream, _) = listener.accept().await?;
+    let writer = Arc::new(Mutex::new(BufWriter::new(stream)));
+    let writer_clone = writer.clone();
+
+    let latency_writer = tokio::spawn(async move {
+        loop {
+            sleep(Duration::from_secs(5)).await;
+            let mut latencies = Latencies(HashMap::new());
+            let info = cluster.info();
+            for shard in info {
+                let latency = match shard.1.latency().average().map(|d| d.as_millis()) {
+                    Some(x) => x as i64,
+                    None => continue,
+                };
+                latencies.0.insert(shard.0, latency);
+            }
+            let serialized = serialize(&latencies).unwrap();
+            let mut lock = writer_clone.lock().await;
+            ok_or_break!(lock.write_u8(gateway::OP_LATENCIES).await);
+            ok_or_break!(lock.write_u32(serialized.len() as u32).await);
+            ok_or_break!(lock.write_all(&serialized).await);
+            ok_or_break!(lock.flush().await);
+        }
+    });
 
     // Event loop
-    while let Some((_, event)) = events.next().await {
+    while let Some((_, event)) = events.lock().await.next().await {
         match event {
             Event::ShardPayload(x) => {
-                stream.write_all(&x.bytes).await?; 
-            },
+                let mut lock = writer.lock().await;
+                ok_or_break!(lock.write_u8(gateway::OP_EVENT).await);
+                ok_or_break!(lock.write_u32(x.bytes.len() as u32).await);
+                ok_or_break!(lock.write_all(&x.bytes).await);
+                ok_or_break!(lock.flush().await);
+            }
             o => {
                 println!("{:?}", o);
             }
         }
     }
+
+    latency_writer.abort();
 
     Ok(())
 }

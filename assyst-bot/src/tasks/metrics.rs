@@ -36,36 +36,6 @@ pub fn init_metrics_collect_loop(cluster: Arc<Cluster>, assyst: Arc<Assyst>) -> 
                 }
             }
 
-            // collect latency of each shard
-            let mut i: u64 = 0;
-            for shard in cluster.shards() {
-                if !up_shards.contains(&i) {
-                    logger::info(&a, &format!("Shard {} is starting", i)).await;
-                    let _ = shard.start().await;
-                    // wait to avoid spamming identifies
-                    tokio::time::sleep(Duration::from_secs(10)).await;
-                }
-                i += 1;
-
-                match shard.info() {
-                    Ok(info) => {
-                        let lat = match info.latency().average().map(|d| d.as_millis()) {
-                            Some(x) => x as i64,
-                            None => continue,
-                        };
-
-                        let id = info.id().to_string();
-
-                        let counter = latency.with_label_values(&[&id]);
-                        counter.set(lat);
-                    }
-                    Err(e) => {
-                        logger::fatal(&a, &format!("Failed to get shard info: {}", e)).await;
-                        continue;
-                    }
-                };
-            }
-
             let healthcheck_result = &a.healthcheck_result.lock().await.1;
             for result in healthcheck_result {
                 let counter = health.with_label_values(&[&result.service]);
