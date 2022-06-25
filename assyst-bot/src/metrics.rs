@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::RwLock};
 
 use prometheus::{
-    register_counter, register_int_counter, register_int_gauge, Counter, IntCounter, IntGauge,
+    register_counter, register_int_counter, register_int_gauge, Counter, IntCounter, IntGauge, IntGaugeVec, register_int_gauge_vec,
 };
 
 pub struct CountableMetrics {
@@ -10,6 +10,7 @@ pub struct CountableMetrics {
     pub events: IntCounter,
     pub guilds: IntGauge,
     pub current_commands: IntGauge,
+    pub latency: IntGaugeVec
 }
 
 impl CountableMetrics {
@@ -23,6 +24,7 @@ impl CountableMetrics {
                 "current_commands",
                 "Count of currently executing commands"
             )?,
+            latency: register_int_gauge_vec!("latency", "Gateway latency", &["shard"])?
         })
     }
 }
@@ -112,5 +114,12 @@ impl GlobalMetrics {
         let processing_time = self.processing.total_processing_time.get();
         let commands = self.processing.total_commands.get();
         processing_time as f32 / commands as f32
+    }
+
+    #[inline]
+    pub fn set_shard_latency(&self, shard: u64, latency: i64) {
+        let stringed = shard.to_string();
+        let counter = self.processing.latency.with_label_values(&[&stringed]);
+        counter.set(latency);
     }
 }
