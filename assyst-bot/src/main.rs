@@ -21,6 +21,7 @@ use assyst_common::consts::{
 };
 use assyst_webserver::run as webserver_run;
 use bincode::deserialize;
+use caching::persistent_caching::get_guild_count;
 use handler::handle_event;
 use serde::de::DeserializeSeed;
 use std::sync::Arc;
@@ -73,6 +74,12 @@ async fn main() -> anyhow::Result<()> {
         assyst.initialize_bt().await;
     }
 
+    match get_guild_count(assyst.clone()).await {
+        Ok(g) => assyst.metrics.add_guilds(g as i64),
+        Err(_) => logger::fatal(assyst.as_ref(), "failed to get guild count").await
+    };
+
+
     assyst.initialize_blacklist().await?;
 
     let stream = UnixStream::connect(EVENT_PIPE).await?;
@@ -94,7 +101,13 @@ async fn main() -> anyhow::Result<()> {
                     let mut json_de = serde_json::Deserializer::from_str(&json);
                     match de.deserialize(&mut json_de) {
                         Ok(x) => {
-                            handle_event(assyst_clone, x).await;
+                            let res = handle_event(assyst_clone.clone(), x).await;
+                            match res {
+                                Err(e) => {
+                                    logger::fatal(assyst_clone.as_ref(), &format!("Event error: {}", e.to_string())).await;
+                                },
+                                _ => {}
+                            }
                         }
                         Err(_) => {}
                     };

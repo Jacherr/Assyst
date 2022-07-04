@@ -1,9 +1,10 @@
 use std::{collections::HashMap, sync::Arc};
 
+use assyst_common::util::UserId;
 use reqwest::Error;
 use serde::{Deserialize, Serialize};
 
-use crate::{assyst::Assyst, util::UserId};
+use crate::assyst::Assyst;
 
 pub mod routes {
     pub const PATREON_PATRONS: &str = "https://api.patreon.com/api/oauth2/v2/campaigns/4568373/members?include=user,currently_entitled_tiers&fields%5Buser%5D=social_connections,full_name&fields%5Bmember%5D=is_follower,last_charge_date,last_charge_status,lifetime_support_cents,currently_entitled_amount_cents,patron_status";

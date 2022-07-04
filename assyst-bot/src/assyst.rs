@@ -1,6 +1,6 @@
 use crate::{
     badtranslator::BadTranslator,
-    caching::local_caching::{Ratelimits, Replies, Reply, TopGuilds},
+    caching::{local_caching::{Ratelimits, Replies, Reply}, persistent_caching::init_guild_caching},
     command::{
         command::{
             Argument, Command, CommandAvailability, CommandParseError, CommandParseErrorType,
@@ -13,11 +13,15 @@ use crate::{
     logger,
     metrics::GlobalMetrics,
     rest::{patreon::Patron, wsi::wsi_listen, HealthcheckResult},
-    util::{get_current_millis, get_guild_owner, is_guild_manager, regexes, GuildId, Uptime},
+    util::{get_current_millis, get_guild_owner, is_guild_manager, regexes, Uptime},
 };
 
 use anyhow::bail;
-use assyst_common::{config::Config, consts::BOT_ID};
+use assyst_common::{
+    config::Config,
+    consts::BOT_ID,
+    persistent_cache::{CacheRequestData, CacheResponseInner}, util::GuildId,
+};
 use assyst_database::Database;
 use async_recursion::async_recursion;
 use regex::Captures;
@@ -106,8 +110,6 @@ fn message_mention_prefix(content: &str) -> Option<String> {
 /// apina
 pub struct Assyst {
     pub blacklist: RwLock<HashSet<u64>>,
-    pub guilds: Mutex<HashSet<u32>>,
-    pub top_guilds: Mutex<TopGuilds>,
     pub badtranslator: BadTranslator,
     pub command_ratelimits: RwLock<Ratelimits>,
     pub config: Arc<Config>,
@@ -121,6 +123,7 @@ pub struct Assyst {
     pub started_at: u64,
     pub commands_executed: AtomicU64,
     pub healthcheck_result: Mutex<(Instant, Vec<HealthcheckResult>)>,
+    cache_tx: UnboundedSender<(Sender<CacheResponseInner>, CacheRequestData)>,
     wsi_tx: UnboundedSender<(Sender<JobResult>, FifoSend, usize)>,
 }
 impl Assyst {
@@ -142,13 +145,14 @@ impl Assyst {
             .unwrap();
 
         let config_clone = config.clone();
-        let (tx, rx) =
+        let (wsi_tx, wsi_rx) =
             tokio::sync::mpsc::unbounded_channel::<(Sender<JobResult>, FifoSend, usize)>();
+
+        let (cache_tx, cache_rx) =
+            tokio::sync::mpsc::unbounded_channel::<(Sender<CacheResponseInner>, CacheRequestData)>();
 
         let mut assyst = Assyst {
             blacklist: RwLock::new(HashSet::new()),
-            guilds: Mutex::new(HashSet::new()),
-            top_guilds: Mutex::new(TopGuilds::new()),
             badtranslator: BadTranslator::new(),
             command_ratelimits: RwLock::new(Ratelimits::new()),
             config,
@@ -162,14 +166,19 @@ impl Assyst {
             started_at: get_current_millis(),
             commands_executed: AtomicU64::new(0),
             healthcheck_result: Mutex::new((Instant::now(), vec![])),
-            wsi_tx: tx,
+            cache_tx,
+            wsi_tx,
         };
         if assyst.config.disable_bad_translator {
             assyst.badtranslator.disable().await
         }
 
         tokio::spawn(async move {
-            wsi_listen(rx, &config_clone.url.wsi.to_string()).await;
+            init_guild_caching(cache_rx).await;
+        });
+
+        tokio::spawn(async move {
+            wsi_listen(wsi_rx, &config_clone.url.wsi.to_string()).await;
         });
 
         assyst.registry.register_commands();
@@ -213,24 +222,8 @@ impl Assyst {
         self.wsi_tx.send((sender, job, premium_level)).unwrap();
     }
 
-    /// Add a guild to cached guild list
-    pub async fn add_guild_to_list(&self, guild: u64) -> bool {
-        self.guilds.lock().await.insert((guild >> 22) as u32)
-    }
-
-    /// Checks if guild is in cached guild list
-    pub async fn guild_in_list(&self, guild: u64) -> bool {
-        self.guilds.lock().await.contains(&((guild >> 22) as u32))
-    }
-
-    /// Remove a guild from cached guild list
-    pub async fn remove_guild_from_list(&self, guild: u64) -> bool {
-        self.guilds.lock().await.remove(&((guild >> 22) as u32))
-    }
-
-    /// Add guild to top guilds list
-    pub async fn add_guild_to_top_guilds(&self, id: u64, name: String, count: u32) {
-        self.top_guilds.lock().await.add_guild(id, name, count);
+    pub fn send_to_cache(&self, sender: Sender<CacheResponseInner>, job: CacheRequestData) {
+        self.cache_tx.send((sender, job)).unwrap();
     }
 
     /// Handle an incoming message from Discord.
@@ -668,11 +661,7 @@ impl Assyst {
             }
 
             Argument::ImageUrl | Argument::ImageBuffer => {
-                let argument_to_pass = if args.len() <= index {
-                    ""
-                } else {
-                    args[index]
-                };
+                let argument_to_pass = if args.len() <= index { "" } else { args[index] };
                 parse::subsections::parse_image_argument(
                     context,
                     &context.message,

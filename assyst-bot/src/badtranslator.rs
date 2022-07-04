@@ -4,11 +4,12 @@ use crate::{
     rest::bt,
     util::get_current_millis,
     util::sanitize_message_content,
-    util::{normalize_emojis, ChannelId, UserId},
+    util::normalize_emojis,
 };
 use anyhow::Context;
 use assyst_common::bt::{BadTranslatorEntry, ChannelCache};
 use assyst_common::consts;
+use assyst_common::util::{ChannelId, UserId};
 use std::collections::HashMap;
 use std::{borrow::Cow, time::Duration};
 use tokio::sync::RwLock;

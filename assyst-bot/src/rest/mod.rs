@@ -2,7 +2,7 @@ use std::{fmt::Display, sync::Arc};
 
 use assyst_common::{
     eval::{FakeEvalBody, FakeEvalImageResponse},
-    filetype,
+    filetype, util::UserId,
 };
 use bytes::Bytes;
 use reqwest::{Client, ClientBuilder, Error};
@@ -21,7 +21,7 @@ use crate::{
     assyst::Assyst,
     downloader,
     rest::wsi::run_wsi_job,
-    util::{self, UserId},
+    util,
 };
 
 use self::rust::OptimizationLevel;

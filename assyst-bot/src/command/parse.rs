@@ -139,7 +139,8 @@ pub mod argument_type {
 pub mod image_lookups {
     use std::borrow::Cow;
 
-    use crate::util::{regexes, UserId};
+    use crate::util::regexes;
+    use assyst_common::util::UserId;
     use twilight_model::channel::{message::sticker::StickerFormatType, Message};
 
     pub fn emoji(argument: &str) -> Option<String> {
@@ -273,10 +274,10 @@ pub mod image_lookups {
         Some(Cow::Borrowed(embed))
     }
 
-    pub async fn previous_message_attachment<'c, 'm>(
+    pub async fn previous_message_attachment<'c>(
         http: &'c twilight_http::Client,
-        message: &'m Message,
-    ) -> Option<Cow<'m, str>> {
+        message: &'c Message,
+    ) -> Option<Cow<'c, str>> {
         let messages = http
             .channel_messages(message.channel_id)
             .exec()

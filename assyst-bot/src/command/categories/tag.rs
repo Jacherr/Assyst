@@ -1,7 +1,7 @@
 use std::{convert::TryInto, sync::Arc, time::Duration};
 
 use anyhow::{anyhow, ensure, Context as _};
-use assyst_common::{consts, eval::FakeEvalImageResponse};
+use assyst_common::{consts, eval::FakeEvalImageResponse, util::UserId};
 use assyst_tag as tag;
 use lazy_static::lazy_static;
 use std::fmt::Write;
@@ -18,7 +18,7 @@ use crate::{
     },
     downloader,
     rest::fake_eval,
-    util::{self, UserId},
+    util,
 };
 
 const CATEGORY_NAME: &str = "misc";

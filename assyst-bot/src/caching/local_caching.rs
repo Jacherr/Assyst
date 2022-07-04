@@ -1,11 +1,11 @@
 use assyst_common::consts::MESSAGE_EDIT_HANDLE_LIMIT;
+use assyst_common::util::{GuildId, MessageId};
 use std::sync::Arc;
 use std::{collections::HashMap, u64, usize};
 use tokio::sync::Mutex;
 use twilight_model::channel::Message;
 use util::get_current_millis;
 
-use crate::util::MessageId;
 use crate::{box_str, command::command::Command, util};
 
 #[derive(Debug)]
@@ -21,7 +21,7 @@ impl Ratelimits {
 
     pub fn set_command_expire_at(
         &mut self,
-        guild_id: crate::util::GuildId,
+        guild_id: GuildId,
         command: &Command,
     ) -> () {
         self.cache
@@ -35,7 +35,7 @@ impl Ratelimits {
 
     pub fn time_until_guild_command_usable(
         &self,
-        guild_id: crate::util::GuildId,
+        guild_id: GuildId,
         command: &str,
     ) -> Option<u64> {
         let guild_ratelimits = self.cache.get(&guild_id.get())?;
@@ -139,49 +139,5 @@ impl Reply {
     pub fn set_invocation_deleted(&mut self) -> &mut Self {
         self.invocation_deleted = true;
         self
-    }
-}
-
-pub struct TopGuild {
-    pub id: u64,
-    pub name: String,
-    pub count: u32,
-}
-impl TopGuild {
-    pub fn new(id: u64, name: String, count: u32) -> Self {
-        TopGuild { id, name, count }
-    }
-}
-
-pub struct TopGuilds(pub Vec<TopGuild>);
-
-impl TopGuilds {
-    pub fn new() -> Self {
-        TopGuilds(Vec::new())
-    }
-
-    pub fn add_guild(&mut self, id: u64, name: String, count: u32) -> () {
-        if self.0.len() > 0 && count < self.0.last().unwrap().count {
-            return;
-        }
-
-        let mut found = false;
-        for guild in self.0.iter_mut() {
-            if guild.id == id {
-                guild.count = count;
-                found = true;
-            }
-        }
-        if !found {
-            self.0.push(TopGuild::new(id, name, count));
-        }
-        self.sort();
-        if self.0.len() > 25 {
-            self.0.pop();
-        }
-    }
-
-    pub fn sort(&mut self) -> () {
-        self.0.sort_by(|a, b| b.count.cmp(&a.count));
     }
 }
