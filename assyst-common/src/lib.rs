@@ -5,3 +5,4 @@ pub mod consts;
 pub mod eval;
 pub mod filetype;
 pub mod util;
+pub mod persistent_cache;

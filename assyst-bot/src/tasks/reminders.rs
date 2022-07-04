@@ -1,8 +1,8 @@
 use crate::{
     assyst::Assyst,
-    logger,
-    util::{message_link, ChannelId, UserId},
+    logger, util::message_link,
 };
+use assyst_common::util::{UserId, ChannelId};
 use assyst_database::DatabaseReminder;
 use std::{sync::Arc, time::Duration};
 use tokio::time::sleep;

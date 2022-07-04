@@ -16,8 +16,8 @@ use crate::{
     util::{
         bytes_to_readable, codeblock, ensure_same_guild, exec_sync, extract_page_title,
         format_discord_timestamp, format_time, generate_list, generate_table, get_buffer_filetype,
-        get_memory_usage, parse_codeblock, ChannelId,
-    },
+        get_memory_usage, parse_codeblock,
+    }, caching::persistent_caching::get_top_guilds,
 };
 use crate::{
     rest::{bt::translate_single, get_char_info, rust},
@@ -26,7 +26,7 @@ use crate::{
 use anyhow::{anyhow, bail, Context as _};
 use assyst_common::{
     consts,
-    eval::{FakeEvalImageResponse, FakeEvalResponse},
+    eval::{FakeEvalImageResponse, FakeEvalResponse}, util::ChannelId,
 };
 use assyst_database::Reminder;
 use lazy_static::lazy_static;
@@ -253,19 +253,14 @@ pub async fn run_ping_command(
 ) -> CommandResult {
     let processing_time = context.metrics.processing_time_start.elapsed().as_micros();
     let start = Instant::now();
-    let message = context.reply_with_text("pong!").await?;
+    context.reply_with_text("pong!").await?;
 
-    context
-        .assyst
-        .http
-        .update_message(message.channel_id, message.id)
-        .content(Some(&format!(
-            "pong!\nprocessing time: {} µs\nresponse time: {} ms",
-            processing_time,
-            start.elapsed().as_millis()
-        )))?
-        .exec()
-        .await?;
+    context.reply_with_text(&format!(
+        "pong!\nprocessing time: {} µs\nresponse time: {} ms",
+        processing_time,
+        start.elapsed().as_millis()
+    )).await?;
+
     Ok(())
 }
 
@@ -768,7 +763,7 @@ pub async fn run_top_guilds_command(
     _: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    let top_guilds = context.assyst.top_guilds.lock().await;
+    let top_guilds = get_top_guilds(context.assyst.clone()).await?;
 
     let top_guilds_formatted = top_guilds
         .0

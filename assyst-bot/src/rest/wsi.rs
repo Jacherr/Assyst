@@ -1,5 +1,6 @@
-use crate::util::{get_wsi_request_tier, UserId};
+use crate::util::get_wsi_request_tier;
 use crate::{assyst::Assyst, util::handle_job_result};
+use assyst_common::util::UserId;
 use bincode::{deserialize, serialize};
 use bytes::Bytes;
 use reqwest::Error;

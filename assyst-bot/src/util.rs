@@ -1,5 +1,5 @@
 use crate::{assyst::Assyst, command::context::Context, rest::wsi::RequestError};
-use assyst_common::{consts, filetype};
+use assyst_common::{consts, filetype, util::{GuildId, UserId, ChannelId}};
 use bytes::Bytes;
 use regex::Captures;
 use shared::job::JobResult;
@@ -15,22 +15,9 @@ use std::{
 use twilight_http::{error::Error, Client};
 use twilight_model::{
     channel::message::Mention,
-    guild::Permissions,
-    id::{
-        marker::{
-            ChannelMarker, GuildMarker, MessageMarker, RoleMarker, UserMarker, WebhookMarker,
-        },
-        Id,
-    },
-    user::User
+    guild::{Permissions, PremiumTier},
+    user::User,
 };
-
-pub type ChannelId = Id<ChannelMarker>;
-pub type GuildId = Id<GuildMarker>;
-pub type UserId = Id<UserMarker>;
-pub type WebhookId = Id<WebhookMarker>;
-pub type MessageId = Id<MessageMarker>;
-pub type RoleId = Id<RoleMarker>;
 
 #[macro_export]
 macro_rules! box_str {
@@ -572,6 +559,30 @@ pub fn starts_with_case_insensitive(haystack: &[u8], needle: &[u8]) -> bool {
     if haystack.len() < needle.len() {
         false
     } else {
-        needle.iter().zip(haystack.iter()).all(|(a, b)| a.to_ascii_lowercase() == b.to_ascii_lowercase())
+        needle
+            .iter()
+            .zip(haystack.iter())
+            .all(|(a, b)| a.to_ascii_lowercase() == b.to_ascii_lowercase())
     }
+}
+
+pub async fn get_guild_upload_limit_bytes(
+    assyst: Arc<Assyst>,
+    guild_id: GuildId,
+) -> anyhow::Result<usize> {
+    let guild = assyst
+        .http
+        .guild(guild_id)
+        .exec()
+        .await?
+        .model()
+        .await?;
+
+    let tier = guild.premium_tier;
+
+    Ok(match tier {
+        PremiumTier::None | PremiumTier::Tier1 => 8_000_000,
+        PremiumTier::Tier2 => 50_000_000,
+        PremiumTier::Tier3 => 100_000_000
+    })
 }

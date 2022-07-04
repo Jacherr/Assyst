@@ -11,10 +11,10 @@ use crate::{
         bt::{bad_translate, TranslateResult, Translation},
         wombo::{WomboResponse, WomboResponseResult, WomboStyle},
     },
-    util::{codeblock, ensure_guild_manager, normalize_emojis, GuildId, RoleId},
+    util::{codeblock, ensure_guild_manager, normalize_emojis},
 };
 use anyhow::{bail, Context as _};
-use assyst_common::consts;
+use assyst_common::{consts, util::{GuildId, RoleId}};
 use bytes::Bytes;
 use lazy_static::lazy_static;
 use rand::{prelude::SliceRandom, thread_rng};

@@ -1,5 +1,5 @@
 use anyhow::Context as _;
-use assyst_common::consts::{self, ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES};
+use assyst_common::{consts::{self, ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES}, util::{GuildId, MessageId, UserId}};
 use bytes::Bytes;
 use std::time::Instant;
 use tokio::sync::Mutex;
@@ -11,7 +11,7 @@ use twilight_model::{
 
 use crate::{
     caching::local_caching::Reply,
-    util::{MessageId, UserId},
+    util::get_guild_upload_limit_bytes,
     Assyst,
 };
 use std::sync::Arc;
@@ -69,20 +69,25 @@ impl Context {
             let reply = reply_lock.reply.as_ref().expect("No reply found");
 
             if reply.attachments.len() > 0 || message_builder.attachment.is_some() {
-                self.http()
+                let _ = self
+                    .http()
                     .delete_message(reply.channel_id, reply.id)
                     .exec()
-                    .await?;
+                    .await;
 
                 let result = self.create_new_message(message_builder).await?;
                 reply_lock.set_reply(result.clone());
 
                 Ok(result)
             } else {
-                let result = self.edit_message(reply.id, message_builder).await?;
-                reply_lock.set_reply(result.clone());
-
-                Ok(result)
+                let result = self.edit_message(reply.id, message_builder.clone()).await;
+                match result {
+                    Ok(r) => {
+                        reply_lock.set_reply(r.clone());
+                        Ok(r)
+                    }
+                    Err(_) => Ok(self.create_new_message(message_builder).await?),
+                }
             }
         }
     }
@@ -126,9 +131,33 @@ impl Context {
                     ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES / 1000 / 1000
                 ));
             }
-            let url = crate::rest::upload_to_filer(self.assyst.clone(), buffer, &format).await?;
-            let builder = builder.content(url.into_boxed_str());
-            self.reply(builder).await
+
+            let try_limit = get_guild_upload_limit_bytes(
+                self.assyst.clone(),
+                self.message.guild_id.unwrap_or(GuildId::new(1)),
+            )
+            .await;
+
+            match try_limit {
+                Ok(l) => {
+                    if buffer.len() > l {
+                        let url = crate::rest::upload_to_filer(self.assyst.clone(), buffer, &format).await?;
+                        let builder = builder.content(url.into_boxed_str());
+                        self.reply(builder).await
+                    } else {
+                        let builder = builder.attachment(
+                            format!("attachment.{}", real_format).into_boxed_str(),
+                            buffer.to_vec(),
+                        );
+                        self.reply(builder).await
+                    }
+                },
+                Err(_) => {
+                    let url = crate::rest::upload_to_filer(self.assyst.clone(), buffer, &format).await?;
+                    let builder = builder.content(url.into_boxed_str());
+                    self.reply(builder).await
+                }
+            }
         } else {
             let builder = builder.attachment(
                 format!("attachment.{}", real_format).into_boxed_str(),

@@ -1,4 +1,6 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+#![feature(never_type)]
+
+use std::{collections::HashMap, sync::Arc, time::Duration, rc::Rc};
 
 use assyst_common::{
     config::Config,
@@ -6,6 +8,7 @@ use assyst_common::{
         gateway::{self, Latencies},
         EVENT_PIPE,
     },
+    ok_or_break
 };
 use bincode::serialize;
 use futures_util::StreamExt;
@@ -21,17 +24,8 @@ use twilight_model::gateway::{
     presence::{Activity, ActivityType, Status},
 };
 
-macro_rules! ok_or_break {
-    ($expression:expr) => {
-        match $expression {
-            Ok(v) => v,
-            Err(_) => break,
-        }
-    };
-}
-
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> anyhow::Result<!> {
     remove_file(EVENT_PIPE).await?;
 
     let config = Config::new();
@@ -75,17 +69,15 @@ async fn main() -> anyhow::Result<()> {
     });
 
     let listener = UnixListener::bind(EVENT_PIPE)?;
-    let listener = Arc::new(listener);
+    let listener = Rc::new(listener);
 
     loop {
         let _ = supply_connection(listener.clone(), events.clone(), cluster.clone()).await;
     }
-
-    Ok(())
 }
 
 pub async fn supply_connection(
-    listener: Arc<UnixListener>,
+    listener: Rc<UnixListener>,
     events: Arc<Mutex<Events>>,
     cluster: Arc<Cluster>,
 ) -> anyhow::Result<()> {

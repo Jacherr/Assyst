@@ -1,8 +1,9 @@
-use crate::{handlers::*, logger, Assyst};
+use crate::{handlers::*, logger, Assyst, caching::persistent_caching::{handle_guild_delete_event, get_new_guilds_from_ready, handle_guild_create_event}};
 use std::sync::Arc;
+use anyhow::Context;
 use twilight_model::gateway::event::{GatewayEvent, DispatchEvent};
 
-pub async fn handle_event(assyst: Arc<Assyst>, event: GatewayEvent) {
+pub async fn handle_event(assyst: Arc<Assyst>, event: GatewayEvent) -> anyhow::Result<()> {
     match event {
         GatewayEvent::Dispatch(_, e) => {
             match *e {
@@ -16,62 +17,47 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: GatewayEvent) {
                     message_update::handle(assyst, message).await;
                 }
                 DispatchEvent::GuildCreate(guild) => {
-                    assyst
-                        .add_guild_to_top_guilds(
-                            guild.id.get(),
-                            guild.name.clone(),
-                            guild.member_count.unwrap_or(0) as u32,
-                        )
-                        .await;
+                    let id = guild.id;
+                    let name = guild.name.clone();
+                    let member_count = guild.member_count.unwrap_or(0);
+                    let should_log = handle_guild_create_event(assyst.clone(), *guild).await.context("failed to handle guild create")?;
         
-                    if !assyst.guild_in_list(guild.id.get()).await {
-                        assyst.add_guild_to_list(guild.id.get()).await;
-        
-                        if !guild.unavailable {
-                            assyst.metrics.add_guild();
-                        }
+                    if should_log {
+                        assyst.metrics.add_guild();
         
                         logger::guild_add(
                             &assyst,
                             &format!(
                                 "{} ({}) ({} members)",
-                                guild.name,
-                                guild.id,
-                                guild.member_count.unwrap_or(0)
+                                name,
+                                id,
+                                member_count
                             ),
                         )
                         .await;
                     }
                 }
                 DispatchEvent::GuildDelete(guild) => {
-                    if !guild.unavailable {
-                        let is_in = assyst.remove_guild_from_list(guild.id.get()).await;
-        
-                        if is_in {
-                            assyst.metrics.delete_guild();
-                            logger::info(&assyst, &format!("Removed from guild: {}", guild.id)).await;
-                        }
+                    let id = guild.id;
+                    let should_log = handle_guild_delete_event(assyst.clone(), guild).await.context("failed to handle guild delete")?;
+                    if should_log {
+                        assyst.metrics.delete_guild();
+                        logger::info(&assyst, &format!("Removed from guild: {}", id)).await;
                     }
                 }
                 DispatchEvent::Ready(r) => {
-                    let mut new_guilds = 0;
-                    for guild in &r.guilds {
-                        if assyst.add_guild_to_list(guild.id.get()).await {
-                            // count the number of new unique guilds,
-                            // so we can add a number of guilds to the metrics in one call
-                            // (one atomic store instead of a lot of them)
-                            new_guilds += 1;
-                        }
-                    }
+                    let shard = r.shard.unwrap_or_default()[0];
+                    let guilds = r.guilds.len();
+                    let new_guilds = get_new_guilds_from_ready(assyst.clone(), *r).await.context("failed to handle guild ready")?;
         
-                    assyst.metrics.add_guilds(new_guilds);
+                    assyst.metrics.add_guilds(new_guilds as i64);
         
                     logger::info(
                         &assyst,
                         &format!(
                             "Shard {}: READY in {} guilds",
-                            r.shard.unwrap_or_default()[0],
-                            r.guilds.len()
+                            shard,
+                            guilds
                         ),
                     )
                     .await;
@@ -80,5 +66,7 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: GatewayEvent) {
             }
         }
         _ => {}
-    }
+    };
+
+    Ok(())
 }

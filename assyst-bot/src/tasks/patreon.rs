@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use crate::util::ChannelId;
+use assyst_common::util::ChannelId;
 use tokio::time::sleep;
 
 use crate::{assyst::Assyst, rest::patreon::get_patrons};
