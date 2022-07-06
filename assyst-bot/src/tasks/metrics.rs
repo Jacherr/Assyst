@@ -4,9 +4,8 @@ use crate::{assyst::Assyst, logger, rest::ServiceStatus, util};
 use prometheus::{register_gauge, register_int_gauge_vec};
 use std::time::Duration;
 use tokio::time::sleep;
-use twilight_gateway::{shard::Stage, Cluster};
 
-pub fn init_metrics_collect_loop(cluster: Arc<Cluster>, assyst: Arc<Assyst>) -> anyhow::Result<()> {
+pub fn init_metrics_collect_loop(assyst: Arc<Assyst>) -> anyhow::Result<()> {
     let memory_counter = register_gauge!("memory_usage", "Memory usage in MB")?;
     let health = register_int_gauge_vec!("service_ping", "Service ping", &["service"])?;
     let commands_usage = register_int_gauge_vec!("commands_usage", "Commands usage", &["command"])?;
@@ -26,14 +25,6 @@ pub fn init_metrics_collect_loop(cluster: Arc<Cluster>, assyst: Arc<Assyst>) -> 
                     logger::fatal(&a, "Failed to scrape memory usage in metrics collector").await
                 }
             };
-
-            let mut up_shards = Vec::<u64>::new();
-            let cluster_info = cluster.info();
-            for shard in cluster_info {
-                if shard.1.stage() == Stage::Connected {
-                    up_shards.push(shard.0);
-                }
-            }
 
             let healthcheck_result = &a.healthcheck_result.lock().await.1;
             for result in healthcheck_result {

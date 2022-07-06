@@ -14,6 +14,7 @@ mod rest;
 mod tasks;
 mod util;
 
+use anyhow::Context;
 use assyst::Assyst;
 use assyst_common::consts::{
     gateway::{self, Latencies},
@@ -45,8 +46,8 @@ async fn main() -> anyhow::Result<()> {
     tasks::init_caching_gc_loop(assyst.clone());
     tasks::update_patrons(assyst.clone());
     tasks::init_healthcheck(assyst.clone());
-    //tasks::init_metrics_collect_loop(arced_cluster.clone(), assyst.clone())
-    //    .context("Failed to initialize metrics collect loop")?;
+    tasks::init_metrics_collect_loop(assyst.clone())
+        .context("Failed to initialize metrics collect loop")?;
 
     // Bot list webhooks and metrics
     webserver_run(
