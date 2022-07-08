@@ -36,8 +36,6 @@ pub fn update_patrons(assyst: Arc<Assyst>) {
                 Err(_) => {},
             }
 
-
-
             *assyst.patrons.write().await = patrons;
 
             sleep(Duration::from_millis(FETCH_INTERVAL as u64)).await;
