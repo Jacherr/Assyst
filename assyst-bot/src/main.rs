@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-#![feature(async_closure)]
 
 mod ansi;
 mod assyst;
