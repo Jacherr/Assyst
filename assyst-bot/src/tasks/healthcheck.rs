@@ -12,21 +12,23 @@ use crate::{
 };
 
 pub fn init_healthcheck(assyst: Arc<Assyst>) {
-    loop {
-        let assyst = assyst.clone();
-        tokio::spawn(async move {
-            loop {
-                sleep(Duration::from_secs(5 * 60)).await;
-                let result = healthcheck(assyst.clone()).await;
-    
-                for check in &result {
-                    if check.status == ServiceStatus::Offline {
-                        logger::fatal(&assyst, &format!("{} is offline", check.service)).await;
+    tokio::spawn(async move {
+        loop {
+            let assyst = assyst.clone();
+            let _ = tokio::spawn(async move {
+                loop {
+                    sleep(Duration::from_secs(5 * 60)).await;
+                    let result = healthcheck(assyst.clone()).await;
+        
+                    for check in &result {
+                        if check.status == ServiceStatus::Offline {
+                            logger::fatal(&assyst, &format!("{} is offline", check.service)).await;
+                        }
                     }
+        
+                    *assyst.healthcheck_result.lock().await = (Instant::now(), result);
                 }
-    
-                *assyst.healthcheck_result.lock().await = (Instant::now(), result);
-            }
-        });
-    }
+            }).await;
+        }
+    });
 }
