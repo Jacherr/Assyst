@@ -218,6 +218,7 @@ impl Context {
             embeds = [embed];
             create_message = create_message.embeds(&embeds)?;
         };
+        create_message = create_message.reply(self.message.id);
         let message = create_message.exec().await?.model().await?;
         let result = Arc::new(message);
         Ok(result)
