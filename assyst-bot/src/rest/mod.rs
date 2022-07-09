@@ -84,7 +84,7 @@ pub struct CoolTextResponse {
 #[derive(Deserialize)]
 pub struct Rule34Result {
     pub url: String,
-    pub score: u32,
+    pub score: i32,
 }
 
 pub async fn ocr_image(client: &Client, url: &str) -> Result<String, OcrError> {
