@@ -223,7 +223,8 @@ impl Context {
         if !self.reply.lock().await.invocation_deleted {
             create_message = create_message.reply(self.message.id);
         }
-        let message = create_message.exec().await?.model().await?;
+        let x = create_message.exec().await?;
+        let message = x.model().await?;
         let result = Arc::new(message);
         Ok(result)
     }
@@ -233,10 +234,12 @@ impl Context {
         message_id: MessageId,
         message_builder: MessageBuilder,
     ) -> anyhow::Result<Arc<Message>> {
+        let m = AllowedMentions::default();
         let mut update_message = self
             .assyst
             .http
-            .update_message(self.message.channel_id, message_id);
+            .update_message(self.message.channel_id, message_id)
+            .allowed_mentions(Some(&m));
 
         let chars: String;
 
