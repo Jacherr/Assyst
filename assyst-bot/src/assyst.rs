@@ -35,7 +35,7 @@ use std::{
         atomic::{AtomicU64, Ordering},
         Arc,
     },
-    time::Instant,
+    time::{Instant, Duration},
 };
 use tokio::sync::{mpsc::UnboundedSender, oneshot::Sender, Mutex, RwLock};
 use twilight_http::Client as HttpClient;
@@ -137,7 +137,7 @@ impl Assyst {
     /// of this project. Use that to configure the behaviour of the bot.
     pub async fn new() -> Self {
         let config = Arc::new(Config::new());
-        let http = Arc::new(HttpClient::new(config.auth.discord.to_string()));
+        let http = Arc::new(HttpClient::builder().token(config.auth.discord.to_string()).timeout(Duration::from_secs(30)).build());
         let reqwest_client = ReqwestClient::new();
         let database = Database::new(2, config.database.to_url())
             .await
