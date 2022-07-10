@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{assyst::Assyst, logger, rest::ServiceStatus, util};
+use crate::{assyst::Assyst, logger, rest::{ServiceStatus, get_filer_stats, FilerStats}, util};
 use prometheus::{register_gauge, register_int_gauge_vec};
 use std::time::Duration;
 use tokio::time::sleep;
@@ -68,6 +68,10 @@ pub fn init_metrics_collect_loop(assyst: Arc<Assyst>) -> anyhow::Result<()> {
             counter.set(prefixes_size as i64);
             let counter = cache_size.with_label_values(&["disabled_commands"]);
             counter.set(disabled_commands_size as i64);
+
+            let filer_stats = get_filer_stats(assyst.clone()).await.unwrap_or(FilerStats { count: 0, size_bytes: 0 });
+            assyst.metrics.set_cdn_files(filer_stats.count as i64);
+            assyst.metrics.set_cdn_size(filer_stats.size_bytes as i64);
         }
     });
 

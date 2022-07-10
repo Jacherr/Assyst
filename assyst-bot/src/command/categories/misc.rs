@@ -11,7 +11,7 @@ use crate::{
         bt::{get_languages, validate_language},
         fake_eval,
         rust::OptimizationLevel,
-        wsi,
+        wsi, get_filer_stats, FilerStats,
     },
     util::{
         bytes_to_readable, codeblock, ensure_same_guild, exec_sync, extract_page_title,
@@ -481,6 +481,8 @@ pub async fn run_stats_command(
         "Total: {}, Remaining: {}",
         assyst_gateway.session_start_limit.total, assyst_gateway.session_start_limit.remaining,
     );
+    let filer_stats = get_filer_stats(context.assyst.clone()).await.unwrap_or(FilerStats { count: 0, size_bytes: 0 });
+    let filer_formatted_size = format!("{} GB", filer_stats.size_bytes / 1000 / 1000 / 1000);
 
     let stats_table = generate_table(&[
         ("Guilds", &guild_count.to_string()),
@@ -504,6 +506,8 @@ pub async fn run_stats_command(
         }),
         ("Sessions", &sessions),
         ("Database Size", &db_size),
+        ("CDN File Count", &filer_stats.count.to_string()),
+        ("CDN Size", &filer_formatted_size)
     ]);
 
     let wsi_info = wsi::stats(context.assyst.clone()).await.unwrap_or(Stats {
