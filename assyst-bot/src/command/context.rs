@@ -62,8 +62,9 @@ impl Context {
         }
 
         if !reply_lock.has_replied() {
+            drop(reply_lock);
             let result = self.create_new_message(message_builder).await?;
-            reply_lock.set_reply(result.clone());
+            self.reply.lock().await.set_reply(result.clone());
             Ok(result)
         } else {
             let reply = reply_lock.reply.as_ref().expect("No reply found");
@@ -75,8 +76,9 @@ impl Context {
                     .exec()
                     .await;
 
+                drop(reply_lock);
                 let result = self.create_new_message(message_builder).await?;
-                reply_lock.set_reply(result.clone());
+                self.reply.lock().await.set_reply(result.clone());
 
                 Ok(result)
             } else {
@@ -86,7 +88,7 @@ impl Context {
                         reply_lock.set_reply(r.clone());
                         Ok(r)
                     }
-                    Err(_) => Ok(self.create_new_message(message_builder).await?),
+                    Err(_) => { drop(reply_lock); Ok(self.create_new_message(message_builder).await?) },
                 }
             }
         }
@@ -218,7 +220,9 @@ impl Context {
             embeds = [embed];
             create_message = create_message.embeds(&embeds)?;
         };
-        create_message = create_message.reply(self.message.id);
+        if !self.reply.lock().await.invocation_deleted {
+            create_message = create_message.reply(self.message.id);
+        }
         let message = create_message.exec().await?.model().await?;
         let result = Arc::new(message);
         Ok(result)

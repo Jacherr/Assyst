@@ -10,7 +10,9 @@ pub struct CountableMetrics {
     pub events: IntCounter,
     pub guilds: IntGauge,
     pub current_commands: IntGauge,
-    pub latency: IntGaugeVec
+    pub latency: IntGaugeVec,
+    pub cdn_files: IntGauge,
+    pub cdn_size: IntGauge
 }
 
 impl CountableMetrics {
@@ -24,7 +26,9 @@ impl CountableMetrics {
                 "current_commands",
                 "Count of currently executing commands"
             )?,
-            latency: register_int_gauge_vec!("latency", "Gateway latency", &["shard"])?
+            latency: register_int_gauge_vec!("latency", "Gateway latency", &["shard"])?,
+            cdn_files: register_int_gauge!("cdn_files", "Total files stored in the CDN")?,
+            cdn_size: register_int_gauge!("cdn_size", "Size in bytes of the CDN")?
         })
     }
 }
@@ -121,5 +125,15 @@ impl GlobalMetrics {
         let stringed = shard.to_string();
         let counter = self.processing.latency.with_label_values(&[&stringed]);
         counter.set(latency);
+    }
+
+    #[inline]
+    pub fn set_cdn_files(&self, files: i64) {
+        self.processing.cdn_files.set(files);
+    }
+
+    #[inline]
+    pub fn set_cdn_size(&self, size: i64) {
+        self.processing.cdn_size.set(size);
     }
 }

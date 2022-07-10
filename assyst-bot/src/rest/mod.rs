@@ -2,7 +2,8 @@ use std::{fmt::Display, sync::Arc};
 
 use assyst_common::{
     eval::{FakeEvalBody, FakeEvalImageResponse},
-    filetype, util::UserId,
+    filetype,
+    util::UserId,
 };
 use bytes::Bytes;
 use reqwest::{Client, ClientBuilder, Error};
@@ -16,13 +17,7 @@ use tokio::time::Instant;
 
 use std::error::Error as StdError;
 
-use crate::{
-    ansi::Ansi,
-    assyst::Assyst,
-    downloader,
-    rest::wsi::run_wsi_job,
-    util,
-};
+use crate::{ansi::Ansi, assyst::Assyst, downloader, rest::wsi::run_wsi_job, util};
 
 use self::rust::OptimizationLevel;
 
@@ -87,6 +82,12 @@ pub struct Rule34Result {
     pub score: i32,
 }
 
+#[derive(Deserialize)]
+pub struct FilerStats {
+    pub count: u64,
+    pub size_bytes: u64,
+}
+
 pub async fn ocr_image(client: &Client, url: &str) -> Result<String, OcrError> {
     let text = client
         .get(format!("{}{}", routes::OCR, url))
@@ -123,6 +124,16 @@ pub async fn upload_to_filer(
         .send()
         .await?
         .text()
+        .await
+}
+
+pub async fn get_filer_stats(assyst: Arc<Assyst>) -> Result<FilerStats, Error> {
+    assyst
+        .reqwest_client
+        .get(assyst.config.url.cdn.to_string())
+        .send()
+        .await?
+        .json::<FilerStats>()
         .await
 }
 
