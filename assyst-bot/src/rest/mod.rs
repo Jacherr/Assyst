@@ -1,13 +1,13 @@
 use std::{fmt::Display, sync::Arc};
 
 use assyst_common::{
-    eval::{FakeEvalBody, FakeEvalImageResponse},
+    eval::{FakeEvalBody, FakeEvalImageResponse, FakeEvalMessageData},
     filetype,
     util::UserId,
 };
 use bytes::Bytes;
 use reqwest::{Client, ClientBuilder, Error};
-use serde::Deserialize;
+use serde::{Deserialize};
 use serde_json::json;
 use shared::{
     fifo::{FifoData, FifoSend},
@@ -20,6 +20,8 @@ use std::error::Error as StdError;
 use crate::{ansi::Ansi, assyst::Assyst, downloader, rest::wsi::run_wsi_job, util};
 
 use self::rust::OptimizationLevel;
+
+use twilight_model::channel::Message;
 
 pub mod bt;
 pub mod codesprint;
@@ -151,6 +153,7 @@ pub async fn fake_eval(
     assyst: &Assyst,
     code: &str,
     image: bool,
+    message: Option<&Message>,
 ) -> anyhow::Result<FakeEvalImageResponse> {
     let result = assyst
         .reqwest_client
@@ -158,6 +161,9 @@ pub async fn fake_eval(
         .query(&[("returnBuffer", &image.to_string())])
         .json(&FakeEvalBody {
             code: code.to_string(),
+            data: message.map(|message| FakeEvalMessageData {
+                message
+            }),
         })
         .send()
         .await?
@@ -327,7 +333,7 @@ pub async fn healthcheck(assyst: Arc<Assyst>) -> Vec<HealthcheckResult> {
     ));
 
     let timer = Instant::now();
-    let fake_eval_result = fake_eval(&assyst, "1", false).await;
+    let fake_eval_result = fake_eval(&assyst, "1", false, None).await;
     results.push(HealthcheckResult::new_from_result(
         "Eval",
         fake_eval_result,

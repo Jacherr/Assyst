@@ -1,4 +1,5 @@
 use crate::{
+    caching::persistent_caching::get_top_guilds,
     command::{
         command::{
             Argument, Command, CommandAvailability, CommandBuilder, ParsedArgument, ParsedFlags,
@@ -9,15 +10,15 @@ use crate::{
     logger,
     rest::{
         bt::{get_languages, validate_language},
-        fake_eval,
+        fake_eval, get_filer_stats,
         rust::OptimizationLevel,
-        wsi, get_filer_stats, FilerStats,
+        wsi, FilerStats,
     },
     util::{
         bytes_to_readable, codeblock, ensure_same_guild, exec_sync, extract_page_title,
         format_discord_timestamp, format_time, generate_list, generate_table, get_buffer_filetype,
         get_memory_usage, parse_codeblock,
-    }, caching::persistent_caching::get_top_guilds,
+    },
 };
 use crate::{
     rest::{bt::translate_single, get_char_info, rust},
@@ -26,7 +27,8 @@ use crate::{
 use anyhow::{anyhow, bail, Context as _};
 use assyst_common::{
     consts,
-    eval::{FakeEvalImageResponse, FakeEvalResponse}, util::ChannelId,
+    eval::{FakeEvalImageResponse, FakeEvalResponse},
+    util::ChannelId,
 };
 use assyst_database::Reminder;
 use lazy_static::lazy_static;
@@ -255,11 +257,13 @@ pub async fn run_ping_command(
     let start = Instant::now();
     context.reply_with_text("pong!").await?;
 
-    context.reply_with_text(&format!(
-        "pong!\nprocessing time: {} µs\nresponse time: {} ms",
-        processing_time,
-        start.elapsed().as_millis()
-    )).await?;
+    context
+        .reply_with_text(&format!(
+            "pong!\nprocessing time: {} µs\nresponse time: {} ms",
+            processing_time,
+            start.elapsed().as_millis()
+        ))
+        .await?;
 
     Ok(())
 }
@@ -481,7 +485,12 @@ pub async fn run_stats_command(
         "Total: {}, Remaining: {}",
         assyst_gateway.session_start_limit.total, assyst_gateway.session_start_limit.remaining,
     );
-    let filer_stats = get_filer_stats(context.assyst.clone()).await.unwrap_or(FilerStats { count: 0, size_bytes: 0 });
+    let filer_stats = get_filer_stats(context.assyst.clone())
+        .await
+        .unwrap_or(FilerStats {
+            count: 0,
+            size_bytes: 0,
+        });
     let filer_formatted_size = format!("{} GB", filer_stats.size_bytes / 1000 / 1000 / 1000);
 
     let stats_table = generate_table(&[
@@ -507,7 +516,7 @@ pub async fn run_stats_command(
         ("Sessions", &sessions),
         ("Database Size", &db_size),
         ("CDN File Count", &filer_stats.count.to_string()),
-        ("CDN Size", &filer_formatted_size)
+        ("CDN Size", &filer_formatted_size),
     ]);
 
     let wsi_info = wsi::stats(context.assyst.clone()).await.unwrap_or(Stats {
@@ -518,10 +527,7 @@ pub async fn run_stats_command(
 
     let wsi_uptime = format_time(wsi_info.uptime_ms as u64);
 
-    let uptimes_table = generate_table(&[
-        ("Assyst", &assyst_uptime),
-        ("WSI", &wsi_uptime),
-    ]);
+    let uptimes_table = generate_table(&[("Assyst", &assyst_uptime), ("WSI", &wsi_uptime)]);
 
     context
         .reply_with_text(format!(
@@ -962,7 +968,7 @@ pub async fn run_fake_eval_command(
 ) -> CommandResult {
     let code = args[0].as_text();
 
-    match fake_eval(&context.assyst, code, true).await? {
+    match fake_eval(&context.assyst, code, true, Some(&context.message)).await? {
         FakeEvalImageResponse::Image(i, t) => {
             context.reply_with_image(t.as_str(), i).await?;
         }

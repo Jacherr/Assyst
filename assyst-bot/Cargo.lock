@@ -112,6 +112,8 @@ name = "assyst-common"
 version = "0.1.0"
 dependencies = [
  "bytes",
+ "lazy_static",
+ "regex",
  "serde",
  "toml",
  "twilight-model",

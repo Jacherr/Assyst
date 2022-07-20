@@ -362,6 +362,8 @@ impl<'a> Parser<'a> {
             "avatar" => subtags::avatar(self, args),
             "download" => subtags::download(self, args),
             "mention" => subtags::mention(self, args),
+            "idof" => subtags::idof(self, args),
+            "userid" => subtags::userid(self),
             _ => Err(anyhow!("Unknown subtag: {name}")),
         }
     }

@@ -304,9 +304,8 @@ struct TagContext {
 
 impl tag::Context for TagContext {
     fn execute_javascript(&self, code: &str) -> anyhow::Result<FakeEvalImageResponse> {
-        let response = self
-            .tokio
-            .block_on(fake_eval(&self.ccx.assyst, code, true))?;
+        let response = self.tokio
+            .block_on(fake_eval(&self.ccx.assyst, code, true, Some(&self.ccx.message)))?;
 
         Ok(response)
     }
