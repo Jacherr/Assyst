@@ -1,5 +1,8 @@
 use crate::{assyst::Assyst, command::context::Context, rest::wsi::RequestError};
-use assyst_common::{consts, filetype, util::{GuildId, UserId, ChannelId}};
+use assyst_common::{
+    consts, filetype,
+    util::{ChannelId, GuildId, UserId},
+};
 use bytes::Bytes;
 use regex::Captures;
 use shared::job::JobResult;
@@ -570,19 +573,14 @@ pub async fn get_guild_upload_limit_bytes(
     assyst: Arc<Assyst>,
     guild_id: GuildId,
 ) -> anyhow::Result<usize> {
-    let guild = assyst
-        .http
-        .guild(guild_id)
-        .exec()
-        .await?
-        .model()
-        .await?;
+    let guild = assyst.http.guild(guild_id).exec().await?.model().await?;
 
     let tier = guild.premium_tier;
 
     Ok(match tier {
         PremiumTier::None | PremiumTier::Tier1 => 8_000_000,
         PremiumTier::Tier2 => 50_000_000,
-        PremiumTier::Tier3 => 100_000_000
+        PremiumTier::Tier3 => 100_000_000,
+        _ => bail!("Unknown guild premium tier!"),
     })
 }

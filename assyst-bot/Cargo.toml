@@ -44,10 +44,8 @@ phf = "0.10.1"
 serde_repr = "0.1.8"
 phf_macros = "0.10.0"
 libc = "0.2.126"
+dlopen = "0.1.8"
+dlopen_derive = "0.1.4"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3.9", features = ["psapi"] }
-
-[target.'cfg(unix)'.dependencies]
-jemallocator = "0.3.0"
-jemalloc-sys = { version = "0.3.2", features = ["stats"] }

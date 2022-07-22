@@ -7,7 +7,7 @@ use crate::{
         context::Context,
         registry::CommandResult,
     },
-    logger,
+    eval, logger,
     rest::{
         bt::{get_languages, validate_language},
         fake_eval, get_filer_stats,
@@ -222,6 +222,15 @@ lazy_static! {
         .description("execute shell command")
         .example("echo hello")
         .usage("[command]")
+        .cooldown(Duration::from_secs(2))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref REVAL_COMMAND: Command = CommandBuilder::new("reval")
+        .arg(Argument::StringRemaining)
+        .availability(CommandAvailability::Private)
+        .description("execute rust code")
+        .example("context.message.content")
+        .usage("[code]")
         .cooldown(Duration::from_secs(2))
         .category(CATEGORY_NAME)
         .build();
@@ -1013,6 +1022,19 @@ pub async fn run_exec_command(
     }
 
     context.reply_with_text(output).await?;
+
+    Ok(())
+}
+pub async fn run_reval_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    let command = args[0].as_text();
+
+    let result = eval::run(&context, command).await?;
+
+    context.reply_with_text(codeblock(&result, "rust")).await?;
 
     Ok(())
 }

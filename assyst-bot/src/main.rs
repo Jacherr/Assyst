@@ -1,11 +1,15 @@
 #![allow(dead_code)]
 
+#[macro_use]
+extern crate dlopen_derive;
+
 mod ansi;
 mod assyst;
 mod badtranslator;
 mod caching;
 mod command;
 mod downloader;
+mod eval;
 mod handler;
 mod handlers;
 mod logger;
@@ -14,8 +18,8 @@ mod rest;
 mod tasks;
 mod util;
 
+use crate::assyst::Assyst;
 use anyhow::Context;
-use assyst::Assyst;
 use assyst_common::consts::{
     gateway::{self, Latencies},
     EVENT_PIPE,
@@ -31,10 +35,6 @@ use tokio::{
     net::UnixStream,
 };
 use twilight_model::gateway::event::GatewayEventDeserializer;
-
-#[cfg(target_os = "linux")]
-#[global_allocator]
-static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -77,9 +77,8 @@ async fn main() -> anyhow::Result<()> {
 
     match get_guild_count(assyst.clone()).await {
         Ok(g) => assyst.metrics.add_guilds(g as i64),
-        Err(_) => logger::fatal(assyst.as_ref(), "failed to get guild count").await
+        Err(_) => logger::fatal(assyst.as_ref(), "failed to get guild count").await,
     };
-
 
     assyst.initialize_blacklist().await?;
 
@@ -105,8 +104,12 @@ async fn main() -> anyhow::Result<()> {
                             let res = handle_event(assyst_clone.clone(), x).await;
                             match res {
                                 Err(e) => {
-                                    logger::fatal(assyst_clone.as_ref(), &format!("Event error: {}", e.to_string())).await;
-                                },
+                                    logger::fatal(
+                                        assyst_clone.as_ref(),
+                                        &format!("Event error: {}", e.to_string()),
+                                    )
+                                    .await;
+                                }
                                 _ => {}
                             }
                         }
