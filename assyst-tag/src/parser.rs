@@ -1,5 +1,5 @@
 use crate::{context::Context, subtags};
-use anyhow::{anyhow, ensure, Context as _};
+use anyhow::{anyhow, bail, ensure, Context as _};
 use assyst_common::filetype::Type;
 use bytes::Bytes;
 use rand::prelude::ThreadRng;
@@ -217,6 +217,8 @@ impl<'a> Parser<'a> {
             "Maximum number of iterations reached"
         );
 
+        let mut output = Vec::new();
+
         if !side_effects {
             // If this call isn't allowed to have any side effects, we can just "fast-forward" to the next }
             // that matches the depth of the current call.
@@ -237,12 +239,11 @@ impl<'a> Parser<'a> {
                     _ => {}
                 }
 
+                output.push(byte);
                 self.idx += 1;
             }
-            return Ok(String::new());
+            return String::from_utf8(output).map_err(Into::into);
         }
-
-        let mut output = String::new();
 
         while self.idx < self.input.len() {
             let byte = self.input[self.idx];
@@ -255,10 +256,14 @@ impl<'a> Parser<'a> {
                     // get subtag name, i.e. `range` in {range:1|10}
                     let name = std::str::from_utf8(self.read_identifier()).unwrap();
 
+                    if name.is_empty() {
+                        bail!("Subtag name is empty.");
+                    }
+
                     // lazy tags need to be evaluated before the args are parsed
                     // see comment in `handle_lazy_tag` for what it means for a tag to be lazy
                     if let Some(re) = self.handle_lazy_tag(name) {
-                        output.push_str(&re?);
+                        output.append(&mut re?.into_bytes());
                         continue;
                     }
 
@@ -287,7 +292,7 @@ impl<'a> Parser<'a> {
                         limits::MAX_STRING_LENGTH
                     );
 
-                    output.push_str(&result);
+                    output.append(&mut result.into_bytes());
                 }
                 b'|' | b'}' => {
                     break;
@@ -298,19 +303,19 @@ impl<'a> Parser<'a> {
                         if let Some(&next @ b'|' | &next @ b'}' | &next @ b'{') =
                             self.input.get(self.idx + 1)
                         {
-                            output.push(next as char);
+                            output.push(next);
                             self.idx += 2;
                             continue;
                         }
                     }
 
-                    output.push(byte as char);
+                    output.push(byte);
                     self.idx += 1;
                 }
             }
         }
 
-        Ok(output)
+        String::from_utf8(output).map_err(Into::into)
     }
 
     /// Handles a "lazy" tag
