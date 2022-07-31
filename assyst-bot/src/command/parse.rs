@@ -270,8 +270,13 @@ pub mod image_lookups {
             return sticker.map(Cow::Owned);
         }
 
-        let embed = self::embed(reply)?;
-        Some(Cow::Borrowed(embed))
+        let embed = self::embed(reply);
+        if embed.is_some() {
+            return Some(Cow::Borrowed(embed.unwrap()));
+        }
+
+        let emoji = self::emoji(&reply.content)?;
+        Some(Cow::Owned(emoji))
     }
 
     pub async fn previous_message_attachment<'c>(
