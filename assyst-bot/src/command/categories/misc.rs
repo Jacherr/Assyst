@@ -101,6 +101,7 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .build();
     pub static ref STATS_COMMAND: Command = CommandBuilder::new("stats")
+        .alias("info")
         .public()
         .description("get bot stats")
         .cooldown(Duration::from_secs(2))

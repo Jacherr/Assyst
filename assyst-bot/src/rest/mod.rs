@@ -1,5 +1,6 @@
-use std::{fmt::Display, sync::Arc};
+use std::{fmt::Display, sync::Arc, collections::hash_map::DefaultHasher, hash::{Hash, Hasher}};
 
+use anyhow::bail;
 use assyst_common::{
     eval::{FakeEvalBody, FakeEvalImageResponse},
     filetype,
@@ -175,7 +176,7 @@ pub async fn fake_eval(
     }
 }
 
-pub async fn burning_text(text: &str) -> Result<Bytes, Error> {
+pub async fn burning_text(text: &str) -> Result<Bytes, anyhow::Error> {
     let client = ClientBuilder::new()
         .danger_accept_invalid_certs(true)
         .build()
@@ -208,6 +209,14 @@ pub async fn burning_text(text: &str) -> Result<Bytes, Error> {
         .await?
         .bytes()
         .await?;
+
+    let mut hasher = DefaultHasher::new();
+    content.hash(&mut hasher);
+    let result = hasher.finish();
+    
+    if result == 3837314301372762351 /* image deleted/invalid etc */ {
+        bail!("failed to process input, most likely it's too long or contains invalid characters")
+    }
 
     Ok(content)
 }
