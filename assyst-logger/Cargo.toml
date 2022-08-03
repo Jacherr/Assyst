@@ -10,3 +10,4 @@ twilight-model = "0.11.0"
 assyst-common = { path = "../assyst-common" }
 twilight-http = "0.11.0"
 twilight-util = { version = "0.11.0", features = ["builder"] }
+assyst-database = { path = "../assyst-database" }

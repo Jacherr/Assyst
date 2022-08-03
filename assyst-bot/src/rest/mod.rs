@@ -5,6 +5,7 @@ use assyst_common::{
     eval::{FakeEvalBody, FakeEvalImageResponse},
     filetype,
     util::UserId,
+    ansi::Ansi
 };
 use bytes::Bytes;
 use reqwest::{Client, ClientBuilder, Error};
@@ -18,7 +19,7 @@ use tokio::time::Instant;
 
 use std::error::Error as StdError;
 
-use crate::{ansi::Ansi, assyst::Assyst, downloader, rest::wsi::run_wsi_job, util};
+use crate::{assyst::Assyst, downloader, rest::wsi::run_wsi_job, util};
 
 use self::rust::OptimizationLevel;
 

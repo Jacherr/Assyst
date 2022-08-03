@@ -10,7 +10,7 @@ use crate::{
         parse,
         registry::CommandRegistry,
     },
-    logger,
+    logger::{self, log_command_use},
     metrics::GlobalMetrics,
     rest::{patreon::Patron, wsi::wsi_listen, HealthcheckResult},
     util::{get_current_millis, get_guild_owner, is_guild_manager, regexes, Uptime},
@@ -449,6 +449,9 @@ impl Assyst {
             .add_processing_time(context.metrics.processing_time_start.elapsed().as_millis() as f64);
 
         self.commands_executed.fetch_add(1, Ordering::Relaxed);
+
+        let message = format!("{} in guild {}", command_instance.name, message.guild_id.unwrap_or(GuildId::new(1)));
+        log_command_use(self.as_ref(), &message).await;
 
         Ok(())
     }

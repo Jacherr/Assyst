@@ -134,6 +134,7 @@ name = "assyst-logger"
 version = "0.1.0"
 dependencies = [
  "assyst-common",
+ "assyst-database",
  "twilight-http",
  "twilight-model",
  "twilight-util",
