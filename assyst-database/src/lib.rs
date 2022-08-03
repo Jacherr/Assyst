@@ -969,11 +969,11 @@ impl Database {
             .bind(category)
             .execute(&self.pool)
             .await
-            .unwrap();
+            .map(|_| ());
         
         self.delete_old_logs().await;
 
-        Ok(())
+        r
     }
 }
 
