@@ -42,7 +42,7 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: GatewayEvent) -> anyhow::R
                     let should_log = handle_guild_delete_event(assyst.clone(), guild).await.context("failed to handle guild delete")?;
                     if should_log {
                         assyst.metrics.delete_guild();
-                        logger::info(&assyst, &format!("Removed from guild: {}", id)).await;
+                        logger::guild_remove(&assyst, &format!("{}", id)).await;
                     }
                 }
                 DispatchEvent::Ready(r) => {

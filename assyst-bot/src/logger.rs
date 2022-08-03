@@ -25,6 +25,11 @@ pub async fn guild_add(assyst: &Assyst, message: &str) {
 }
 
 #[inline]
+pub async fn guild_remove(assyst: &Assyst, message: &str) {
+    logger::guild_remove(&assyst.config, &assyst.database, message).await
+}
+
+#[inline]
 pub async fn log_vote(assyst: &Assyst, message: &str) {
     logger::log_vote(&assyst.config, &assyst.http, message).await
 }
