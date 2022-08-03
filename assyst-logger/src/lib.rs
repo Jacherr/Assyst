@@ -8,6 +8,7 @@ use assyst_database::Database;
 
 const CATEGORY_LOGS: i32 = 0;
 const CATEGORY_COMMAND_USE: i32 = 1;
+const CATEGORY_GUILD_JOIN_LEAVE: i32 = 2;
 
 pub async fn panic(config: &Config, client: &HttpClient, message: &str) {
     let url = &config.logs.panic;
@@ -50,7 +51,18 @@ pub async fn guild_add(config: &Config, database: &Database, message: &str) {
 
     let message = format!("{} {}", "Added to guild:".fg_green(), message.fg_green());
 
-    let _ = database.log(&message, CATEGORY_LOGS).await;
+    let _ = database.log(&message, CATEGORY_GUILD_JOIN_LEAVE).await;
+}
+
+pub async fn guild_remove(config: &Config, database: &Database, message: &str) {
+    if !config.db_logs {
+        println!("guild remove: {}", message);
+        return;
+    };
+
+    let message = format!("{} {}", "Removed from guild:".fg_bright_red(), message.fg_bright_red());
+
+    let _ = database.log(&message, CATEGORY_GUILD_JOIN_LEAVE).await;
 }
 
 pub async fn command_use(config: &Config, database: &Database, message: &str) {
