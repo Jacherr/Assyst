@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 
-mod ansi;
 mod assyst;
 mod badtranslator;
 mod caching;

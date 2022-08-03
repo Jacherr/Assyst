@@ -951,6 +951,30 @@ impl Database {
             .await
             .map(|_| ())
     }
+
+    pub async fn delete_old_logs(&self) {
+        let query = r#"DELETE FROM logs WHERE timestamp < now() - interval '7 days'"#;
+
+        sqlx::query(query)
+            .execute(&self.pool)
+            .await
+            .unwrap();
+    }
+
+    pub async fn log(&self, text: &str, category: i32) -> Result<(), sqlx::Error> {
+        let query = r#"INSERT INTO logs VALUES (now(), $1, $2)"#;
+
+        let r = sqlx::query(query)
+            .bind(text)
+            .bind(category)
+            .execute(&self.pool)
+            .await
+            .unwrap();
+        
+        self.delete_old_logs().await;
+
+        Ok(())
+    }
 }
 
 fn is_unique_violation(error: &sqlx::Error) -> bool {

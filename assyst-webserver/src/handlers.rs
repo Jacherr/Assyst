@@ -44,7 +44,7 @@ pub async fn handle_vote(
     if let Err(e) = result {
         logger::fatal(
             config,
-            client,
+            database,
             &format!(
                 "failed to give free tier 1 requests to voter, reason: {}",
                 e.to_string()
