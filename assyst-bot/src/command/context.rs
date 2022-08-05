@@ -1,9 +1,10 @@
 use anyhow::Context as _;
-use assyst_common::{consts::{self, ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES}, util::{GuildId, MessageId, UserId}};
+use assyst_common::{consts::{self, ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES, CANNOT_REPLY_WITHOUT_MESSAGE_HISTORY_CODE}, util::{GuildId, MessageId, UserId}};
+use async_recursion::async_recursion;
 use bytes::Bytes;
 use std::time::Instant;
 use tokio::sync::Mutex;
-use twilight_http::Client as HttpClient;
+use twilight_http::{Client as HttpClient, error::ErrorType, api_error::ApiError};
 use twilight_model::{
     channel::{embed::Embed, message::AllowedMentions, Message},
     http::attachment::Attachment as TwilightAttachment,
@@ -185,10 +186,12 @@ impl Context {
         self.reply(builder).await
     }
 
+    #[async_recursion]
     async fn create_new_message(
         &self,
         message_builder: MessageBuilder,
     ) -> anyhow::Result<Arc<Message>> {
+        let mut c = message_builder.clone();
         let allowed_mentions = AllowedMentions::default();
 
         let mut create_message = self
@@ -220,13 +223,34 @@ impl Context {
             embeds = [embed];
             create_message = create_message.embeds(&embeds)?;
         };
-        if !self.reply.lock().await.invocation_deleted {
+        if !self.reply.lock().await.invocation_deleted && c.should_reply {
             create_message = create_message.reply(self.message.id);
         }
-        let x = create_message.exec().await?;
-        let message = x.model().await?;
-        let result = Arc::new(message);
-        Ok(result)
+        let x = create_message.exec().await;
+        match x {
+            Ok(x) => {
+                let message = x.model().await?;
+                let result = Arc::new(message);
+                Ok(result)
+            }
+            Err(x) => {
+                if let ErrorType::Response { body: _, error, status: _ } = x.kind() {
+                    if let ApiError::General(y) = error {
+                        if y.code == CANNOT_REPLY_WITHOUT_MESSAGE_HISTORY_CODE && c.should_reply {
+                            c.should_reply = false;
+                            self.create_new_message(c).await
+                        } else {
+                            Err(anyhow::Error::from(x))
+                        }
+                    } else {
+                        Err(anyhow::Error::from(x))
+                    }
+                } else {
+                    Err(anyhow::Error::from(x))
+                }
+            }
+        }
+
     }
 
     async fn edit_message(

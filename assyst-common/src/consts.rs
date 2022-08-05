@@ -42,3 +42,4 @@ pub mod gateway {
     #[derive(Serialize, Deserialize)]
     pub struct Latencies(pub HashMap<u64, i64>);
 }
+pub const CANNOT_REPLY_WITHOUT_MESSAGE_HISTORY_CODE: u64 = 160002;
