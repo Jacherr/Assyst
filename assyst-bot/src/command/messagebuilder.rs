@@ -11,6 +11,7 @@ pub struct MessageBuilder {
     pub attachment: Option<Attachment>,
     pub content: Option<Box<str>>,
     pub embed: Option<Embed>,
+    pub should_reply: bool,
 }
 impl MessageBuilder {
     pub fn new() -> Self {
@@ -18,6 +19,7 @@ impl MessageBuilder {
             attachment: None,
             content: None,
             embed: None,
+            should_reply: true
         }
     }
 
