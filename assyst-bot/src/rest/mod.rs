@@ -56,6 +56,7 @@ mod routes {
 pub enum OcrError {
     NetworkError,
     HtmlResponse,
+    Ratelimited
 }
 
 impl Display for OcrError {
@@ -63,6 +64,7 @@ impl Display for OcrError {
         match self {
             OcrError::NetworkError => write!(f, "An unknown network error occurred"),
             OcrError::HtmlResponse => write!(f, "Failed to parse response"),
+            OcrError::Ratelimited => write!(f, "The bot is currently rate limited, try again in a few minutes.")
         }
     }
 }
@@ -97,7 +99,7 @@ pub async fn ocr_image(client: &Client, url: &str) -> Result<String, OcrError> {
         .await
         .map_err(|_| OcrError::NetworkError)?
         .error_for_status()
-        .map_err(|_| OcrError::NetworkError)?
+        .map_err(|_| OcrError::Ratelimited)?
         .text()
         .await
         .map_err(|_| OcrError::NetworkError)?;
