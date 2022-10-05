@@ -144,7 +144,7 @@ impl CommandAvailability {
         match self {
             CommandAvailability::Private => "Private".to_owned(),
             CommandAvailability::Public => "Public".to_owned(),
-            CommandAvailability::GuildOwner => "Guild Owner".to_owned(),
+            CommandAvailability::GuildOwner => "Server Managers".to_owned(),
         }
     }
 }
