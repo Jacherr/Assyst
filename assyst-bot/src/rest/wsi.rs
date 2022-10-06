@@ -323,6 +323,19 @@ pub async fn audio(
     run_wsi_job(assyst, job, user_id).await
 }
 
+pub async fn audio_pcm(
+    assyst: Arc<Assyst>,
+    input: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    let job = FifoSend::AudioPcm(FifoData::new(
+        input.to_vec(),
+        NoneQuery {}
+    ));
+
+    run_wsi_job(assyst, job, user_id).await
+}
+
 pub async fn back_tattoo(
     assyst: Arc<Assyst>,
     image: Bytes,

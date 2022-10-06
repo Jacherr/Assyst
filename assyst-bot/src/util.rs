@@ -583,6 +583,7 @@ pub async fn get_guild_upload_limit_bytes(
     Ok(match tier {
         PremiumTier::None | PremiumTier::Tier1 => 8_000_000,
         PremiumTier::Tier2 => 50_000_000,
-        PremiumTier::Tier3 => 100_000_000
+        PremiumTier::Tier3 => 100_000_000,
+        _ => unreachable!()
     })
 }
