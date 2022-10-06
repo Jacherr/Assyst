@@ -45,7 +45,6 @@ lazy_static! {
         .usage("[image]")
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
-        .disable()
         .build();
     pub static ref OCRTR_COMMAND: Command = CommandBuilder::new("ocrtranslate")
         .alias("ocrtr")
@@ -58,7 +57,6 @@ lazy_static! {
         .usage("[image] [language]")
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
-        .disable()
         .build();
     pub static ref RULE34_COMMAND: Command = CommandBuilder::new("rule34")
         .alias("r34")
@@ -100,7 +98,6 @@ lazy_static! {
         .usage("[image]")
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
-        .disable()
         .build();
     pub static ref TOWAV_COMMAND: Command = CommandBuilder::new("towav")
         .alias("wavify")
