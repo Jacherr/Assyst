@@ -13,7 +13,8 @@ pub struct Auth {
     pub top_gg_post_stats: Box<str>,
     pub discords_post_stats: Box<str>,
     pub wsi: Box<str>,
-    pub rapidapi: Box<str>,
+    pub rapidapi_identify: Box<str>,
+    pub rapidapi_shazam: Box<str>,
     pub codesprint: Box<str>,
     pub cdn: Box<str>,
     pub discord: Box<str>

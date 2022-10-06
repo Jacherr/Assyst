@@ -30,6 +30,7 @@ pub mod patreon;
 pub mod rust;
 pub mod wombo;
 pub mod wsi;
+pub mod audio_identify;
 
 mod routes {
     use assyst_common::consts::BOT_ID;

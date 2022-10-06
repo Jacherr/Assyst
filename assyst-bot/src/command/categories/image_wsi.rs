@@ -1712,7 +1712,7 @@ pub async fn run_identify_command(
     let identify = rest::identify::identify_image(
         &context.assyst.reqwest_client,
         url,
-        context.assyst.config.auth.rapidapi.as_ref(),
+        context.assyst.config.auth.rapidapi_identify.as_ref(),
     )
     .await?;
 

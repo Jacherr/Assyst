@@ -11,7 +11,7 @@ use crate::{
         bt::{get_languages, validate_language},
         fake_eval,
         rust::OptimizationLevel,
-        wsi, get_filer_stats, FilerStats,
+        wsi, get_filer_stats, FilerStats, audio_identify,
     },
     util::{
         bytes_to_readable, codeblock, ensure_same_guild, exec_sync, extract_page_title,
@@ -29,6 +29,7 @@ use assyst_common::{
     eval::{FakeEvalImageResponse, FakeEvalResponse}, util::ChannelId,
 };
 use assyst_database::Reminder;
+use base64::encode;
 use lazy_static::lazy_static;
 use shared::query_params::ResizeMethod;
 use shared::response_data::Stats;
@@ -241,7 +242,17 @@ lazy_static! {
         .build();
     pub static ref CACHE_STATUS_COMMAND: Command = CommandBuilder::new("cachestatus")
         .availability(CommandAvailability::Private)
-        .description("Get your patron status")
+        .description("Get the cache status")
+        .cooldown(Duration::from_secs(1))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref AUDIO_IDENTIFY_COMMAND: Command = CommandBuilder::new("findsong")
+        .availability(CommandAvailability::Public)
+        .description("Identify the audio in an audio or video file")
+        .alias("audio")
+        .alias("song")
+        .alias("audioidentify")
+        .arg(Argument::ImageBuffer)
         .cooldown(Duration::from_secs(1))
         .category(CATEGORY_NAME)
         .build();
@@ -1194,4 +1205,22 @@ pub async fn run_unblacklist_command(
         .reply_with_text("Successfully unblacklisted user")
         .await
         .map(|_| ())
+}
+
+pub async fn run_audio_identify_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    let image = args[0].as_bytes();
+    context.reply_with_text("processing...").await;
+    let pcm = wsi::audio_pcm(context.assyst.clone(), image, context.author_id()).await?;
+    let b64 = encode(pcm.to_vec());
+    let res = audio_identify::identify_audio(context.assyst.clone(), b64).await?;
+    let track = match res.track { Some(x) => x, None => return Ok(()) };
+    let artist_ids = track.artists.iter().map(|x| x.adamid.clone()).collect::<Vec<_>>();
+    let searched = audio_identify::search_song(context.assyst.clone(), track.title.clone()).await?;
+    let artists = searched.artists.unwrap_or(audio_identify::songsearch::Artists { hits: vec![] }).hits.iter().filter(|z| artist_ids.contains(&z.artist.adamid)).map(|x| x.artist.name.clone()).collect::<Vec<_>>();
+    let output = format!("**Name:** {}\n**Artist(s):** {}", track.title, if artists.is_empty() { "Unknown".to_owned() } else { artists.join(", ") });
+    context.reply_with_text(output).await.map(|_| ())
 }
