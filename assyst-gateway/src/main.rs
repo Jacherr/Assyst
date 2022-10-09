@@ -26,7 +26,7 @@ use twilight_model::gateway::{
 
 #[tokio::main]
 async fn main() -> anyhow::Result<!> {
-    remove_file(EVENT_PIPE).await?;
+    let _ = remove_file(EVENT_PIPE).await;
 
     let config = Config::new();
 
