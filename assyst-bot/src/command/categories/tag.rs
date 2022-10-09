@@ -100,6 +100,7 @@ async fn run_delete_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>)
         context.author_id(),
     )
     .await
+    .unwrap_or(false)
     {
         context
             .assyst
