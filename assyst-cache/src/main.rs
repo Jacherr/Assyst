@@ -14,7 +14,7 @@ use tokio::{net::UnixListener, io::{AsyncReadExt, AsyncWriteExt}, fs::remove_fil
 
 #[tokio::main]
 async fn main() -> anyhow::Result<!> {
-    remove_file(CACHE_PIPE).await?;
+    let _ = remove_file(CACHE_PIPE).await;
     
     let state = Rc::new(RefCell::new(State::new()));
 

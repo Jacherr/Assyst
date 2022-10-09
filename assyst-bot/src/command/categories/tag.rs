@@ -186,8 +186,9 @@ async fn run_info_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -
     let guild_id = context.message.guild_id.unwrap().get();
     let name = args
         .get(1)
-        .map(|t| t.as_text())
-        .context("No tag name provided.")?;
+        .map(|t| t.maybe_text())
+        .flatten()
+        .ok_or(anyhow!("No tag name provided."))?;
 
     let tag = context
         .assyst
@@ -211,8 +212,9 @@ async fn run_raw_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) ->
     let guild_id = context.message.guild_id.unwrap().get();
     let name = args
         .get(1)
-        .map(|t| t.as_text())
-        .context("No tag name provided.")?;
+        .map(|t| t.maybe_text())
+        .flatten()
+        .ok_or(anyhow!("No tag name provided."))?;
 
     let tag = context
         .assyst
