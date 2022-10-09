@@ -18,7 +18,7 @@ use crate::{
     },
     downloader,
     rest::fake_eval,
-    util,
+    util::{self, is_guild_manager},
 };
 
 const CATEGORY_NAME: &str = "misc";
@@ -94,11 +94,25 @@ async fn run_delete_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>)
         .and_then(|t| t.maybe_text())
         .context("No tag name provided.")?;
 
-    let success = context
-        .assyst
-        .database
-        .remove_tag(author.try_into()?, guild_id.try_into()?, name)
-        .await?;
+    let success = if is_guild_manager(
+        context.assyst.http.as_ref(),
+        context.message.guild_id.unwrap(),
+        context.author_id(),
+    )
+    .await
+    {
+        context
+            .assyst
+            .database
+            .remove_tag_force(guild_id.try_into()?, name)
+            .await?
+    } else {
+        context
+            .assyst
+            .database
+            .remove_tag(author.try_into()?, guild_id.try_into()?, name)
+            .await?
+    };
 
     ensure!(
         success,
