@@ -346,7 +346,7 @@ pub mod songsearch {
         pub background: String,
         pub coverart: String,
         pub coverarthq: String,
-        pub joecolor: String,
+        pub joecolor: Option<String>,
     }
 
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
