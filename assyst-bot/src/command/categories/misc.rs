@@ -1217,7 +1217,7 @@ pub async fn run_audio_identify_command(
     let pcm = wsi::audio_pcm(context.assyst.clone(), image, context.author_id()).await?;
     let b64 = encode(pcm.to_vec());
     let res = audio_identify::identify_audio(context.assyst.clone(), b64).await?;
-    let track = match res.track { Some(x) => x, None => return bail!("No song detected") };
+    let track = match res.track { Some(x) => x, None => bail!("No song detected") };
     let artist_ids = track.artists.iter().map(|x| x.adamid.clone()).collect::<Vec<_>>();
     let searched = audio_identify::search_song(context.assyst.clone(), track.title.clone()).await?;
     let artists = searched.artists.unwrap_or(audio_identify::songsearch::Artists { hits: vec![] }).hits.iter().filter(|z| artist_ids.contains(&z.artist.adamid)).map(|x| x.artist.name.clone()).collect::<Vec<_>>();
