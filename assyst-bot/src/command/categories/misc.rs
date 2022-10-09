@@ -1213,7 +1213,7 @@ pub async fn run_audio_identify_command(
     _flags: ParsedFlags,
 ) -> CommandResult {
     let image = args[0].as_bytes();
-    context.reply_with_text("processing...").await;
+    context.reply_with_text("processing...").await?;
     let pcm = wsi::audio_pcm(context.assyst.clone(), image, context.author_id()).await?;
     let b64 = encode(pcm.to_vec());
     let res = audio_identify::identify_audio(context.assyst.clone(), b64).await?;
