@@ -840,6 +840,28 @@ impl Database {
             })
     }
 
+    pub async fn remove_tag_force(
+        &self,
+        guild_id: i64,
+        name: &str,
+    ) -> Result<bool, sqlx::Error> {
+        let query = r#"DELETE FROM tags WHERE name = $1 AND guild_id = $2"#;
+
+        sqlx::query(query)
+            .bind(name)
+            .bind(guild_id)
+            .execute(&self.pool)
+            .await
+            .map(|rows| rows.rows_affected() > 0)
+            .or_else(|e| {
+                if is_unique_violation(&e) {
+                    Ok(false)
+                } else {
+                    Err(e)
+                }
+            })
+    }
+
     pub async fn remove_tag(
         &self,
         author: i64,
