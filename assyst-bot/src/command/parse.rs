@@ -179,6 +179,10 @@ pub mod image_lookups {
             .and_then(|id| Some(id.as_str()))
             .and_then(|id| id.parse::<u64>().ok())?;
 
+        if user_id == 0 {
+            return None;
+        }
+
         let user = http
             .user(UserId::new(user_id))
             .exec()
