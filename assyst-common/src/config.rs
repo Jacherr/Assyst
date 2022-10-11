@@ -6,18 +6,19 @@ use serde::Deserialize;
 pub struct Auth {
     pub annmarie: Box<str>,
     pub bot_list_webhook: Box<str>,
+    pub cdn: Box<str>,
+    pub codesprint: Box<str>,
     pub discord_bot_list_post_stats: Box<str>,
+    pub discord: Box<str>,
+    pub discords_post_stats: Box<str>,
     pub lottie_render: Box<str>,
     pub maryjane: Box<str>,
+    pub notsoapi: Box<str>,
     pub patreon: Box<str>,
-    pub top_gg_post_stats: Box<str>,
-    pub discords_post_stats: Box<str>,
-    pub wsi: Box<str>,
     pub rapidapi_identify: Box<str>,
     pub rapidapi_shazam: Box<str>,
-    pub codesprint: Box<str>,
-    pub cdn: Box<str>,
-    pub discord: Box<str>
+    pub top_gg_post_stats: Box<str>,
+    pub wsi: Box<str>
 }
 
 #[derive(Clone, Deserialize)]

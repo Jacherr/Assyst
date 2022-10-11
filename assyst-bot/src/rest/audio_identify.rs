@@ -1,5 +1,8 @@
 use std::sync::Arc;
 
+use bytes::Bytes;
+use reqwest::multipart::{Form, Part};
+
 use crate::assyst::Assyst;
 
 pub mod songdetection {
@@ -13,7 +16,7 @@ pub mod songdetection {
         pub tagid: String,
         pub track: Option<Track>,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Match {
@@ -23,7 +26,7 @@ pub mod songdetection {
         pub timeskew: f64,
         pub frequencyskew: f64,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Track {
@@ -45,7 +48,7 @@ pub mod songdetection {
         pub albumadamid: Option<String>,
         pub sections: Vec<Section>,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Images {
@@ -54,7 +57,7 @@ pub mod songdetection {
         pub coverarthq: String,
         pub joecolor: Option<String>,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Share {
@@ -67,7 +70,7 @@ pub mod songdetection {
         pub avatar: Option<String>,
         pub snapchat: String,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Hub {
@@ -80,7 +83,7 @@ pub mod songdetection {
         pub explicit: bool,
         pub displayname: String,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Action {
@@ -90,7 +93,7 @@ pub mod songdetection {
         pub id: Option<String>,
         pub uri: Option<String>,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Option1 {
@@ -105,7 +108,7 @@ pub mod songdetection {
         pub colouroverflowimage: bool,
         pub providername: String,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Action2 {
@@ -114,7 +117,7 @@ pub mod songdetection {
         pub uri: String,
         pub name: Option<String>,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Beacondata {
@@ -122,7 +125,7 @@ pub mod songdetection {
         pub type_field: String,
         pub providername: String,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Provider {
@@ -132,14 +135,14 @@ pub mod songdetection {
         #[serde(rename = "type")]
         pub type_field: String,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Images2 {
         pub overflow: String,
         pub default: String,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Action3 {
@@ -148,20 +151,20 @@ pub mod songdetection {
         pub type_field: String,
         pub uri: String,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Artist {
         pub id: String,
         pub adamid: String,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Genres {
         pub primary: String,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Urlparams {
@@ -170,19 +173,19 @@ pub mod songdetection {
         #[serde(rename = "{trackartist}")]
         pub trackartist: String,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Myshazam {
         pub apple: Apple,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Apple {
         pub actions: Option<Vec<Action4>>,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Action4 {
@@ -191,7 +194,7 @@ pub mod songdetection {
         pub type_field: String,
         pub uri: String,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Section {
@@ -211,21 +214,21 @@ pub mod songdetection {
         pub verified: Option<bool>,
         pub actions: Option<Vec<Action6>>,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Metapage {
         pub image: String,
         pub caption: String,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Metadaum {
         pub title: String,
         pub text: String,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Beacondata2 {
@@ -233,7 +236,7 @@ pub mod songdetection {
         pub providername: String,
         pub commontrackid: String,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Youtubeurl {
@@ -241,21 +244,21 @@ pub mod songdetection {
         pub image: Image,
         pub actions: Option<Vec<Action5>>,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Image {
         pub dimensions: Dimensions,
         pub url: String,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Dimensions {
         pub width: i64,
         pub height: i64,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Action5 {
@@ -265,7 +268,7 @@ pub mod songdetection {
         pub share: Share2,
         pub uri: String,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Share2 {
@@ -278,7 +281,7 @@ pub mod songdetection {
         pub avatar: Option<String>,
         pub snapchat: String,
     }
-    
+
     #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct Action6 {
@@ -287,7 +290,6 @@ pub mod songdetection {
         pub id: String,
     }
 }
-
 
 pub mod songsearch {
     use serde::{Deserialize, Serialize};
@@ -460,10 +462,46 @@ pub mod songsearch {
     }
 }
 
+pub mod notsoidentify {
+    use serde::{Deserialize, Serialize};
+    #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+    pub struct Song {
+        pub album: NamedField,
+        pub artists: Vec<NamedField>,
+        pub title: String,
+        pub platforms: Platform,
+    }
+
+    #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+    pub struct NamedField {
+        pub name: String,
+    }
+
+    #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+    pub struct Platform {
+        pub youtube: Option<YouTube>,
+    }
+
+    #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+    pub struct YouTube {
+        pub url: String,
+    }
+}
+
+#[derive(Debug)]
+pub enum NotSoIdentifyFailure {
+    API,
+    STATUS,
+}
+
 const DETECT_URL: &str = "https://shazam.p.rapidapi.com/songs/detect";
 const SEARCH_URL: &str = "https://shazam.p.rapidapi.com/search";
+const NOT_SO_IDENTIFY_URL: &str = "https://notsobot.com/api/audio/tools/identify";
 
-pub async fn identify_audio(assyst: Arc<Assyst>, base64: String) -> anyhow::Result<songdetection::Root> {
+pub async fn identify_audio_shazam(
+    assyst: Arc<Assyst>,
+    base64: String,
+) -> anyhow::Result<songdetection::Root> {
     let client = &assyst.reqwest_client;
     Ok(client
         .post(DETECT_URL)
@@ -481,7 +519,10 @@ pub async fn identify_audio(assyst: Arc<Assyst>, base64: String) -> anyhow::Resu
         .await?)
 }
 
-pub async fn search_song(assyst: Arc<Assyst>, search: String) -> anyhow::Result<songsearch::Root> {
+pub async fn search_song_shazam(
+    assyst: Arc<Assyst>,
+    search: String,
+) -> anyhow::Result<songsearch::Root> {
     let client = &assyst.reqwest_client;
     Ok(client
         .get(SEARCH_URL)
@@ -496,4 +537,25 @@ pub async fn search_song(assyst: Arc<Assyst>, search: String) -> anyhow::Result<
         .error_for_status()?
         .json::<songsearch::Root>()
         .await?)
+}
+
+pub async fn identify_song_notsoidentify(
+    assyst: Arc<Assyst>,
+    search: Bytes,
+) -> Result<Vec<notsoidentify::Song>, NotSoIdentifyFailure> {
+    let client = &assyst.reqwest_client;
+    let formdata = Form::new();
+    let formdata = formdata.part("file", Part::bytes(search.to_vec()).file_name("file.mp3"));
+    Ok(client
+        .post(NOT_SO_IDENTIFY_URL)
+        .header("authorization", assyst.config.auth.notsoapi.to_string())
+        .multipart(formdata)
+        .send()
+        .await
+        .map_err(|_| NotSoIdentifyFailure::API)?
+        .error_for_status()
+        .map_err(|_| NotSoIdentifyFailure::STATUS)?
+        .json::<Vec<notsoidentify::Song>>()
+        .await
+        .map_err(|_| NotSoIdentifyFailure::API)?)
 }
