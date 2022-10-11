@@ -1,4 +1,5 @@
 use crate::{
+    caching::persistent_caching::get_top_guilds,
     command::{
         command::{
             Argument, Command, CommandAvailability, CommandBuilder, ParsedArgument, ParsedFlags,
@@ -8,16 +9,17 @@ use crate::{
     },
     logger,
     rest::{
+        audio_identify::{self, NotSoIdentifyFailure},
         bt::{get_languages, validate_language},
-        fake_eval,
+        fake_eval, get_filer_stats,
         rust::OptimizationLevel,
-        wsi, get_filer_stats, FilerStats, audio_identify,
+        wsi, FilerStats,
     },
     util::{
         bytes_to_readable, codeblock, ensure_same_guild, exec_sync, extract_page_title,
         format_discord_timestamp, format_time, generate_list, generate_table, get_buffer_filetype,
         get_memory_usage, parse_codeblock,
-    }, caching::persistent_caching::get_top_guilds,
+    },
 };
 use crate::{
     rest::{bt::translate_single, get_char_info, rust},
@@ -26,7 +28,8 @@ use crate::{
 use anyhow::{anyhow, bail, Context as _};
 use assyst_common::{
     consts,
-    eval::{FakeEvalImageResponse, FakeEvalResponse}, util::ChannelId,
+    eval::{FakeEvalImageResponse, FakeEvalResponse},
+    util::ChannelId,
 };
 use assyst_database::Reminder;
 use base64::encode;
@@ -267,11 +270,13 @@ pub async fn run_ping_command(
     let start = Instant::now();
     context.reply_with_text("pong!").await?;
 
-    context.reply_with_text(&format!(
-        "pong!\nprocessing time: {} µs\nresponse time: {} ms",
-        processing_time,
-        start.elapsed().as_millis()
-    )).await?;
+    context
+        .reply_with_text(&format!(
+            "pong!\nprocessing time: {} µs\nresponse time: {} ms",
+            processing_time,
+            start.elapsed().as_millis()
+        ))
+        .await?;
 
     Ok(())
 }
@@ -493,7 +498,12 @@ pub async fn run_stats_command(
         "Total: {}, Remaining: {}",
         assyst_gateway.session_start_limit.total, assyst_gateway.session_start_limit.remaining,
     );
-    let filer_stats = get_filer_stats(context.assyst.clone()).await.unwrap_or(FilerStats { count: 0, size_bytes: 0 });
+    let filer_stats = get_filer_stats(context.assyst.clone())
+        .await
+        .unwrap_or(FilerStats {
+            count: 0,
+            size_bytes: 0,
+        });
     let filer_formatted_size = format!("{} GB", filer_stats.size_bytes / 1000 / 1000 / 1000);
 
     let stats_table = generate_table(&[
@@ -519,7 +529,7 @@ pub async fn run_stats_command(
         ("Sessions", &sessions),
         ("Database Size", &db_size),
         ("CDN File Count", &filer_stats.count.to_string()),
-        ("CDN Size", &filer_formatted_size)
+        ("CDN Size", &filer_formatted_size),
     ]);
 
     let wsi_info = wsi::stats(context.assyst.clone()).await.unwrap_or(Stats {
@@ -530,10 +540,7 @@ pub async fn run_stats_command(
 
     let wsi_uptime = format_time(wsi_info.uptime_ms as u64);
 
-    let uptimes_table = generate_table(&[
-        ("Assyst", &assyst_uptime),
-        ("WSI", &wsi_uptime),
-    ]);
+    let uptimes_table = generate_table(&[("Assyst", &assyst_uptime), ("WSI", &wsi_uptime)]);
 
     context
         .reply_with_text(format!(
@@ -1214,12 +1221,39 @@ pub async fn run_audio_identify_command(
 ) -> CommandResult {
     let image = args[0].as_bytes();
     context.reply_with_text("processing...").await?;
+    let song = audio_identify::identify_song_notsoidentify(context.assyst.clone(), image.clone()).await;
+    let mut fail = false;
+    match song {
+        Ok(_) => {},
+        Err(ref x) => {
+            match x {
+                NotSoIdentifyFailure::API => fail = true,
+                NotSoIdentifyFailure::STATUS => return Err(anyhow!("Failed to extract audio from input file"))
+            }
+        }
+    }
+    if fail == false {
+        let s = &song.unwrap();
+        if s.len() > 0 {
+            let formatted = format!(
+                "**Title:** {}\n**Artist(s):** {}\n**YouTube Link:** <{}>",
+                s[0].title.clone(),
+                s[0].artists.iter().map(|x| x.name.clone()).collect::<Vec<_>>().join(", "),
+                match &s[0].platforms.youtube {
+                    Some(x) => x.url.clone(),
+                    None => "Unknown".to_owned()
+                }
+            );
+            return context.reply_with_text(formatted).await.map(|_| ());        
+        }
+        unreachable!()
+    } 
     let pcm = wsi::audio_pcm(context.assyst.clone(), image, context.author_id()).await?;
     let b64 = encode(pcm.to_vec());
-    let res = audio_identify::identify_audio(context.assyst.clone(), b64).await?;
+    let res = audio_identify::identify_audio_shazam(context.assyst.clone(), b64).await?;
     let track = match res.track { Some(x) => x, None => bail!("No song detected") };
     let artist_ids = track.artists.iter().map(|x| x.adamid.clone()).collect::<Vec<_>>();
-    let searched = audio_identify::search_song(context.assyst.clone(), track.title.clone()).await?;
+    let searched = audio_identify::search_song_shazam(context.assyst.clone(), track.title.clone()).await?;
     let artists = searched.artists.unwrap_or(audio_identify::songsearch::Artists { hits: vec![] }).hits.iter().filter(|z| artist_ids.contains(&z.artist.adamid)).map(|x| x.artist.name.clone()).collect::<Vec<_>>();
     let output = format!("**Name:** {}\n**Artist(s):** {}", track.title, if artists.is_empty() { "Unknown".to_owned() } else { artists.join(", ") });
     context.reply_with_text(output).await.map(|_| ())
