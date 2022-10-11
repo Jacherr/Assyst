@@ -1246,7 +1246,6 @@ pub async fn run_audio_identify_command(
             );
             return context.reply_with_text(formatted).await.map(|_| ());        
         }
-        unreachable!()
     } 
     let pcm = wsi::audio_pcm(context.assyst.clone(), image, context.author_id()).await?;
     let b64 = encode(pcm.to_vec());
