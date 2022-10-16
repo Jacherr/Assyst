@@ -95,7 +95,9 @@ pub async fn supply_connection(
                     Some(x) => x as i64,
                     None => continue,
                 };
-                latencies.0.insert(shard.0, latency);
+                if latency > 0 {
+                    latencies.0.insert(shard.0, latency);
+                }
             }
             let serialized = serialize(&latencies).unwrap();
             let mut lock = writer_clone.lock().await;
