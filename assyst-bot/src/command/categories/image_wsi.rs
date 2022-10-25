@@ -76,6 +76,16 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
+    pub static ref DEEPFRY_COMMAND: Command = CommandBuilder::new("deepfry")
+        .alias("df")
+        .arg(Argument::ImageBuffer)
+        .public()
+        .description("deep fry an image")
+        .example(consts::Y21)
+        .usage("[image]")
+        .cooldown(Duration::from_secs(4))
+        .category(CATEGORY_NAME)
+        .build();
     pub static ref DRIP_COMMAND: Command = CommandBuilder::new("drip")
         .arg(Argument::ImageBuffer)
         .public()
@@ -858,6 +868,19 @@ pub async fn run_caption_command(
     let text = args[1].as_text();
     context.reply_with_text("processing...").await?;
     let result = wsi::caption(context.assyst.clone(), image, context.author_id(), text).await?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
+}
+
+pub async fn run_deepfry_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    let image = args[0].as_bytes();
+    context.reply_with_text("processing...").await?;
+    let result = wsi::deepfry(context.assyst.clone(), image, context.author_id()).await?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
     context.reply_with_image(format, result).await?;
     Ok(())

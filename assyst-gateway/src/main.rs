@@ -95,7 +95,7 @@ pub async fn supply_connection(
                     Some(x) => x as i64,
                     None => continue,
                 };
-                if latency > 0 {
+                if latency > 50 {
                     latencies.0.insert(shard.0, latency);
                 }
             }
