@@ -462,6 +462,16 @@ pub async fn convert_png(
     run_wsi_job(assyst, job, user_id).await
 }
 
+pub async fn deepfry(
+    assyst: Arc<Assyst>,
+    image: Bytes,
+    user_id: UserId,
+) -> Result<Bytes, RequestError> {
+    let job = FifoSend::DeepFry(FifoData::new(image.to_vec(), NoneQuery {}));
+
+    run_wsi_job(assyst, job, user_id).await
+}
+
 pub async fn fisheye(
     assyst: Arc<Assyst>,
     image: Bytes,
