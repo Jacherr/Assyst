@@ -206,7 +206,7 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
-    pub static ref GIF_SPEED_COMMAND: Command = CommandBuilder::new("gspeed")
+    pub static ref GIF_SPEED_COMMAND: Command = CommandBuilder::new("gifspeed")
         .arg(Argument::ImageBuffer)
         .arg(Argument::Optional(Box::new(Argument::Decimal)))
         .alias("gspeed")
