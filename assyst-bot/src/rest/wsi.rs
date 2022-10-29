@@ -699,7 +699,7 @@ pub async fn gif_speed(
     let job = FifoSend::GifSpeed(FifoData::new(
         image.to_vec(),
         GifSpeedQueryParams {
-            delay: delay.map(|s| s.parse::<usize>().unwrap_or(2)),
+            delay: delay.map(|s| s.parse::<f64>().unwrap_or(2.0)),
         },
     ));
 
