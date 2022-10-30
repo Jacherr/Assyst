@@ -670,7 +670,7 @@ pub async fn run_randomize_command(
                     context.assyst.clone(),
                     current.clone(),
                     context.author_id(),
-                    &rand_u8().to_string(),
+                    &(rand_u8() % 3).to_string(),
                 ).await?
             }
             2 => {
