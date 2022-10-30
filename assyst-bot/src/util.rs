@@ -587,3 +587,7 @@ pub async fn get_guild_upload_limit_bytes(
         _ => unreachable!()
     })
 }
+
+pub fn rand_u8() -> u8 {
+    rand::random::<u8>()
+}

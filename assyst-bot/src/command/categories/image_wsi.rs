@@ -7,8 +7,8 @@ use crate::{
         context::Context,
         registry::CommandResult,
     },
-    rest::wsi,
-    util::{bytes_to_readable, generate_list},
+    rest::wsi::{self},
+    util::{bytes_to_readable, generate_list, rand_u8},
 };
 use crate::{
     rest,
@@ -571,16 +571,15 @@ lazy_static! {
         .build();
     pub static ref RANDOMIZE_COMMAND: Command = CommandBuilder::new("randomize")
         .alias("badcommand")
+        .alias("random")
+        .alias("badcmd")
         .arg(Argument::ImageBuffer)
-        .flag("exclude", Some(FlagKind::List))
         .public()
         .description("sends a provided image through multiple random filters")
         .example(consts::Y21)
-        .example(format!(r#"{} -exclude "card jpeg""#, consts::Y21))
-        .usage(r#"[image] -exclude "command1 command2""#)
-        .cooldown(Duration::from_secs(5))
+        .usage("[image]")
+        .cooldown(Duration::from_secs(7))
         .category(CATEGORY_NAME)
-        .disable()
         .build();
     pub static ref ZOOM_BLUR_COMMAND: Command = CommandBuilder::new("zoomblur")
         .alias("zb")
@@ -644,133 +643,148 @@ pub async fn run_ahshit_command(
 }
 
 pub async fn run_randomize_command(
-    _context: Arc<Context>,
-    _args: Vec<ParsedArgument>,
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    /*
-    async fn inner_randomize(
-        assyst: &Assyst,
-        image: Bytes,
-        user_id: UserId,
-        wsi_routes: &mut Vec<&'static str>,
-        annmarie_routes: &mut Vec<&'static str>,
-    ) -> (
-        &'static str,
-        Result<Bytes, Box<dyn std::error::Error + Send + Sync>>,
-    ) {
-        let can_use_annmarie = annmarie_routes.len() > 0;
-        if rand::random() || !can_use_annmarie {
-            let (route, bytes) = wsi::randomize(assyst, image, user_id, wsi_routes).await;
-            let filter = route.strip_prefix("/").unwrap_or(route);
-
-            match bytes {
-                Ok(bytes) => (filter, Ok(bytes)),
-                Err(e) => (filter, Err(wsi::format_err(e).into())),
+    let mut current = args[0].as_bytes();
+    let mut effects = vec![];
+    context.reply_with_text("processing...").await?;
+    for _ in 0..3 {
+        let rand = rand_u8() % 25;
+        current = match rand {
+            0 => {
+                effects.push("bloom");
+                wsi::bloom(
+                    context.assyst.clone(),
+                    current.clone(),
+                    context.author_id(),
+                    rand_u8() as usize,
+                    rand_u8() as usize,
+                    rand_u8() as usize,
+                ).await?
             }
-        } else {
-            let (route, bytes) = annmarie::randomize(assyst, image, user_id, annmarie_routes).await;
-            let filter = route.strip_prefix("/").unwrap_or(route);
-
-            match bytes {
-                Ok(bytes) => (filter, Ok(bytes)),
-                Err(e) => (filter, Err(annmarie::format_err(e).into())),
+            1 => {
+                effects.push("blur");
+                wsi::blur(
+                    context.assyst.clone(),
+                    current.clone(),
+                    context.author_id(),
+                    &rand_u8().to_string(),
+                ).await?
             }
+            2 => {
+                effects.push("deepfry");
+                wsi::deepfry(context.assyst.clone(), current.clone(), context.author_id()).await?
+            }
+            3 => {
+                effects.push("fisheye");
+                wsi::fisheye(context.assyst.clone(), current.clone(), context.author_id()).await?
+            }
+            4 => {
+                effects.push("flip");
+                wsi::flip(context.assyst.clone(), current.clone(), context.author_id()).await?
+            }
+            5 => {
+                effects.push("flop");
+                wsi::flop(context.assyst.clone(), current.clone(), context.author_id()).await?
+            }
+            6 => {
+                effects.push("gifmagik");
+                wsi::gif_magik(context.assyst.clone(), current.clone(), context.author_id()).await?
+            }
+            7 => {
+                effects.push("globe");
+                wsi::globe(context.assyst.clone(), current.clone(), context.author_id()).await?
+            }
+            8 => {
+                effects.push("grayscale");
+                wsi::grayscale(context.assyst.clone(), current.clone(), context.author_id()).await?
+            }
+            9 => {
+                effects.push("invert");
+                wsi::invert(context.assyst.clone(), current.clone(), context.author_id()).await?
+            }
+            10 => {
+                effects.push("jpeg");
+                wsi::jpeg(context.assyst.clone(), current.clone(), context.author_id()).await?
+            }
+            11 => {
+                effects.push("magik");
+                wsi::magik(context.assyst.clone(), current.clone(), context.author_id()).await?
+            }
+            12 => {
+                effects.push("neon");
+                wsi::neon(
+                    context.assyst.clone(),
+                    current.clone(),
+                    context.author_id(),
+                    rand_u8() as usize,
+                ).await?
+            }
+            13 => {
+                effects.push("paint");
+                wsi::paint(context.assyst.clone(), current.clone(), context.author_id()).await?
+            }
+            14 => {
+                effects.push("pixelate");
+                wsi::pixelate(
+                    context.assyst.clone(),
+                    current.clone(),
+                    context.author_id(),
+                    Some(((rand_u8() * 2) as usize).clamp(25, 500)),
+                ).await?
+            }
+            15 => {
+                effects.push("printer");
+                wsi::printer(context.assyst.clone(), current.clone(), context.author_id()).await?
+            }
+            16 => {
+                effects.push("rainbow");
+                wsi::rainbow(context.assyst.clone(), current.clone(), context.author_id()).await?
+            }
+            17 => {
+                effects.push("speechbubble");
+                wsi::speechbubble(context.assyst.clone(), current.clone(), context.author_id()).await?
+            }
+            18 => {
+                effects.push("spin");
+                wsi::spin(context.assyst.clone(), current.clone(), context.author_id()).await?
+            }
+            19 => {
+                effects.push("spread");
+                wsi::spread(context.assyst.clone(), current.clone(), context.author_id()).await?
+            }
+            20 => {
+                effects.push("swirl");
+                wsi::swirl(context.assyst.clone(), current.clone(), context.author_id()).await?
+            }
+            21 => {
+                effects.push("tehi");
+                wsi::tehi(context.assyst.clone(), current.clone(), context.author_id()).await?
+            }
+            22 => {
+                effects.push("wall");
+                wsi::wall(context.assyst.clone(), current.clone(), context.author_id()).await?
+            }
+            23 => {
+                effects.push("wormhole");
+                wsi::wormhole(context.assyst.clone(), current.clone(), context.author_id()).await?
+            }
+            24 => {
+                effects.push("zoom");
+                wsi::zoom(context.assyst.clone(), current.clone(), context.author_id()).await?
+            }
+            25 => {
+                effects.push("zoomblur");
+                wsi::zoom_blur(context.assyst.clone(), current.clone(), context.author_id(), (rand_u8() % 10) as f64).await?
+            }
+            _ => unreachable!(),
         }
     }
-
-    let mut image = Some(args[0].as_bytes());
-    let mut filters = Vec::new();
-
-    let exclude = flags
-        .remove("exclude")
-        .flatten()
-        .and_then(ParsedFlagKind::into_list)
-        .unwrap_or_else(Vec::new);
-
-    let mut wsi_exclude = Vec::new();
-    let mut annmarie_exclude = Vec::new();
-
-    for filter in exclude {
-        if let Some(filter) = wsi::routes::command_name_to_route(&filter) {
-            wsi_exclude.push(filter);
-        } else if let Some(filter) = annmarie::routes::command_name_to_route(&filter) {
-            annmarie_exclude.push(filter);
-        }
-    }
-
-    let mut wsi_routes = wsi::routes::RANDOMIZABLE_ROUTES
-        .iter()
-        .filter(|route| !wsi_exclude.contains(route))
-        .copied()
-        .collect::<Vec<_>>();
-
-    let mut annmarie_routes = annmarie::routes::RANDOMIZABLE_ROUTES
-        .iter()
-        .filter(|route| !annmarie_exclude.contains(route))
-        .copied()
-        .collect::<Vec<_>>();
-
-    let available_filters = wsi_routes.len() + annmarie_routes.len();
-    if available_filters < consts::RANDOMIZE_COUNT {
-        return Err(
-            "Not enough filters to choose from! Perhaps you are excluding too many commands?"
-                .into(),
-        );
-    }
-
-    let mut maybe_error = None;
-
-    for _ in 0..consts::RANDOMIZE_COUNT {
-        let old_image = image.take().unwrap();
-
-        let resp = inner_randomize(
-            &context.assyst,
-            old_image.clone(),
-            context.author_id(),
-            &mut wsi_routes,
-            &mut annmarie_routes,
-        )
-        .await;
-
-        match resp {
-            (filter, Ok(bytes)) => {
-                filters.push(filter);
-                image = Some(bytes);
-            }
-            (filter, Err(e)) => {
-                maybe_error = Some((filter, e));
-                image = Some(old_image);
-                break;
-            }
-        };
-    }
-
-    let image = image.unwrap();
-
-    let filters = filters
-        .into_iter()
-        .map(|filter| format!("`{}`", filter))
-        .collect::<Vec<_>>()
-        .join(", ");
-
-    let mut content = format!("filters used: {}", filters);
-
-    if let Some((filter, error)) = maybe_error {
-        content += &format!(
-            "\n\n:warning: An error occured while running filter `{}`: {}",
-            filter, error
-        );
-    }
-
-    let format = get_buffer_filetype(&image).unwrap_or("png");
-
-    context
-        .reply_with_image_and_text(&format!("image/{}", format), image, Some(content))
-        .await
-        .map(|_| ())
-        */
-    todo!()
+    let format = format!("image/{}", get_buffer_filetype(&current).unwrap_or_else(|| "png"));
+    context.reply_with_image_and_text(&format, current, Some(format!("Filters used: `{}`", effects.join(", ")))).await?;
+    Ok(())
 }
 
 pub async fn run_aprilfools_command(
