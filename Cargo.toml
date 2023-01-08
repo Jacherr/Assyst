@@ -1,0 +1,11 @@
+[workspace]
+members = [
+    "assyst-bot",
+    "assyst-cache",
+    "assyst-common",
+    "assyst-database",
+    "assyst-gateway",
+    "assyst-logger",
+    "assyst-tag",
+    "assyst-webserver"
+]
