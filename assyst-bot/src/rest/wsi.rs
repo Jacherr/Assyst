@@ -1071,8 +1071,9 @@ pub async fn uncaption(
     assyst: Arc<Assyst>,
     image: Bytes,
     user_id: UserId,
+    lines: Option<usize>
 ) -> Result<Bytes, RequestError> {
-    let job = FifoSend::Uncaption(FifoData::new(image.to_vec(), NoneQuery {}));
+    let job = FifoSend::Uncaption(FifoData::new(image.to_vec(), UncaptionQueryParams { lines }));
 
     run_wsi_job(assyst, job, user_id).await
 }
