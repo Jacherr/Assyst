@@ -57,11 +57,19 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .build();
     pub static ref ENLARGE_COMMAND: Command = CommandBuilder::new("enlarge")
-        .flag("url", None)
         .alias("e")
         .public()
         .arg(Argument::ImageBuffer)
-        .description("get url of an avatar or emoji")
+        .description("enlarge an avatar or emoji")
+        .usage("[image]")
+        .example(consts::Y21) // you
+        .cooldown(Duration::from_secs(2))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref URL_COMMAND: Command = CommandBuilder::new("url")
+        .public()
+        .arg(Argument::ImageUrl)
+        .description("get url or avatar or emoji")
         .usage("[image]")
         .example(consts::Y21) // you
         .cooldown(Duration::from_secs(2))
@@ -284,30 +292,34 @@ pub async fn run_ping_command(
 pub async fn run_enlarge_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
-    flags: ParsedFlags,
+    _flags: ParsedFlags,
 ) -> CommandResult {
     let image = args[0].as_bytes();
-    let url = flags.contains_key("url");
 
-    if !url {
-        context.reply_with_text("processing...").await?;
+    context.reply_with_text("processing...").await?;
 
-        let result = wsi::resize_scale(
-            context.assyst.clone(),
-            image,
-            context.author_id(),
-            1.5,
-            ResizeMethod::Nearest,
-        )
-        .await?;
+    let result = wsi::resize_scale(
+        context.assyst.clone(),
+        image,
+        context.author_id(),
+        1.5,
+        ResizeMethod::Nearest,
+    )
+    .await?;
 
-        let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
-        context.reply_with_image(format, result).await?;
-    } else {
-        let format = get_buffer_filetype(&image).unwrap_or_else(|| "png");
-        context.reply_with_image(format, image).await?;
-    }
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
 
+    Ok(())
+}
+
+pub async fn run_url_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    let image = args[0].as_text();
+    context.reply_with_text(format!("{} \u{200b}", image)).await?;
     Ok(())
 }
 
@@ -1221,16 +1233,17 @@ pub async fn run_audio_identify_command(
 ) -> CommandResult {
     let image = args[0].as_bytes();
     context.reply_with_text("processing...").await?;
-    let song = audio_identify::identify_song_notsoidentify(context.assyst.clone(), image.clone()).await;
+    let song =
+        audio_identify::identify_song_notsoidentify(context.assyst.clone(), image.clone()).await;
     let mut fail = false;
     match song {
-        Ok(_) => {},
-        Err(ref x) => {
-            match x {
-                NotSoIdentifyFailure::API => fail = true,
-                NotSoIdentifyFailure::STATUS => return Err(anyhow!("Failed to extract audio from input file"))
+        Ok(_) => {}
+        Err(ref x) => match x {
+            NotSoIdentifyFailure::API => fail = true,
+            NotSoIdentifyFailure::STATUS => {
+                return Err(anyhow!("Failed to extract audio from input file"))
             }
-        }
+        },
     }
     if fail == false {
         let s = &song.unwrap();
@@ -1238,22 +1251,49 @@ pub async fn run_audio_identify_command(
             let formatted = format!(
                 "**Title:** {}\n**Artist(s):** {}\n**YouTube Link:** <{}>",
                 s[0].title.clone(),
-                s[0].artists.iter().map(|x| x.name.clone()).collect::<Vec<_>>().join(", "),
+                s[0].artists
+                    .iter()
+                    .map(|x| x.name.clone())
+                    .collect::<Vec<_>>()
+                    .join(", "),
                 match &s[0].platforms.youtube {
                     Some(x) => x.url.clone(),
-                    None => "Unknown".to_owned()
+                    None => "Unknown".to_owned(),
                 }
             );
-            return context.reply_with_text(formatted).await.map(|_| ());        
+            return context.reply_with_text(formatted).await.map(|_| ());
         }
-    } 
+    }
     let pcm = wsi::audio_pcm(context.assyst.clone(), image, context.author_id()).await?;
     let b64 = encode(pcm.to_vec());
     let res = audio_identify::identify_audio_shazam(context.assyst.clone(), b64).await?;
-    let track = match res.track { Some(x) => x, None => bail!("No song detected") };
-    let artist_ids = track.artists.iter().map(|x| x.adamid.clone()).collect::<Vec<_>>();
-    let searched = audio_identify::search_song_shazam(context.assyst.clone(), track.title.clone()).await?;
-    let artists = searched.artists.unwrap_or(audio_identify::songsearch::Artists { hits: vec![] }).hits.iter().filter(|z| artist_ids.contains(&z.artist.adamid)).map(|x| x.artist.name.clone()).collect::<Vec<_>>();
-    let output = format!("**Name:** {}\n**Artist(s):** {}", track.title, if artists.is_empty() { "Unknown".to_owned() } else { artists.join(", ") });
+    let track = match res.track {
+        Some(x) => x,
+        None => bail!("No song detected"),
+    };
+    let artist_ids = track
+        .artists
+        .iter()
+        .map(|x| x.adamid.clone())
+        .collect::<Vec<_>>();
+    let searched =
+        audio_identify::search_song_shazam(context.assyst.clone(), track.title.clone()).await?;
+    let artists = searched
+        .artists
+        .unwrap_or(audio_identify::songsearch::Artists { hits: vec![] })
+        .hits
+        .iter()
+        .filter(|z| artist_ids.contains(&z.artist.adamid))
+        .map(|x| x.artist.name.clone())
+        .collect::<Vec<_>>();
+    let output = format!(
+        "**Name:** {}\n**Artist(s):** {}",
+        track.title,
+        if artists.is_empty() {
+            "Unknown".to_owned()
+        } else {
+            artists.join(", ")
+        }
+    );
     context.reply_with_text(output).await.map(|_| ())
 }
