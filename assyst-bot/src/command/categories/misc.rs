@@ -82,6 +82,7 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .build();
     pub static ref HELP_COMMAND: Command = CommandBuilder::new("help")
+        .alias("h")
         .arg(Argument::Optional(Box::new(Argument::String)))
         .public()
         .description("get help")

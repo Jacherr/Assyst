@@ -477,10 +477,12 @@ lazy_static! {
         .build();
     pub static ref UNCAPTION_COMMAND: Command = CommandBuilder::new("uncaption")
         .arg(Argument::ImageBuffer)
+        .arg(Argument::Optional(Box::new(Argument::Integer)))
         .public()
-        .description("Remove a caption from an image")
+        .description("Remove a caption from an image - tries to find the caption by default, but can remove custom amount of lines")
         .example(consts::Y21)
-        .usage("[image]")
+        .example("https://link.to.my/image.png 75")
+        .usage("[image] <lines to remove>")
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
@@ -1602,14 +1604,13 @@ pub async fn run_uncaption_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    let raw_image = args[0].as_bytes();
-    let wsi_fn = wsi::uncaption;
-    run_wsi_noarg_command(
-        context,
-        raw_image,
-        Box::new(move |assyst, bytes, user_id| Box::pin(wsi_fn(assyst, bytes, user_id))),
-    )
-    .await
+    let image = args[0].as_bytes();
+    let lines = args[1].maybe_text().map(|y| y.parse::<usize>().ok()).flatten();
+    context.reply_with_text("processing...").await?;
+    let result = wsi::uncaption(context.assyst.clone(), image, context.author_id(), lines).await?;
+    let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
+    context.reply_with_image(format, result).await?;
+    Ok(())
 }
 
 pub async fn run_sweden_command(
