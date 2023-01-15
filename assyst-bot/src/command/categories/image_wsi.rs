@@ -719,7 +719,7 @@ pub async fn run_randomize_command(
                     context.assyst.clone(),
                     current.clone(),
                     context.author_id(),
-                    rand_u8() as usize,
+                    rand_u8().clamp(0, 5) as usize,
                 ).await?
             }
             13 => {
@@ -1251,7 +1251,7 @@ pub async fn run_meme_command(
         context.assyst.clone(),
         image,
         context.author_id(),
-        top_text.trim(),
+        top_text.trim(), 
         bottom_text.trim(),
     )
     .await?;
