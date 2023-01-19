@@ -221,6 +221,7 @@ impl<'a> Parser<'a> {
             // If this call isn't allowed to have any side effects, we can just "fast-forward" to the next }
             // that matches the depth of the current call.
             let mut depth = 1;
+            let mut bytes = Vec::new();
 
             while self.idx < self.input.len() {
                 let byte = self.input[self.idx];
@@ -237,9 +238,10 @@ impl<'a> Parser<'a> {
                     _ => {}
                 }
 
+                bytes.push(byte);
                 self.idx += 1;
             }
-            return Ok(String::new());
+            return Ok(String::from_utf8_lossy(&bytes).to_string());
         }
 
         let mut output = String::new();
