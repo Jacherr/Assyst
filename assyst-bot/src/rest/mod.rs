@@ -1,11 +1,16 @@
-use std::{fmt::Display, sync::Arc, collections::hash_map::DefaultHasher, hash::{Hash, Hasher}};
+use std::{
+    collections::hash_map::DefaultHasher,
+    fmt::Display,
+    hash::{Hash, Hasher},
+    sync::Arc,
+};
 
 use anyhow::bail;
 use assyst_common::{
-    eval::{FakeEvalBody, FakeEvalImageResponse},
+    ansi::Ansi,
+    eval::{FakeEvalBody, FakeEvalImageResponse, FakeEvalMessageData},
     filetype,
     util::UserId,
-    ansi::Ansi
 };
 use bytes::Bytes;
 use reqwest::{Client, ClientBuilder, Error};
@@ -23,6 +28,9 @@ use crate::{assyst::Assyst, downloader, rest::wsi::run_wsi_job, util};
 
 use self::rust::OptimizationLevel;
 
+use twilight_model::channel::Message;
+
+pub mod audio_identify;
 pub mod bt;
 pub mod codesprint;
 pub mod identify;
@@ -30,7 +38,6 @@ pub mod patreon;
 pub mod rust;
 pub mod wombo;
 pub mod wsi;
-pub mod audio_identify;
 
 mod routes {
     use assyst_common::consts::BOT_ID;
@@ -57,7 +64,7 @@ mod routes {
 pub enum OcrError {
     NetworkError,
     HtmlResponse,
-    Ratelimited
+    Ratelimited,
 }
 
 impl Display for OcrError {
@@ -65,7 +72,10 @@ impl Display for OcrError {
         match self {
             OcrError::NetworkError => write!(f, "An unknown network error occurred"),
             OcrError::HtmlResponse => write!(f, "Failed to parse response"),
-            OcrError::Ratelimited => write!(f, "The bot is currently rate limited, try again in a few minutes.")
+            OcrError::Ratelimited => write!(
+                f,
+                "The bot is currently rate limited, try again in a few minutes."
+            ),
         }
     }
 }
@@ -156,6 +166,7 @@ pub async fn fake_eval(
     assyst: &Assyst,
     code: &str,
     image: bool,
+    message: Option<&Message>,
 ) -> anyhow::Result<FakeEvalImageResponse> {
     let result = assyst
         .reqwest_client
@@ -163,6 +174,7 @@ pub async fn fake_eval(
         .query(&[("returnBuffer", &image.to_string())])
         .json(&FakeEvalBody {
             code: code.to_string(),
+            data: message.map(|message| FakeEvalMessageData { message }),
         })
         .send()
         .await?
@@ -180,7 +192,7 @@ pub async fn fake_eval(
     }
 }
 
-pub async fn burning_text(text: &str) -> Result<Bytes, anyhow::Error> {
+pub async fn burning_text(text: &str) -> anyhow::Result<Bytes> {
     let client = ClientBuilder::new()
         .danger_accept_invalid_certs(true)
         .build()
@@ -217,8 +229,10 @@ pub async fn burning_text(text: &str) -> Result<Bytes, anyhow::Error> {
     let mut hasher = DefaultHasher::new();
     content.hash(&mut hasher);
     let result = hasher.finish();
-    
-    if result == 3837314301372762351 /* image deleted/invalid etc */ {
+
+    if result == 3837314301372762351
+    /* image deleted/invalid etc */
+    {
         bail!("failed to process input, most likely it's too long or contains invalid characters")
     }
 
@@ -340,7 +354,7 @@ pub async fn healthcheck(assyst: Arc<Assyst>) -> Vec<HealthcheckResult> {
     ));
 
     let timer = Instant::now();
-    let fake_eval_result = fake_eval(&assyst, "1", false).await;
+    let fake_eval_result = fake_eval(&assyst, "1", false, None).await;
     results.push(HealthcheckResult::new_from_result(
         "Eval",
         fake_eval_result,

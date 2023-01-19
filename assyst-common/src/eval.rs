@@ -2,9 +2,15 @@ use crate::filetype;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize)]
+pub struct FakeEvalMessageData<M: Serialize> {
+    pub message: M
+}
+
 #[derive(Serialize)]
-pub struct FakeEvalBody {
+pub struct FakeEvalBody<M: Serialize> {
     pub code: String,
+    pub data: Option<FakeEvalMessageData<M>>
 }
 
 #[derive(Deserialize)]

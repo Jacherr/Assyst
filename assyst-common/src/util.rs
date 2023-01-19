@@ -53,3 +53,20 @@ macro_rules! unwrap_enum_variant {
         }
     };
 }
+
+pub mod regexes {
+    use lazy_static::lazy_static;
+    use regex::Regex;
+
+    lazy_static! {
+        pub static ref MENTION: Regex = Regex::new(r"(?:<@!?)?(\d{16,20})>?").unwrap();
+    }
+}
+
+pub fn mention_to_id(s: &str) -> Option<u64> {
+    regexes::MENTION
+        .captures(s)
+        .and_then(|capture| capture.get(1))
+        .and_then(|id| Some(id.as_str()))
+        .and_then(|id| id.parse::<u64>().ok())
+}
