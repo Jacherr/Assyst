@@ -203,7 +203,7 @@ async fn run_info_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -
         .get(1)
         .map(|t| t.maybe_text())
         .flatten()
-        .ok_or(anyhow!("No tag name provided."))?;
+        .context("No tag name provided.")?;
 
     let tag = context
         .assyst
@@ -229,7 +229,7 @@ async fn run_raw_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) ->
         .get(1)
         .map(|t| t.maybe_text())
         .flatten()
-        .ok_or(anyhow!("No tag name provided."))?;
+        .context("No tag name provided.")?;
 
     let tag = context
         .assyst
@@ -321,9 +321,12 @@ struct TagContext {
 
 impl tag::Context for TagContext {
     fn execute_javascript(&self, code: &str) -> anyhow::Result<FakeEvalImageResponse> {
-        let response = self
-            .tokio
-            .block_on(fake_eval(&self.ccx.assyst, code, true))?;
+        let response = self.tokio.block_on(fake_eval(
+            &self.ccx.assyst,
+            code,
+            true,
+            Some(&self.ccx.message),
+        ))?;
 
         Ok(response)
     }

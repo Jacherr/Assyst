@@ -10,3 +10,5 @@ twilight-model = "0.11.0"
 serde = { version = "1.0.123", features = ["derive"] }
 toml = "0.5.8"
 bytes = "1.0.1"
+lazy_static = "1.4.0"
+regex = "1.4.3"

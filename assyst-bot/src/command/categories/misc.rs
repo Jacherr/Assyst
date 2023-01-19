@@ -320,7 +320,9 @@ pub async fn run_url_command(
     _flags: ParsedFlags,
 ) -> CommandResult {
     let image = args[0].as_text();
-    context.reply_with_text(format!("{} \u{200b}", image)).await?;
+    context
+        .reply_with_text(format!("{} \u{200b}", image))
+        .await?;
     Ok(())
 }
 
@@ -994,7 +996,7 @@ pub async fn run_fake_eval_command(
 ) -> CommandResult {
     let code = args[0].as_text();
 
-    match fake_eval(&context.assyst, code, true).await? {
+    match fake_eval(&context.assyst, code, true, Some(&context.message)).await? {
         FakeEvalImageResponse::Image(i, t) => {
             context.reply_with_image(t.as_str(), i).await?;
         }

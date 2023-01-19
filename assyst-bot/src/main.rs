@@ -78,9 +78,8 @@ async fn main() -> anyhow::Result<()> {
 
     match get_guild_count(assyst.clone()).await {
         Ok(g) => assyst.metrics.add_guilds(g as i64),
-        Err(_) => logger::fatal(assyst.as_ref(), "failed to get guild count").await
+        Err(_) => logger::fatal(assyst.as_ref(), "failed to get guild count").await,
     };
-
 
     assyst.initialize_blacklist().await?;
 
@@ -106,8 +105,12 @@ async fn main() -> anyhow::Result<()> {
                             let res = handle_event(assyst_clone.clone(), x).await;
                             match res {
                                 Err(e) => {
-                                    logger::fatal(assyst_clone.as_ref(), &format!("Event error: {}", e.to_string())).await;
-                                },
+                                    logger::fatal(
+                                        assyst_clone.as_ref(),
+                                        &format!("Event error: {}", e.to_string()),
+                                    )
+                                    .await;
+                                }
                                 _ => {}
                             }
                         }

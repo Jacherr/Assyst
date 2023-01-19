@@ -358,3 +358,15 @@ pub fn download(parser: &mut Parser, args: Vec<String>) -> anyhow::Result<String
 pub fn channelid(parser: &Parser) -> anyhow::Result<String> {
     parser.context().channel_id().map(|c| c.to_string())
 }
+
+pub fn userid(parser: &Parser) -> anyhow::Result<String> {
+    parser.context().user_id().map(|id| id.to_string())
+}
+
+pub fn idof(parser: &Parser, args: Vec<String>) -> anyhow::Result<String> {
+    let mention = args.first().context("Missing mention argument")?;
+    match assyst_common::util::mention_to_id(mention) {
+        Some(id) => Ok(id.to_string()),
+        None => userid(parser)
+    }
+}
