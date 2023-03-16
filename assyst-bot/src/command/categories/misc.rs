@@ -19,7 +19,7 @@ use crate::{
         bytes_to_readable, codeblock, ensure_same_guild, exec_sync, extract_page_title,
         format_discord_timestamp, format_time, generate_list, generate_table, get_buffer_filetype,
         get_memory_usage, parse_codeblock,
-    },
+    }, downloader::download_content,
 };
 use crate::{
     rest::{bt::translate_single, get_char_info, rust},
@@ -33,6 +33,7 @@ use assyst_common::{
 };
 use assyst_database::Reminder;
 use base64::encode;
+use bytes::Bytes;
 use lazy_static::lazy_static;
 use shared::query_params::ResizeMethod;
 use shared::response_data::Stats;
@@ -264,7 +265,7 @@ lazy_static! {
         .alias("audio")
         .alias("song")
         .alias("audioidentify")
-        .arg(Argument::ImageBuffer)
+        .arg(Argument::ImageUrl)
         .cooldown(Duration::from_secs(1))
         .category(CATEGORY_NAME)
         .build();
@@ -1234,10 +1235,10 @@ pub async fn run_audio_identify_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    let image = args[0].as_bytes();
+    let image = args[0].as_text();
     context.reply_with_text("processing...").await?;
     let song =
-        audio_identify::identify_song_notsoidentify(context.assyst.clone(), image.clone()).await;
+        audio_identify::identify_song_notsoidentify(context.assyst.clone(), image.to_owned().clone()).await;
     let mut fail = false;
     match song {
         Ok(_) => {}
@@ -1267,7 +1268,8 @@ pub async fn run_audio_identify_command(
             return context.reply_with_text(formatted).await.map(|_| ());
         }
     }
-    let pcm = wsi::audio_pcm(context.assyst.clone(), image, context.author_id()).await?;
+    let file = download_content(&context.assyst.clone(), image, consts::ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES).await?;
+    let pcm = wsi::audio_pcm(context.assyst.clone(), file.into(), context.author_id()).await?;
     let b64 = encode(pcm.to_vec());
     let res = audio_identify::identify_audio_shazam(context.assyst.clone(), b64).await?;
     let track = match res.track {

@@ -541,11 +541,11 @@ pub async fn search_song_shazam(
 
 pub async fn identify_song_notsoidentify(
     assyst: Arc<Assyst>,
-    search: Bytes,
+    search: String,
 ) -> Result<Vec<notsoidentify::Song>, NotSoIdentifyFailure> {
     let client = &assyst.reqwest_client;
     let formdata = Form::new();
-    let formdata = formdata.part("file", Part::bytes(search.to_vec()).file_name("file.mp3"));
+    let formdata = formdata.part("url", Part::text(search));
     Ok(client
         .post(NOT_SO_IDENTIFY_URL)
         .header("authorization", assyst.config.auth.notsoapi.to_string())
