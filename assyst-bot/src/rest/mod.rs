@@ -98,6 +98,20 @@ pub struct Rule34Result {
 }
 
 #[derive(Deserialize)]
+pub struct Rule34ResultBackup {
+    pub file_url: String,
+    pub score: i32,
+}
+impl Into<Rule34Result> for &Rule34ResultBackup {
+    fn into(self) -> Rule34Result {
+        Rule34Result {
+            url: self.file_url.clone(),
+            score: self.score,
+        }
+    }
+}
+
+#[derive(Deserialize)]
 pub struct FilerStats {
     pub count: u64,
     pub size_bytes: u64,
@@ -272,6 +286,12 @@ pub async fn convert_lottie_to_gif(assyst: &Assyst, lottie: &str) -> Result<Byte
 }
 
 pub async fn get_random_rule34(assyst: &Assyst, tags: &str) -> Result<Vec<Rule34Result>, Error> {
+    get_random_rule34_main(assyst, tags)
+        .await
+        .or(get_random_rule34_backup(assyst, tags).await)
+}
+
+async fn get_random_rule34_main(assyst: &Assyst, tags: &str) -> Result<Vec<Rule34Result>, Error> {
     Ok(assyst
         .reqwest_client
         .get(&*assyst.config.url.rule34)
@@ -286,6 +306,27 @@ pub async fn get_random_rule34(assyst: &Assyst, tags: &str) -> Result<Vec<Rule34
         .error_for_status()?
         .json::<Vec<Rule34Result>>()
         .await?)
+}
+
+async fn get_random_rule34_backup(assyst: &Assyst, tags: &str) -> Result<Vec<Rule34Result>, Error> {
+    Ok(assyst
+        .reqwest_client
+        .get(format!("https://api.rule34.xxx/index.php?tags={}", &tags.replace(' ', "+")[..]))
+        .query(&[
+            ("page", "dapi"),
+            ("s", "post"),
+            ("q", "index"),
+            ("json", "1"),
+            ("limit", "1000"),
+        ])
+        .send()
+        .await?
+        .error_for_status()?
+        .json::<Vec<Rule34ResultBackup>>()
+        .await?
+        .iter()
+        .map(|x| x.clone().into())
+        .collect::<Vec<Rule34Result>>())
 }
 
 #[derive(Clone, Eq, PartialEq)]

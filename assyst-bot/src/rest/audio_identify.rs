@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use bytes::Bytes;
 use reqwest::multipart::{Form, Part};
 
 use crate::assyst::Assyst;
