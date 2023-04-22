@@ -33,7 +33,6 @@ use assyst_common::{
 };
 use assyst_database::Reminder;
 use base64::encode;
-use bytes::Bytes;
 use lazy_static::lazy_static;
 use shared::query_params::ResizeMethod;
 use shared::response_data::Stats;
@@ -45,7 +44,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-const USEFUL_LINKS_TEXT: &str = "**Invite the bot: <https://jacher.io/assyst>**\nSupport server: <https://discord.gg/VRPGgMEhGk>\nVote for Assyst for some sweet perks! <https://vote.jacher.io/topgg> & <https://vote.jacher.io/dbl>";
+const USEFUL_LINKS_TEXT: &str = "**Invite the bot: <https://jacher.io/assyst>**\nSupport server: <https://discord.gg/brmtnpxbtg>\nVote for Assyst for some sweet perks! <https://vote.jacher.io/topgg> & <https://vote.jacher.io/dbl>";
 
 const CATEGORY_NAME: &str = "misc";
 
