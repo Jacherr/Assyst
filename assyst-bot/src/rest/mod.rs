@@ -285,30 +285,7 @@ pub async fn convert_lottie_to_gif(assyst: &Assyst, lottie: &str) -> Result<Byte
         .await?)
 }
 
-pub async fn get_random_rule34(assyst: &Assyst, tags: &str) -> Result<Vec<Rule34Result>, Error> {
-    get_random_rule34_main(assyst, tags)
-        .await
-        .or(get_random_rule34_backup(assyst, tags).await)
-}
-
-async fn get_random_rule34_main(assyst: &Assyst, tags: &str) -> Result<Vec<Rule34Result>, Error> {
-    Ok(assyst
-        .reqwest_client
-        .get(&*assyst.config.url.rule34)
-        .query(&[
-            ("tags", tags),
-            ("limit", "10"),
-            ("rating", "e"),
-            ("formats", "jpeg png gif jpg webm mp4"),
-        ])
-        .send()
-        .await?
-        .error_for_status()?
-        .json::<Vec<Rule34Result>>()
-        .await?)
-}
-
-async fn get_random_rule34_backup(assyst: &Assyst, tags: &str) -> Result<Vec<Rule34Result>, Error> {
+async fn get_random_rule34(assyst: &Assyst, tags: &str) -> Result<Vec<Rule34Result>, Error> {
     Ok(assyst
         .reqwest_client
         .get(format!("https://api.rule34.xxx/index.php?tags={}", &tags.replace(' ', "+")[..]))
