@@ -150,6 +150,11 @@ impl DatabaseCache {
         }
     }
 }
+#[derive(sqlx::FromRow, Debug)]
+struct Count {
+    pub count: i64
+}
+
 pub struct Database {
     pub cache: RwLock<DatabaseCache>,
     pool: PgPool,
@@ -936,6 +941,20 @@ impl Database {
             .bind(limit)
             .fetch_all(&self.pool)
             .await
+    }
+
+    pub async fn get_tags_count(
+        &self,
+        guild_id: i64,
+    ) -> Result<i64, sqlx::Error> {
+        let query = r#"SELECT count(*) FROM tags WHERE guild_id = $1"#;
+
+        let result: Result<Count, sqlx::Error> = sqlx::query_as(query)
+            .bind(guild_id)
+            .fetch_one(&self.pool)
+            .await;
+
+        result.map(|c| c.count)
     }
 
     pub async fn fetch_database_size(&self) -> Result<DatabaseSize, sqlx::Error> {
