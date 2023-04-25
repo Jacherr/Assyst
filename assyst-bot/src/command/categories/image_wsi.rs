@@ -477,11 +477,12 @@ lazy_static! {
         .build();
     pub static ref UNCAPTION_COMMAND: Command = CommandBuilder::new("uncaption")
         .arg(Argument::ImageBuffer)
-        .arg(Argument::Optional(Box::new(Argument::Integer)))
+        .arg(Argument::Optional(Box::new(Argument::String)))
         .public()
         .description("Remove a caption from an image - tries to find the caption by default, but can remove custom amount of lines")
         .example(consts::Y21)
         .example("https://link.to.my/image.png 75")
+        .example("https://link.to.my/image.png 20%")
         .usage("[image] <lines to remove>")
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
@@ -1605,7 +1606,7 @@ pub async fn run_uncaption_command(
     _flags: ParsedFlags,
 ) -> CommandResult {
     let image = args[0].as_bytes();
-    let lines = args[1].maybe_text().map(|y| y.parse::<usize>().ok()).flatten();
+    let lines = args[1].maybe_text().map(|y| y.to_owned());
     context.reply_with_text("processing...").await?;
     let result = wsi::uncaption(context.assyst.clone(), image, context.author_id(), lines).await?;
     let format = get_buffer_filetype(&result).unwrap_or_else(|| "png");
