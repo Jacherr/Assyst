@@ -168,6 +168,10 @@ async fn run_list_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -
     ensure!(page >= 1, "Page must be greater or equal to 1");
 
     let offset = (page - 1) * DEFAULT_LIST_COUNT;
+    let count = context.assyst.database.get_tags_count(guild_id.try_into()?).await?;
+
+    let pages = (count as f64 / DEFAULT_LIST_COUNT as f64).ceil() as i64;
+    ensure!(pages >= page, "Cannot go beyond final page");
 
     let tags = context
         .assyst
@@ -188,8 +192,8 @@ async fn run_list_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -
 
     write!(
         message,
-        "\nShowing {} tags (page {})",
-        DEFAULT_LIST_COUNT, page
+        "\nShowing {} tags (page {}/{}) ({} total tags)",
+        DEFAULT_LIST_COUNT, page, pages, count
     )?;
 
     context.reply_with_text(message).await?;
