@@ -559,7 +559,7 @@ pub async fn run_stats_command(
 
     context
         .reply_with_text(format!(
-            "**Stats:** {} **Uptimes:** {}",
+            "**Stats:** {}**Uptimes:** {}",
             codeblock(&stats_table, "hs"),
             codeblock(&uptimes_table, "hs")
         ))
