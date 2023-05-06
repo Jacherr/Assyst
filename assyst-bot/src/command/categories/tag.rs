@@ -268,8 +268,6 @@ async fn run_tag_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) ->
             .iter()
             .skip(1)
             .flat_map(|a| a.maybe_text())
-            .map(|s| s.split_ascii_whitespace())
-            .flatten()
             .collect::<Vec<_>>();
 
         let tokio = tokio::runtime::Handle::current();
