@@ -43,7 +43,7 @@ mod routes {
     use assyst_common::consts::BOT_ID;
 
     pub const COOL_TEXT: &str = "https://cooltext.com/PostChange";
-    pub const OCR: &str = "http://ocr.y21_.repl.co/?url=";
+    pub const OCR: &str = "https://ocr.y21_.repl.co/?url=";
     pub const CHARINFO: &str = "https://www.fileformat.info/info/unicode/char/";
     pub const IDENTIFY: &str = "https://microsoft-computer-vision3.p.rapidapi.com/analyze?language=en&descriptionExclude=Celebrities&visualFeatures=Description&details=Celebrities";
 
@@ -62,7 +62,7 @@ mod routes {
 
 #[derive(Debug, Clone)]
 pub enum OcrError {
-    NetworkError,
+    NetworkError(String),
     HtmlResponse,
     Ratelimited,
 }
@@ -70,7 +70,7 @@ pub enum OcrError {
 impl Display for OcrError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            OcrError::NetworkError => write!(f, "An unknown network error occurred"),
+            OcrError::NetworkError(x) => write!(f, "An unknown network error occurred: {}", x.replace(routes::OCR, "ocr/")),
             OcrError::HtmlResponse => write!(f, "Failed to parse response"),
             OcrError::Ratelimited => write!(
                 f,
@@ -122,12 +122,12 @@ pub async fn ocr_image(client: &Client, url: &str) -> Result<String, OcrError> {
         .get(format!("{}{}", routes::OCR, url))
         .send()
         .await
-        .map_err(|_| OcrError::NetworkError)?
+        .map_err(|e| OcrError::NetworkError(e.to_string()))?
         .error_for_status()
         .map_err(|_| OcrError::Ratelimited)?
         .text()
         .await
-        .map_err(|_| OcrError::NetworkError)?;
+        .map_err(|e| OcrError::NetworkError(e.to_string()))?;
 
     if util::starts_with_case_insensitive(text.as_bytes(), b"<!doctype html>") {
         return Err(OcrError::HtmlResponse);
