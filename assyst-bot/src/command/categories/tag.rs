@@ -306,8 +306,8 @@ pub async fn run_tag_command(
     let subcommand = args[0].as_text();
 
     match subcommand {
-        "create" => run_create_subcommand(context, args).await,
-        "delete" => run_delete_subcommand(context, args).await,
+        "create" | "add" => run_create_subcommand(context, args).await,
+        "delete" | "remove" => run_delete_subcommand(context, args).await,
         "edit" => run_edit_subcommand(context, args).await,
         "list" => run_list_subcommand(context, args).await,
         "info" => run_info_subcommand(context, args).await,

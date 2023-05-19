@@ -1,4 +1,4 @@
-pub const WORKING_FILESIZE_LIMIT_BYTES: usize = 8_000_000;
+pub const WORKING_FILESIZE_LIMIT_BYTES: usize = 25_000_000;
 pub const ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES: usize = 100_000_000;
 pub const BOT_ID: usize = 571661221854707713; // if you change this, also update in ../config.toml
 pub const MAX_CHAIN_LENGTH: usize = 100;
