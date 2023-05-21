@@ -489,7 +489,7 @@ pub mod notsoidentify {
 
 #[derive(Debug)]
 pub enum NotSoIdentifyFailure {
-    API,
+    API(String),
     STATUS,
 }
 
@@ -551,10 +551,10 @@ pub async fn identify_song_notsoidentify(
         .multipart(formdata)
         .send()
         .await
-        .map_err(|_| NotSoIdentifyFailure::API)?
+        .map_err(|e| NotSoIdentifyFailure::API(e.to_string()))?
         .error_for_status()
         .map_err(|_| NotSoIdentifyFailure::STATUS)?
         .json::<Vec<notsoidentify::Song>>()
         .await
-        .map_err(|_| NotSoIdentifyFailure::API)?)
+        .map_err(|e| NotSoIdentifyFailure::API(e.to_string()))?)
 }
