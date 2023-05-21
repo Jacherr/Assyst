@@ -54,6 +54,7 @@ lazy_static! {
         .example("edit test new content")
         .example("list")
         .example("list 2")
+        .example("list <@571661221854707713> 3")
         .example("info test")
         .example("test")
         .example("raw test")
@@ -208,6 +209,11 @@ async fn run_list_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -
         }
     };
 
+    if count == 0 {
+        context.reply_err("No tags found for the requested filter").await?;
+        return Ok(());
+    }
+
     let pages = (count as f64 / DEFAULT_LIST_COUNT as f64).ceil() as i64;
     ensure!(pages >= page, "Cannot go beyond final page");
 
@@ -325,6 +331,8 @@ async fn run_tag_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) ->
             .skip(1)
             .flat_map(|a| a.maybe_text())
             .collect::<Vec<_>>();
+
+        dbg!(args.clone());
 
         let tokio = tokio::runtime::Handle::current();
 
