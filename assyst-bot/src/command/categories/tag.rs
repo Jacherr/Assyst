@@ -1,7 +1,11 @@
 use std::{convert::TryInto, sync::Arc, time::Duration};
 
 use anyhow::{anyhow, ensure, Context as _};
-use assyst_common::{consts, eval::FakeEvalImageResponse, util::UserId};
+use assyst_common::{
+    consts,
+    eval::FakeEvalImageResponse,
+    util::{mention_to_id, UserId},
+};
 use assyst_tag as tag;
 use lazy_static::lazy_static;
 use std::fmt::Write;
@@ -159,35 +163,87 @@ async fn run_edit_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -
 
 async fn run_list_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -> CommandResult {
     let guild_id = context.message.guild_id.unwrap().get();
-    let page = args
-        .get(1)
-        .and_then(|t| t.maybe_text())
-        .map(|t| t.parse::<i64>())
-        .unwrap_or(Ok(1))?;
+    let arg = args.get(1).and_then(|t| t.maybe_text());
+
+    // user-specific search if arg is a mention
+    let mut user_id: Option<i64> = None;
+    let page: i64;
+    match arg {
+        Some(a) => {
+            let id = mention_to_id(a);
+            match id {
+                Some(i) => {
+                    user_id = Some(i as i64);
+                    page = args
+                        .get(2)
+                        .and_then(|t| t.maybe_text())
+                        .map(|t| t.parse::<i64>())
+                        .unwrap_or(Ok(1))?;
+                }
+                None => page = arg.map(|t| t.parse::<i64>()).unwrap_or(Ok(1))?,
+            }
+        }
+        None => {
+            page = 1;
+        }
+    }
 
     ensure!(page >= 1, "Page must be greater or equal to 1");
 
     let offset = (page - 1) * DEFAULT_LIST_COUNT;
-    let count = context.assyst.database.get_tags_count(guild_id.try_into()?).await?;
+    let count = match user_id {
+        Some(u) => {
+            context
+                .assyst
+                .database
+                .get_tags_count_for_user(guild_id.try_into()?, u)
+                .await?
+        }
+        None => {
+            context
+                .assyst
+                .database
+                .get_tags_count(guild_id.try_into()?)
+                .await?
+        }
+    };
 
     let pages = (count as f64 / DEFAULT_LIST_COUNT as f64).ceil() as i64;
     ensure!(pages >= page, "Cannot go beyond final page");
 
-    let tags = context
-        .assyst
-        .database
-        .get_tags_paged(guild_id.try_into()?, offset, DEFAULT_LIST_COUNT)
-        .await?;
+    let tags = match user_id {
+        Some(u) => {
+            context
+                .assyst
+                .database
+                .get_tags_paged_for_user(guild_id.try_into()?, u, offset, DEFAULT_LIST_COUNT)
+                .await?
+        }
+        None => {
+            context
+                .assyst
+                .database
+                .get_tags_paged(guild_id.try_into()?, offset, DEFAULT_LIST_COUNT)
+                .await?
+        }
+    };
 
     let mut message = format!(
-        "🗒️ **Tags in this server**\nView a tag by running `{0}t <name>`, or go to the next page by running `{0}t list {1}`\n\n",
+        "🗒️ **Tags in this server{0}**\nView a tag by running `{1}t <name>`, or go to the next page by running `{1}t list {2}`\n\n",
+        { match user_id {
+            Some(u) => format!(" for user <@{}>", u),
+            None => "".to_owned()
+        }},
         context.prefix,
         page + 1
     );
 
     for (index, tag) in tags.into_iter().enumerate() {
         let offset = (index as i64) + offset + 1;
-        write!(message, "{}. {} (<@{}>)\n", offset, tag.name, tag.author)?;
+        write!(message, "{}. {} {}\n", offset, tag.name, match user_id {
+            Some(_) => "".to_owned(),
+            None => format!("(<@{}>)", tag.author.to_string())
+        })?;
     }
 
     write!(

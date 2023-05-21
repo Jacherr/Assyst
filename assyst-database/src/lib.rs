@@ -943,6 +943,24 @@ impl Database {
             .await
     }
 
+    pub async fn get_tags_paged_for_user(
+        &self,
+        guild_id: i64,
+        user_id: i64,
+        offset: i64,
+        limit: i64,
+    ) -> Result<Vec<Tag>, sqlx::Error> {
+        let query = r#"SELECT * FROM tags WHERE guild_id = $1 AND author = $2 OFFSET $3 LIMIT $4"#;
+
+        sqlx::query_as(query)
+            .bind(guild_id)
+            .bind(user_id)
+            .bind(offset)
+            .bind(limit)
+            .fetch_all(&self.pool)
+            .await
+    }
+
     pub async fn get_tags_count(
         &self,
         guild_id: i64,
@@ -951,6 +969,22 @@ impl Database {
 
         let result: Result<Count, sqlx::Error> = sqlx::query_as(query)
             .bind(guild_id)
+            .fetch_one(&self.pool)
+            .await;
+
+        result.map(|c| c.count)
+    }
+
+    pub async fn get_tags_count_for_user(
+        &self,
+        guild_id: i64,
+        user_id: i64
+    ) -> Result<i64, sqlx::Error> {
+        let query = r#"SELECT count(*) FROM tags WHERE guild_id = $1 AND author = $2"#;
+
+        let result: Result<Count, sqlx::Error> = sqlx::query_as(query)
+            .bind(guild_id)
+            .bind(user_id)
             .fetch_one(&self.pool)
             .await;
 

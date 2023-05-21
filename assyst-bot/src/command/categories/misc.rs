@@ -1242,7 +1242,7 @@ pub async fn run_audio_identify_command(
     match song {
         Ok(_) => {}
         Err(ref x) => match x {
-            NotSoIdentifyFailure::API => fail = true,
+            NotSoIdentifyFailure::API(_) => fail = true,
             NotSoIdentifyFailure::STATUS => {
                 return Err(anyhow!("Failed to extract audio from input file"))
             }
