@@ -332,11 +332,22 @@ async fn run_tag_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) ->
             .flat_map(|a| a.maybe_text())
             .collect::<Vec<_>>();
 
-        dbg!(args.clone());
+        let args = if args.len() > 1 {
+            let arg2 = args[1];
+            let raw_replaced = arg2.replace("\n", " \n");
+            let mut arg2split = raw_replaced
+                    .split(' ')
+                    .map(|x| String::from(x))
+                    .collect::<Vec<String>>();
+            let mut new_args = vec![args[0].to_string()];
+            new_args.append(&mut arg2split);
+            new_args
+        } else { args.iter().map(|x| String::from(*x)).collect::<Vec<_>>() };
 
         let tokio = tokio::runtime::Handle::current();
+        let b = args.iter().map(|s| s as &str).collect::<Vec<_>>();
 
-        tag::parse(&tag.data, &args, TagContext { ccx, tokio })
+        tag::parse(&tag.data, &b, TagContext { ccx, tokio })
     })
     .await?
     .context("Tag execution failed");
