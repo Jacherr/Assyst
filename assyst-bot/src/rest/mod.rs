@@ -181,6 +181,7 @@ pub async fn fake_eval(
     code: &str,
     image: bool,
     message: Option<&Message>,
+    args: Vec<String>
 ) -> anyhow::Result<FakeEvalImageResponse> {
     let result = assyst
         .reqwest_client
@@ -188,7 +189,7 @@ pub async fn fake_eval(
         .query(&[("returnBuffer", &image.to_string())])
         .json(&FakeEvalBody {
             code: code.to_string(),
-            data: message.map(|message| FakeEvalMessageData { message }),
+            data: message.map(|message| FakeEvalMessageData { message, args }),
         })
         .send()
         .await?
@@ -372,7 +373,7 @@ pub async fn healthcheck(assyst: Arc<Assyst>) -> Vec<HealthcheckResult> {
     ));
 
     let timer = Instant::now();
-    let fake_eval_result = fake_eval(&assyst, "1", false, None).await;
+    let fake_eval_result = fake_eval(&assyst, "1", false, None, vec![]).await;
     results.push(HealthcheckResult::new_from_result(
         "Eval",
         fake_eval_result,

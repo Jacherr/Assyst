@@ -324,7 +324,7 @@ pub fn javascript(parser: &mut Parser, args: Vec<String>) -> anyhow::Result<Stri
     ensure_request_limit!(parser);
 
     let code = args.first().context("Missing code argument")?;
-    let result = parser.context().execute_javascript(code)?;
+    let result = parser.context().execute_javascript(code, parser.args().iter().map(|x| x.to_string()).collect::<Vec<_>>())?;
 
     match result {
         FakeEvalImageResponse::Image(img, ty) => {

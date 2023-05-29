@@ -933,7 +933,7 @@ impl Database {
         offset: i64,
         limit: i64,
     ) -> Result<Vec<Tag>, sqlx::Error> {
-        let query = r#"SELECT * FROM tags WHERE guild_id = $1 OFFSET $2 LIMIT $3"#;
+        let query = r#"SELECT * FROM tags WHERE guild_id = $1 ORDER BY created_at DESC OFFSET $2 LIMIT $3"#;
 
         sqlx::query_as(query)
             .bind(guild_id)
@@ -950,7 +950,7 @@ impl Database {
         offset: i64,
         limit: i64,
     ) -> Result<Vec<Tag>, sqlx::Error> {
-        let query = r#"SELECT * FROM tags WHERE guild_id = $1 AND author = $2 OFFSET $3 LIMIT $4"#;
+        let query = r#"SELECT * FROM tags WHERE guild_id = $1 AND author = $2 ORDER BY created_at DESC OFFSET $3 LIMIT $4"#;
 
         sqlx::query_as(query)
             .bind(guild_id)
