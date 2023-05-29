@@ -16,7 +16,7 @@ fn not_implemented<T>() -> anyhow::Result<T> {
 /// It contains methods that can be provided by the caller (normally the bot crate).
 pub trait Context {
     /// Executes provided JavaScript code and returns the result (string or image)
-    fn execute_javascript(&self, code: &str) -> anyhow::Result<FakeEvalImageResponse>;
+    fn execute_javascript(&self, code: &str, args: Vec<String>) -> anyhow::Result<FakeEvalImageResponse>;
     /// Returns the URL of the last attachment
     fn get_last_attachment(&self) -> anyhow::Result<String>;
     /// Returns the avatar URL of the provided user, or the message author
@@ -34,7 +34,7 @@ pub trait Context {
 }
 
 impl Context for NopContext {
-    fn execute_javascript(&self, _code: &str) -> anyhow::Result<FakeEvalImageResponse> {
+    fn execute_javascript(&self, _code: &str, _args: Vec<String>) -> anyhow::Result<FakeEvalImageResponse> {
         not_implemented()
     }
 
@@ -68,8 +68,8 @@ impl Context for NopContext {
 }
 
 impl Context for &dyn Context {
-    fn execute_javascript(&self, code: &str) -> anyhow::Result<FakeEvalImageResponse> {
-        (**self).execute_javascript(code)
+    fn execute_javascript(&self, code: &str, args: Vec<String>) -> anyhow::Result<FakeEvalImageResponse> {
+        (**self).execute_javascript(code, args)
     }
 
     fn get_last_attachment(&self) -> anyhow::Result<String> {

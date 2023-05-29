@@ -4,7 +4,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct FakeEvalMessageData<M: Serialize> {
-    pub message: M
+    pub message: M,
+    pub args: Vec<String>
 }
 
 #[derive(Serialize)]
