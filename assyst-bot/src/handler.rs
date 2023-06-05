@@ -1,12 +1,13 @@
 use crate::{handlers::*, logger, Assyst, caching::persistent_caching::{handle_guild_delete_event, get_new_guilds_from_ready, handle_guild_create_event}};
 use std::sync::Arc;
 use anyhow::Context;
+use twilight_gateway::ShardId;
 use twilight_model::gateway::event::{GatewayEvent, DispatchEvent};
 
 pub async fn handle_event(assyst: Arc<Assyst>, event: GatewayEvent) -> anyhow::Result<()> {
     match event {
         GatewayEvent::Dispatch(_, e) => {
-            match *e {
+            match e {
                 DispatchEvent::MessageCreate(message) => {
                     message_create::handle(assyst, message).await;
                 }
@@ -46,7 +47,7 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: GatewayEvent) -> anyhow::R
                     }
                 }
                 DispatchEvent::Ready(r) => {
-                    let shard = r.shard.unwrap_or_default()[0];
+                    let shard = r.shard.unwrap_or(ShardId::new(0, 1));
                     let guilds = r.guilds.len();
                     let new_guilds = get_new_guilds_from_ready(assyst.clone(), *r).await.context("failed to handle guild ready")?;
         

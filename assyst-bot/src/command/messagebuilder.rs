@@ -1,4 +1,4 @@
-use twilight_model::channel::embed::Embed;
+use twilight_model::channel::message::embed::Embed;
 
 #[derive(Clone, Debug)]
 pub struct Attachment {
