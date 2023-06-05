@@ -1,8 +1,5 @@
-use crate::{
-    assyst::Assyst,
-    logger, util::message_link,
-};
-use assyst_common::util::{UserId, ChannelId};
+use crate::{assyst::Assyst, logger, util::message_link};
+use assyst_common::util::{ChannelId, UserId};
 use assyst_database::DatabaseReminder;
 use std::{sync::Arc, time::Duration};
 use tokio::time::sleep;
@@ -17,11 +14,12 @@ async fn process_single_reminder(
     assyst
         .http
         .create_message(ChannelId::new(reminder.channel_id as u64))
-        .allowed_mentions(Some(
-            &AllowedMentions::builder()
-                .user_ids(vec![UserId::new(reminder.user_id as u64)])
-                .build(),
-        ))
+        .allowed_mentions(Some(&AllowedMentions {
+            parse: vec![],
+            replied_user: false,
+            roles: vec![],
+            users: vec![UserId::new(reminder.user_id as u64)],
+        }))
         .content(&format!(
             "<@{}> Reminder: {}\n{}",
             reminder.user_id,
