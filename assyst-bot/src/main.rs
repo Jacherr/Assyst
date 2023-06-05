@@ -31,6 +31,7 @@ use tokio::{
     io::{AsyncReadExt, BufReader},
     net::UnixStream,
 };
+use twilight_gateway::EventTypeFlags;
 use twilight_model::gateway::event::GatewayEventDeserializer;
 
 #[cfg(target_os = "linux")]
@@ -98,20 +99,29 @@ async fn main() -> anyhow::Result<()> {
                 assyst.metrics.add_event();
                 tokio::spawn(async move {
                     let json = String::from_utf8_lossy(&data);
-                    let de = GatewayEventDeserializer::from_json(&json).unwrap();
-                    let mut json_de = serde_json::Deserializer::from_str(&json);
-                    match de.deserialize(&mut json_de) {
+                    let event = twilight_gateway::parse(
+                        json.to_string(),
+                        EventTypeFlags::GUILD_CREATE
+                            | EventTypeFlags::GUILD_DELETE
+                            | EventTypeFlags::MESSAGE_CREATE
+                            | EventTypeFlags::MESSAGE_DELETE
+                            | EventTypeFlags::MESSAGE_UPDATE
+                            | EventTypeFlags::READY
+                    );
+                    match event {
                         Ok(x) => {
-                            let res = handle_event(assyst_clone.clone(), x).await;
-                            match res {
-                                Err(e) => {
-                                    logger::fatal(
-                                        assyst_clone.as_ref(),
-                                        &format!("Event error: {}", e.to_string()),
-                                    )
-                                    .await;
+                            if let Some(x) = x {
+                                let res = handle_event(assyst_clone.clone(), x).await;
+                                match res {
+                                    Err(e) => {
+                                        logger::fatal(
+                                            assyst_clone.as_ref(),
+                                            &format!("Event error: {}", e.to_string()),
+                                        )
+                                        .await;
+                                    }
+                                    _ => {}
                                 }
-                                _ => {}
                             }
                         }
                         Err(_) => {}

@@ -70,5 +70,6 @@ fn convert_message_update_to_message(event: MessageUpdate) -> Option<Message> {
         webhook_id: None,
         components: vec![],
         thread: None,
+        role_subscription_data: None
     })
 }

@@ -19,6 +19,12 @@ pub async fn handle(assyst: Arc<Assyst>, message: Box<MessageCreate>) {
         return;
     }
 
+    if message.author.id.to_string() == "97153209843335168" {
+        println!("test");
+    } else if message.author.id.to_string() == "233667448887312385" {
+        println!("test2");
+    }
+
     let result = assyst.handle_command(message.0, false).await;
     handle_result(&assyst, result, "Command execution failed").await;
 }
@@ -30,5 +36,5 @@ async fn handle_result<T>(assyst: &Assyst, result: anyhow::Result<T>, message: &
 }
 
 async fn should_handle_message(message: &MessageCreate) -> bool {
-    !message.author.bot && message.author.discriminator != 0 && message.guild_id.is_some()
+    !message.author.bot && message.guild_id.is_some()
 }

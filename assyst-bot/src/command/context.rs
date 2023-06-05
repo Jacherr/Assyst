@@ -6,7 +6,7 @@ use std::time::Instant;
 use tokio::sync::Mutex;
 use twilight_http::{Client as HttpClient, error::ErrorType, api_error::ApiError};
 use twilight_model::{
-    channel::{embed::Embed, message::AllowedMentions, Message},
+    channel::{message::embed::Embed, message::AllowedMentions, Message},
     http::attachment::Attachment as TwilightAttachment,
 };
 
