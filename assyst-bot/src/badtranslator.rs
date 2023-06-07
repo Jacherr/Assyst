@@ -1,10 +1,7 @@
 use crate::assyst::Assyst;
 use crate::util::{self, normalize_mentions};
 use crate::{
-    rest::bt,
-    util::get_current_millis,
-    util::sanitize_message_content,
-    util::normalize_emojis,
+    rest::bt, util::get_current_millis, util::normalize_emojis, util::sanitize_message_content,
 };
 use anyhow::Context;
 use assyst_common::bt::{BadTranslatorEntry, ChannelCache};
@@ -173,7 +170,7 @@ impl BadTranslator {
 
         let guild_id = message.guild_id.expect("There are no BT channels in DMs");
 
-        if is_webhook(&message.author) || is_ratelimit_message(assyst, &message) {
+        if is_webhook(&message) || is_ratelimit_message(assyst, &message) {
             // ignore its own webhook/ratelimit messages
             return Ok(());
         }
@@ -296,8 +293,8 @@ async fn register_badtranslated_message_to_db(
         .await
 }
 
-fn is_webhook(user: &User) -> bool {
-    user.system.unwrap_or(false) || user.discriminator == 0
+fn is_webhook(message: &MessageCreate) -> bool {
+    message.author.system.unwrap_or(false) || message.webhook_id.is_some()
 }
 
 fn is_ratelimit_message(assyst: &Assyst, message: &MessageCreate) -> bool {
