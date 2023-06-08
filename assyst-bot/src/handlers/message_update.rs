@@ -23,7 +23,7 @@ pub async fn handle(assyst: Arc<Assyst>, message: Box<MessageUpdate>) -> () {
 
 async fn should_handle_message(message: &Box<MessageUpdate>) -> bool {
     match &message.author {
-        Some(a) => !a.bot && a.discriminator != 0 && message.guild_id.is_some(),
+        Some(a) => !a.bot && message.guild_id.is_some(),
         None => false,
     }
 }
