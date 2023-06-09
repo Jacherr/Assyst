@@ -317,6 +317,8 @@ async fn run_tag_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) ->
         .map(|t| t.as_text())
         .context("No tag name provided.")?;
 
+    println!("Running tag {}", name);
+    
     let tag = context
         .assyst
         .database
@@ -351,7 +353,7 @@ async fn run_tag_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) ->
     })
     .await?
     .context("Tag execution failed");
-
+    
     match output {
         Ok(ParseResult { attachment, output }) => {
             if let Some((buffer, ty)) = attachment {
