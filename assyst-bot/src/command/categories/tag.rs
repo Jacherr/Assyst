@@ -317,7 +317,7 @@ async fn run_tag_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) ->
         .map(|t| t.as_text())
         .context("No tag name provided.")?;
 
-    println!("Running tag {}", name);
+    println!("Running tag {} in {:?}", name, context.message.guild_id);
     
     let tag = context
         .assyst
