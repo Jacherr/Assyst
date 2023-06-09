@@ -74,7 +74,6 @@ pub async fn wsi_listen(
 
         let mut r = tokio::spawn(async move {
             loop {
-                println!("Awaiting WSI read...");
                 let length = match reader.read_u32().await {
                     Err(e) => {
                         eprintln!("Failed to read length from WSI: {:?}", e);
@@ -82,7 +81,6 @@ pub async fn wsi_listen(
                     }
                     Ok(x) => x,
                 };
-                println!("Read length, waiting for data...");
                 let mut buf = vec![0; length as usize];
                 match reader.read_exact(&mut buf).await {
                     Err(e) => {
@@ -131,7 +129,6 @@ pub async fn wsi_listen(
 
                 jobs.lock().await.insert(id, tx);
 
-                println!("sending id: {}", id);
                 match writer.write_u32(job.len() as u32).await {
                     Err(e) => {
                         println!("Failed to write to WSI: {:?}", e.to_string());
