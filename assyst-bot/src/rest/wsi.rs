@@ -91,7 +91,6 @@ pub async fn wsi_listen(
                     }
                     _ => {}
                 }
-                println!("Read data, decoding...");
 
                 let deserialized = match deserialize::<JobResult>(&buf) {
                     Ok(x) => x,
@@ -101,8 +100,6 @@ pub async fn wsi_listen(
                     }
                 };
 
-                println!("got id: {}", deserialized.id());
-
                 let job_id = deserialized.id();
                 let tx = jobs_clone.lock().await.remove(&job_id);
 
@@ -111,8 +108,6 @@ pub async fn wsi_listen(
                     let res = tx.send(deserialized);
                     if res.is_err() {
                         eprintln!("Failed to send job result ID {} to job sender", job_id);
-                    } else {
-                        println!("Sent job result ID {} to job sender", job_id);
                     }
                 }
             }
@@ -131,8 +126,6 @@ pub async fn wsi_listen(
 
                 let id = next_job_id.fetch_add(1, Ordering::Relaxed);
 
-                println!("process id: {}", id);
-
                 let wsi_request = WsiRequest::new(id, premium_level, job);
                 let job = serialize(&wsi_request).unwrap();
 
@@ -146,8 +139,7 @@ pub async fn wsi_listen(
                     }
                     _ => {}
                 }
-
-                println!("sending data for: {}", id);
+                
                 match writer.write_all(&job).await {
                     Err(e) => {
                         println!("Failed to write to WSI: {:?}", e.to_string());
@@ -155,8 +147,6 @@ pub async fn wsi_listen(
                     }
                     _ => {}
                 }
-
-                println!("sent data for: {}", id);
             }
         });
 
