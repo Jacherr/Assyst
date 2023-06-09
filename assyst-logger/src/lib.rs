@@ -71,7 +71,8 @@ pub async fn command_use(config: &Config, database: &Database, message: &str) {
     };
 
     let message = format!("Command used: {}", message);
-
+    println!("{}", message);
+   
     let _ = database.log(&message, CATEGORY_COMMAND_USE).await;
 }
 
