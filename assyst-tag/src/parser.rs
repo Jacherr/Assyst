@@ -18,7 +18,7 @@ pub mod limits {
     pub const MAX_VARIABLE_VALUE_LENGTH: usize = MAX_STRING_LENGTH;
     pub const MAX_ITERATIONS: u32 = 500;
     pub const MAX_DEPTH: u32 = 15;
-    pub const MAX_STRING_LENGTH: usize = 10000;
+    pub const MAX_STRING_LENGTH: usize = 25000;
 
     pub fn try_increment(field_cell: &Cell<u32>, limit: u32) -> bool {
         let field = field_cell.get();
