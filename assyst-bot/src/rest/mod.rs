@@ -43,7 +43,7 @@ mod routes {
     use assyst_common::consts::BOT_ID;
 
     pub const COOL_TEXT: &str = "https://cooltext.com/PostChange";
-    pub const OCR: &str = "https://ocr.y21_.repl.co/?url=";
+    pub const OCR: &str = "http://ocr.y21-.repl.co/?url=";
     pub const CHARINFO: &str = "https://www.fileformat.info/info/unicode/char/";
     pub const IDENTIFY: &str = "https://microsoft-computer-vision3.p.rapidapi.com/analyze?language=en&descriptionExclude=Celebrities&visualFeatures=Description&details=Celebrities";
 
