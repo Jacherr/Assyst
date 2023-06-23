@@ -528,10 +528,14 @@ pub fn handle_job_result(result: JobResult) -> Result<Bytes, RequestError> {
 
 pub fn get_default_avatar_url(user: &User) -> String {
     // Unwrapping discrim parsing is ok, it should never be out of range or non-numeric
-    format!(
-        "https://cdn.discordapp.com/embed/avatars/{}.png",
+    let suffix = if user.discriminator == 0 {
+        // Pomelo users
+        (user.id.get().wrapping_shr(22) % 6) as u16
+    } else {
+        // Legacy
         user.discriminator % 5
-    )
+    };
+    format!("https://cdn.discordapp.com/embed/avatars/{}.png", suffix)
 }
 
 pub fn get_avatar_url(user: &User) -> String {
