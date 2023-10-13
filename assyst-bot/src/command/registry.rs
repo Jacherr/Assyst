@@ -206,5 +206,6 @@ impl CommandRegistry {
         register_command!(self, AUDIO_IDENTIFY_COMMAND, run_audio_identify_command);
         register_command!(self, DEEPFRY_COMMAND, run_deepfry_command);
         register_command!(self, URL_COMMAND, run_url_command);
+        register_command!(self, DOWNLOAD_COMMAND, run_download_command);
     }
 }

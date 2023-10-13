@@ -7,11 +7,12 @@ use crate::{
         context::Context,
         registry::CommandResult,
     },
+    downloader::download_content,
     logger,
     rest::{
         audio_identify::{self, NotSoIdentifyFailure},
         bt::{get_languages, validate_language},
-        fake_eval, get_filer_stats,
+        download_video_from_cobalt, fake_eval, get_filer_stats,
         rust::OptimizationLevel,
         wsi, FilerStats,
     },
@@ -19,7 +20,7 @@ use crate::{
         bytes_to_readable, codeblock, ensure_same_guild, exec_sync, extract_page_title,
         format_discord_timestamp, format_time, generate_list, generate_table, get_buffer_filetype,
         get_memory_usage, parse_codeblock,
-    }, downloader::download_content,
+    },
 };
 use crate::{
     rest::{bt::translate_single, get_char_info, rust},
@@ -33,9 +34,11 @@ use assyst_common::{
 };
 use assyst_database::Reminder;
 use base64::encode;
+use bytes::Bytes;
 use lazy_static::lazy_static;
 use shared::query_params::ResizeMethod;
 use shared::response_data::Stats;
+use url::Url;
 use std::fmt::Write;
 use std::{
     collections::HashMap,
@@ -265,6 +268,14 @@ lazy_static! {
         .alias("song")
         .alias("audioidentify")
         .arg(Argument::ImageUrl)
+        .cooldown(Duration::from_secs(1))
+        .category(CATEGORY_NAME)
+        .build();
+    pub static ref DOWNLOAD_COMMAND: Command = CommandBuilder::new("download")
+        .availability(CommandAvailability::Public)
+        .description("Download media from supported websites")
+        .alias("dl")
+        .arg(Argument::String)
         .cooldown(Duration::from_secs(1))
         .category(CATEGORY_NAME)
         .build();
@@ -1234,8 +1245,11 @@ pub async fn run_audio_identify_command(
 ) -> CommandResult {
     let image = args[0].as_text();
     context.reply_with_text("processing...").await?;
-    let song =
-        audio_identify::identify_song_notsoidentify(context.assyst.clone(), image.to_owned().clone()).await;
+    let song = audio_identify::identify_song_notsoidentify(
+        context.assyst.clone(),
+        image.to_owned().clone(),
+    )
+    .await;
     let mut fail = false;
     match song {
         Ok(_) => {}
@@ -1265,7 +1279,12 @@ pub async fn run_audio_identify_command(
             return context.reply_with_text(formatted).await.map(|_| ());
         }
     }
-    let file = download_content(&context.assyst.clone(), image, consts::ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES).await?;
+    let file = download_content(
+        &context.assyst.clone(),
+        image,
+        consts::ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES,
+    )
+    .await?;
     let pcm = wsi::audio_pcm(context.assyst.clone(), file.into(), context.author_id()).await?;
     let b64 = encode(pcm.to_vec());
     let res = audio_identify::identify_audio_shazam(context.assyst.clone(), b64).await?;
@@ -1298,4 +1317,21 @@ pub async fn run_audio_identify_command(
         }
     );
     context.reply_with_text(output).await.map(|_| ())
+}
+
+pub async fn run_download_command(
+    context: Arc<Context>,
+    args: Vec<ParsedArgument>,
+    _flags: ParsedFlags,
+) -> CommandResult {
+    let url = args[0].as_text();
+    if Url::parse(url).is_err() {
+        bail!("Invalid or malformed URL.")
+    };
+    let downloaded = Bytes::from(download_video_from_cobalt(context.assyst.clone(), url).await?);
+
+    let format = get_buffer_filetype(&downloaded).unwrap_or_else(|| "png");
+    context.reply_with_image(format, downloaded).await?;
+
+    Ok(())
 }

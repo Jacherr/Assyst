@@ -10,10 +10,10 @@ use assyst_common::{
     ansi::Ansi,
     eval::{FakeEvalBody, FakeEvalImageResponse, FakeEvalMessageData},
     filetype,
-    util::UserId,
+    util::UserId, consts::ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES,
 };
 use bytes::Bytes;
-use reqwest::{Client, ClientBuilder, Error};
+use reqwest::{Client, ClientBuilder, Error, StatusCode};
 use serde::Deserialize;
 use serde_json::json;
 use shared::{
@@ -24,7 +24,7 @@ use tokio::time::Instant;
 
 use std::error::Error as StdError;
 
-use crate::{assyst::Assyst, downloader, rest::wsi::run_wsi_job, util};
+use crate::{assyst::Assyst, downloader::{self, download_content}, rest::wsi::run_wsi_job, util};
 
 use self::rust::OptimizationLevel;
 
@@ -109,6 +109,15 @@ impl Into<Rule34Result> for &Rule34ResultBackup {
             score: self.score,
         }
     }
+}
+
+#[derive(Deserialize)]
+pub struct CobaltResult {
+    pub url: String
+}
+#[derive(Deserialize)]
+pub struct CobaltError {
+    pub text: String
 }
 
 #[derive(Deserialize)]
@@ -455,4 +464,31 @@ pub async fn healthcheck(assyst: Arc<Assyst>) -> Vec<HealthcheckResult> {
     results.push(HealthcheckResult::new("Content Proxy".into(), status));
 
     results
+}
+
+pub async fn download_video_from_cobalt(assyst: Arc<Assyst>, url: &str) -> Result<Vec<u8>, anyhow::Error> {
+    let encoded_url = urlencoding::encode(url).to_string();
+    let req_result = assyst
+        .reqwest_client
+        .post("https://co.wuk.sh/api/json")
+        .header(
+            "accept",
+            "application/json"
+        )
+        .json(&json!({
+            "url": encoded_url
+        }))
+        .send()
+        .await?;
+
+    let download_url = match req_result.status() {
+        StatusCode::OK => req_result.json::<CobaltResult>().await?.url,
+        _ => {
+            bail!("Failed to download media: {}", req_result.json::<CobaltError>().await?.text)
+        }
+    };
+
+    let downloaded_content = download_content(assyst.as_ref(), &download_url, ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES).await?;
+    
+    Ok(downloaded_content)
 }
