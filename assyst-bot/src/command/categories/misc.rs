@@ -2,7 +2,8 @@ use crate::{
     caching::persistent_caching::get_top_guilds,
     command::{
         command::{
-            Argument, Command, CommandAvailability, CommandBuilder, ParsedArgument, ParsedFlags,
+            Argument, Command, CommandAvailability, CommandBuilder, FlagKind, ParsedArgument,
+            ParsedFlags,
         },
         context::Context,
         registry::CommandResult,
@@ -38,7 +39,6 @@ use bytes::Bytes;
 use lazy_static::lazy_static;
 use shared::query_params::ResizeMethod;
 use shared::response_data::Stats;
-use url::Url;
 use std::fmt::Write;
 use std::{
     collections::HashMap,
@@ -46,6 +46,7 @@ use std::{
     sync::{atomic::Ordering, Arc},
     time::{Duration, Instant},
 };
+use url::Url;
 
 const USEFUL_LINKS_TEXT: &str = "**Invite the bot: <https://jacher.io/assyst>**\nSupport server: <https://discord.gg/brmtnpxbtg>\nVote for Assyst for some sweet perks! <https://vote.jacher.io/topgg> & <https://vote.jacher.io/dbl>";
 
@@ -237,7 +238,7 @@ lazy_static! {
         .description("execute shell command")
         .example("echo hello")
         .usage("[command]")
-        .cooldown(Duration::from_secs(2))
+        .cooldown(Duration::from_secs(1))
         .category(CATEGORY_NAME)
         .build();
     pub static ref FAKE_EVAL_COMMAND: Command = CommandBuilder::new("eval")
@@ -268,16 +269,22 @@ lazy_static! {
         .alias("song")
         .alias("audioidentify")
         .arg(Argument::ImageUrl)
-        .cooldown(Duration::from_secs(1))
+        .cooldown(Duration::from_secs(5))
         .category(CATEGORY_NAME)
         .build();
     pub static ref DOWNLOAD_COMMAND: Command = CommandBuilder::new("download")
         .availability(CommandAvailability::Public)
-        .description("Download media from supported websites")
+        .description("Download media from supported websites using cobalt.tools")
         .alias("dl")
         .arg(Argument::String)
-        .cooldown(Duration::from_secs(1))
+        .flag("audio", None)
+        .flag("quality", Some(FlagKind::Text))
+        .cooldown(Duration::from_secs(10))
         .category(CATEGORY_NAME)
+        .usage("[video url] <[-audio]> <[-quality 144/240/360/480/720/1080/max]>")
+        .example("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+        .example("https://www.youtube.com/watch?v=dQw4w9WgXcQ -audio")
+        .example("https://www.youtube.com/watch?v=dQw4w9WgXcQ -quality 144")
         .build();
 }
 
@@ -1322,16 +1329,24 @@ pub async fn run_audio_identify_command(
 pub async fn run_download_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
-    _flags: ParsedFlags,
+    flags: ParsedFlags,
 ) -> CommandResult {
     let url = args[0].as_text();
     if Url::parse(url).is_err() {
         bail!("Invalid or malformed URL.")
     };
-    let downloaded = Bytes::from(download_video_from_cobalt(context.assyst.clone(), url).await?);
+    context.reply_with_text("processing...").await?;
+    let audio_flag = flags.contains_key("audio");
+    let quality_flag = flags
+        .get("quality")
+        .map(|x| x.as_ref().map(|y| y.as_text().to_string()))
+        .flatten();
 
-    let format = get_buffer_filetype(&downloaded).unwrap_or_else(|| "png");
-    context.reply_with_image(format, downloaded).await?;
+    let downloaded =
+        Bytes::from(download_video_from_cobalt(context.assyst.clone(), url, audio_flag, quality_flag).await?);
+
+    let fmt = if !audio_flag { "mp4" } else { "mp3" };
+    context.reply_with_image(fmt, downloaded).await?;
 
     Ok(())
 }
