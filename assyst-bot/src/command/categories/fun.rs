@@ -253,7 +253,6 @@ pub async fn run_color_command(
                     .create_role(GuildId::new(guild_id))
                     .name(name)
                     .color(color)
-                    .exec()
                     .await?
                     .model()
                     .await?;
@@ -272,7 +271,6 @@ pub async fn run_color_command(
                     .assyst
                     .http
                     .roles(GuildId::new(guild_id))
-                    .exec()
                     .await?
                     .models()
                     .await?;
@@ -289,7 +287,6 @@ pub async fn run_color_command(
                             .create_role(GuildId::new(guild_id))
                             .name(*name)
                             .color(*color)
-                            .exec()
                             .await?
                             .model()
                             .await?;
@@ -343,7 +340,6 @@ pub async fn run_color_command(
                 .assyst
                 .http
                 .delete_role(GuildId::new(guild_id), RoleId::new(role.role_id as u64))
-                .exec()
                 .await?;
 
             context.reply_with_text("Color role removed.").await?;
@@ -366,7 +362,6 @@ pub async fn run_color_command(
                 .assyst
                 .http
                 .guild_member(GuildId::new(guild_id), user_id)
-                .exec()
                 .await?
                 .model()
                 .await?
@@ -384,7 +379,6 @@ pub async fn run_color_command(
                 .http
                 .update_guild_member(GuildId::new(guild_id), user_id)
                 .roles(&roles_without_colors)
-                .exec()
                 .await?;
 
             context

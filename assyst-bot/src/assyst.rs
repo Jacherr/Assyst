@@ -384,7 +384,6 @@ impl Assyst {
             let channel = self
                 .http
                 .channel(message.channel_id)
-                .exec()
                 .await?
                 .model()
                 .await?;

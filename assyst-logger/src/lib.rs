@@ -122,6 +122,6 @@ async fn exec_webhook_with(
         builder = builder.content(content).unwrap();
     }
 
-    builder.exec().await?;
+    builder.await?;
     Ok(())
 }

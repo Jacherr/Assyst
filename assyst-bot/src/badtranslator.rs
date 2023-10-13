@@ -12,7 +12,7 @@ use std::{borrow::Cow, time::Duration};
 use tokio::sync::RwLock;
 use twilight_http::error::ErrorType;
 use twilight_model::gateway::payload::incoming::MessageCreate;
-use twilight_model::{channel::Webhook, user::User};
+use twilight_model::channel::Webhook;
 
 mod flags {
     pub const DISABLED: u32 = 0x1;
@@ -106,7 +106,6 @@ impl BadTranslator {
         let webhooks = assyst
             .http
             .channel_webhooks(*id)
-            .exec()
             .await
             .ok()?
             .models()
@@ -116,7 +115,7 @@ impl BadTranslator {
         let webhook = webhooks.into_iter().find(|w| w.token.is_some())?;
 
         let mut cache = self.channels.write().await;
-        let mut entry = cache
+        let entry = cache
             .get_mut(&id.get())
             .expect("This can't fail, and if it does then that's a problem.");
 
@@ -179,7 +178,6 @@ impl BadTranslator {
             let _ = assyst
                 .http
                 .delete_message(message.channel_id, message.id)
-                .exec()
                 .await;
 
             return Ok(());
@@ -192,7 +190,6 @@ impl BadTranslator {
             let _ = assyst
                 .http
                 .delete_message(message.channel_id, message.id)
-                .exec()
                 .await;
 
             let response = assyst
@@ -203,7 +200,6 @@ impl BadTranslator {
                     message.author.id.get(),
                     consts::BT_RATELIMIT_MESSAGE
                 ))?
-                .exec()
                 .await?
                 .model()
                 .await?;
@@ -213,7 +209,6 @@ impl BadTranslator {
             assyst
                 .http
                 .delete_message(message.channel_id, response.id)
-                .exec()
                 .await?;
 
             return Ok(());
@@ -244,7 +239,6 @@ impl BadTranslator {
         let delete_state = assyst
             .http
             .delete_message(message.channel_id, message.id)
-            .exec()
             .await;
 
         // dont respond with translation if the source was prematurely deleted
@@ -270,7 +264,6 @@ impl BadTranslator {
             .content(&translation)?
             .username(&message.author.name)?
             .avatar_url(&util::get_avatar_url(&message.author))
-            .exec()
             .await
             .context("Executing webhook failed")?;
 

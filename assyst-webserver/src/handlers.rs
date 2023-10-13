@@ -54,7 +54,6 @@ pub async fn handle_vote(
     } else {
         let user = client
             .user(UserId::new(user_id as u64))
-            .exec()
             .await
             .unwrap()
             .model()

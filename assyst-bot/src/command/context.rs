@@ -74,7 +74,6 @@ impl Context {
                 let _ = self
                     .http()
                     .delete_message(reply.channel_id, reply.id)
-                    .exec()
                     .await;
 
                 drop(reply_lock);
@@ -226,7 +225,7 @@ impl Context {
         if !self.reply.lock().await.invocation_deleted && c.should_reply {
             create_message = create_message.reply(self.message.id);
         }
-        let x = create_message.exec().await;
+        let x = create_message.await;
         match x {
             Ok(x) => {
                 let message = x.model().await?;
@@ -285,7 +284,7 @@ impl Context {
             None => update_message = update_message.embeds(Some(&[]))?,
         };
 
-        let result = Arc::new(update_message.exec().await?.model().await?);
+        let result = Arc::new(update_message.await?.model().await?);
         Ok(result)
     }
 

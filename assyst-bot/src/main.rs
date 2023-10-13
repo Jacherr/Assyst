@@ -25,14 +25,12 @@ use assyst_webserver::run as webserver_run;
 use bincode::deserialize;
 use caching::persistent_caching::get_guild_count;
 use handler::handle_event;
-use serde::de::DeserializeSeed;
 use std::sync::Arc;
 use tokio::{
     io::{AsyncReadExt, BufReader},
     net::UnixStream,
 };
 use twilight_gateway::EventTypeFlags;
-use twilight_model::gateway::event::GatewayEventDeserializer;
 
 #[cfg(target_os = "linux")]
 #[global_allocator]

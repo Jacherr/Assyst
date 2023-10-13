@@ -30,7 +30,6 @@ async fn process_single_reminder(
                 reminder.message_id as u64
             )
         ))?
-        .exec()
         .await?;
 
     Ok(())
