@@ -463,10 +463,18 @@ pub async fn healthcheck(assyst: Arc<Assyst>) -> Vec<HealthcheckResult> {
     let status = downloader::healthcheck(&assyst).await;
     results.push(HealthcheckResult::new("Content Proxy".into(), status));
 
+    let timer = Instant::now();
+    let cobalt_result = download_video_from_cobalt(assyst.clone(), "https://www.youtube.com/watch?v=tPEE9ZwTmy0", true, None).await;
+    results.push(HealthcheckResult::new_from_result(
+        "Cobalt.tools",
+        cobalt_result,
+        timer.elapsed().as_millis() as _,
+    ));
+
     results
 }
 
-pub async fn download_video_from_cobalt(assyst: Arc<Assyst>, url: &str) -> Result<Vec<u8>, anyhow::Error> {
+pub async fn download_video_from_cobalt(assyst: Arc<Assyst>, url: &str, audio_only: bool, quality: Option<String>) -> Result<Vec<u8>, anyhow::Error> {
     let encoded_url = urlencoding::encode(url).to_string();
     let req_result = assyst
         .reqwest_client
@@ -476,7 +484,11 @@ pub async fn download_video_from_cobalt(assyst: Arc<Assyst>, url: &str) -> Resul
             "application/json"
         )
         .json(&json!({
-            "url": encoded_url
+            "url": encoded_url,
+            "isAudioOnly": audio_only,
+            "aFormat": "mp3",
+            "isNoTTWatermark": true,
+            "vQuality": quality.unwrap_or("720".to_owned())
         }))
         .send()
         .await?;
