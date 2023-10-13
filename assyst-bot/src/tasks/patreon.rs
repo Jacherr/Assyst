@@ -31,7 +31,7 @@ pub fn update_patrons(assyst: Arc<Assyst>) {
 
             match x {
                 Ok(x) => {
-                    let _ = x.exec().await;
+                    let _ = x.await;
                 },
                 Err(_) => {},
             }

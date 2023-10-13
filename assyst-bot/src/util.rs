@@ -104,7 +104,6 @@ pub async fn is_same_guild(
 ) -> Result<bool, twilight_http::Error> {
     let ch = client
         .channel(ChannelId::new(channel_id))
-        .exec()
         .await?
         .model()
         .await
@@ -413,7 +412,6 @@ pub fn exec_sync(command: &str) -> Result<CommandOutput, std::io::Error> {
 pub async fn get_guild_owner(http: &Client, guild_id: GuildId) -> Result<UserId, Error> {
     Ok(http
         .guild(guild_id)
-        .exec()
         .await?
         .model()
         .await
@@ -433,7 +431,6 @@ pub async fn is_guild_manager(
     // figure out permissions of the user through bitwise operations
     let member = http
         .guild_member(guild_id, user_id)
-        .exec()
         .await?
         .model()
         .await
@@ -441,7 +438,6 @@ pub async fn is_guild_manager(
 
     let roles = http
         .roles(guild_id)
-        .exec()
         .await?
         .models()
         .await
@@ -577,7 +573,6 @@ pub async fn get_guild_upload_limit_bytes(
     let guild = assyst
         .http
         .guild(guild_id)
-        .exec()
         .await?
         .model()
         .await?;

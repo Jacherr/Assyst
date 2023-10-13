@@ -1,28 +1,24 @@
 #![feature(never_type)]
 
 use std::{
-    collections::HashMap,
     rc::Rc,
     sync::Arc,
-    time::{Duration, SystemTime},
 };
 
 use assyst_common::{
     config::Config,
     consts::{
-        gateway::{self, Latencies},
+        gateway::{self},
         EVENT_PIPE,
     },
     ok_or_break,
 };
-use bincode::serialize;
 use futures_util::StreamExt;
 use tokio::{
     fs::remove_file,
     io::{AsyncWriteExt, BufWriter},
     net::UnixListener,
     sync::Mutex,
-    time::sleep,
 };
 use twilight_gateway::{
     stream::{create_recommended, ShardMessageStream},
@@ -88,31 +84,6 @@ pub async fn supply_connection(
 ) -> anyhow::Result<()> {
     let (stream, _) = listener.accept().await?;
     let writer = Arc::new(Mutex::new(BufWriter::new(stream)));
-    //let writer_clone = writer.clone();
-
-    /*let latency_writer = tokio::spawn(async move {
-        loop {
-            sleep(Duration::from_secs(5)).await;
-            let mut latencies = Latencies(HashMap::new());
-            let info = cluster.info()
-            for shard in info {
-                let latency = match shard.1.latency().average().map(|d| d.as_millis()) {
-                    Some(x) => x as i64,
-                    None => continue,
-                };
-                if latency > 50 {
-                    latencies.0.insert(shard.0, latency);
-                }
-            }
-            let serialized = serialize(&latencies).unwrap();
-            let mut lock = writer_clone.lock().await;
-            ok_or_break!(lock.write_u8(gateway::OP_LATENCIES).await);
-            ok_or_break!(lock.write_u32(serialized.len() as u32).await);
-            ok_or_break!(lock.write_all(&serialized).await);
-            ok_or_break!(lock.flush().await);
-        }
-    });*/
-
     // Event loop
     while let Some((_, event)) = gw_stream.lock().await.next().await {
         match event {

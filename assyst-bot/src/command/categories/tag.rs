@@ -1,4 +1,4 @@
-use std::{convert::TryInto, sync::Arc, time::Duration};
+use std::{convert::TryInto, sync::Arc, time::Duration, future::IntoFuture};
 
 use anyhow::{anyhow, ensure, Context as _};
 use assyst_common::{
@@ -427,7 +427,7 @@ impl tag::Context for TagContext {
 
         let user = self
             .tokio
-            .block_on(self.ccx.http().user(UserId::new(user_id)).exec())?;
+            .block_on(self.ccx.http().user(UserId::new(user_id)).into_future())?;
 
         if user.status().get() == 404 {
             return Err(anyhow!("User not found"));
@@ -469,7 +469,7 @@ impl tag::Context for TagContext {
         if let Some(id) = id {
             let user = self
                 .tokio
-                .block_on(self.ccx.http().user(UserId::new(id)).exec())?;
+                .block_on(self.ccx.http().user(UserId::new(id)).into_future())?;
 
             if user.status().get() == 404 {
                 return Err(anyhow!("User not found"));

@@ -505,7 +505,6 @@ pub async fn run_stats_command(
         .http
         .gateway()
         .authed()
-        .exec()
         .await?
         .model()
         .await?;
@@ -849,7 +848,6 @@ pub async fn run_btchannel_command(
                 .http()
                 .create_webhook(ChannelId::new(channel_id), "Bad Translator")
                 .context("Failed to create webhook")?
-                .exec()
                 .await?;
 
             let success = context.assyst.database.add_bt_channel(channel_id, language)

@@ -185,7 +185,6 @@ pub mod image_lookups {
 
         let user = http
             .user(UserId::new(user_id))
-            .exec()
             .await
             .ok()?
             .model()
@@ -289,7 +288,6 @@ pub mod image_lookups {
     ) -> Option<Cow<'c, str>> {
         let messages = http
             .channel_messages(message.channel_id)
-            .exec()
             .await
             .ok()?
             .models()

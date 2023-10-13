@@ -17,7 +17,6 @@ pub async fn handle(assyst: Arc<Assyst>, message: MessageDelete) -> () {
                 let _ = assyst
                     .http
                     .delete_message(message.channel_id, r.id)
-                    .exec()
                     .await;
             }
         }

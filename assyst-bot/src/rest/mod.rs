@@ -303,7 +303,7 @@ pub async fn get_random_rule34(assyst: &Assyst, tags: &str) -> Result<Vec<Rule34
         .json::<Vec<Rule34ResultBackup>>()
         .await?
         .iter()
-        .map(|x| x.clone().into())
+        .map(|x| x.into())
         .collect::<Vec<Rule34Result>>())
 }
 

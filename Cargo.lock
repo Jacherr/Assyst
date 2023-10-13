@@ -109,6 +109,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "assyst-cache"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "assyst-common",
+ "bincode",
+ "futures-util",
+ "serde",
+ "tokio",
+ "twilight-model 0.15.4",
+]
+
+[[package]]
 name = "assyst-common"
 version = "0.1.0"
 dependencies = [
@@ -129,6 +142,21 @@ dependencies = [
  "serde",
  "sqlx",
  "tokio",
+ "twilight-model 0.15.4",
+]
+
+[[package]]
+name = "assyst-gateway"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "assyst-common",
+ "bincode",
+ "futures-util",
+ "libc",
+ "tokio",
+ "twilight-gateway",
+ "twilight-http",
  "twilight-model 0.15.4",
 ]
 

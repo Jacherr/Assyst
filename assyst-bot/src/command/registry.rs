@@ -62,7 +62,6 @@ impl CommandRegistry {
                     .assyst
                     .http
                     .create_typing_trigger(context_c.message.channel_id)
-                    .exec()
                     .await;
             }
         });
