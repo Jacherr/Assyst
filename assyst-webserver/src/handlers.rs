@@ -10,7 +10,7 @@ use warp::{hyper::Uri, Rejection, Reply};
 
 type UserId = Id<UserMarker>;
 
-const VOTE_FREE_TIER_1_REQUESTS: i64 = 5;
+const VOTE_FREE_TIER_1_REQUESTS: i64 = 15;
 
 #[derive(Deserialize)]
 pub struct DiscordBotListWebhookBody {
