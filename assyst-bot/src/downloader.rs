@@ -90,8 +90,8 @@ pub async fn download_content(
     url: &str,
     limit: usize,
 ) -> Result<Vec<u8>, DownloadError> {
-    const WHITLISTED_DOMAINS: [&str; 4] =
-        ["tenor.com", "jacher.io", "discordapp.com", "discordapp.net"];
+    const WHITLISTED_DOMAINS: [&str; 5] =
+        ["tenor.com", "jacher.io", "discordapp.com", "discordapp.net", "wuk.sh"];
 
     let config = &assyst.config;
     let client = &assyst.reqwest_client;
