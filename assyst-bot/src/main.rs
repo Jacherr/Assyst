@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![feature(let_chains)]
 
 // a
 
