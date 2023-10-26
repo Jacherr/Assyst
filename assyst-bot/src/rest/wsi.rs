@@ -1028,16 +1028,6 @@ pub async fn swirl(
     run_wsi_job(assyst, job, user_id).await
 }
 
-pub async fn tehi(
-    assyst: Arc<Assyst>,
-    image: Bytes,
-    user_id: UserId,
-) -> Result<Bytes, RequestError> {
-    let job = FifoSend::Tehi(FifoData::new(image.to_vec(), NoneQuery {}));
-
-    run_wsi_job(assyst, job, user_id).await
-}
-
 pub async fn toaster(
     assyst: Arc<Assyst>,
     image: Bytes,

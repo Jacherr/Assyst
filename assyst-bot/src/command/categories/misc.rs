@@ -169,16 +169,28 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .build();
     pub static ref BLACKLIST_COMMAND: Command = CommandBuilder::new("blacklist")
-        .availability(CommandAvailability::Private)
-        .arg(Argument::String)
-        .description("blacklist a user from using the bot")
+        .availability(CommandAvailability::GuildOwner)
+        .arg(Argument::Choice(&["add", "list", "remove"]))
+        .arg(Argument::Optional(Box::new(Argument::String)))
+        .arg(Argument::Optional(Box::new(Argument::String)))
+        .arg(Argument::Optional(Box::new(Argument::String)))
+        .description("blacklist a command from being used in a channel, by a role or by a user - whitelist overrides blacklist")
+        .usage("[add|remove|list] [command] [channel|role|user] [id]")
+        .example("caption channel 1099116247364407337")
         .category(CATEGORY_NAME)
+        .disable()
         .build();
-    pub static ref UNBLACKLIST_COMMAND: Command = CommandBuilder::new("unblacklist")
-        .availability(CommandAvailability::Private)
-        .arg(Argument::String)
-        .description("unblacklist a user")
+    pub static ref WHITELIST_COMMAND: Command = CommandBuilder::new("whitelist")
+        .availability(CommandAvailability::GuildOwner)
+        .arg(Argument::Choice(&["add", "list", "remove"]))
+        .arg(Argument::Optional(Box::new(Argument::String)))
+        .arg(Argument::Optional(Box::new(Argument::String)))
+        .arg(Argument::Optional(Box::new(Argument::String)))
+        .description("whitelist a command to be used in a channel, by a role or by a user - whitelist overrides blacklist")
+        .usage("[add|remove|list] [command] [channel|role|user] [id]")
+        .example("caption channel 1099116247364407337")
         .category(CATEGORY_NAME)
+        .disable()
         .build();
     pub static ref TOP_GUILDS_COMMAND: Command = CommandBuilder::new("topguilds")
         .alias("tg")
@@ -1215,12 +1227,16 @@ pub async fn run_blacklist_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    let user_id = args[0].as_text().parse::<u64>()?;
-    let added = context.assyst.blacklist(user_id).await?;
+    // args: command|all,role
+    let subcommand = args[0].as_text();
+    let command = args[1].as_text();
 
-    if !added {
-        bail!("User is already blacklisted");
-    }
+
+    let r#type = args[2].as_text();
+    let id = args[3].as_text();
+
+    // safe to unwrap because dm commands dont work
+    let guild_id = context.message.guild_id.unwrap().get();
 
     context
         .reply_with_text("Successfully blacklisted user")
@@ -1228,7 +1244,7 @@ pub async fn run_blacklist_command(
         .map(|_| ())
 }
 
-pub async fn run_unblacklist_command(
+pub async fn run_whitelist_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,

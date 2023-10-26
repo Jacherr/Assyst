@@ -466,15 +466,6 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
-    pub static ref TEHI_COMMAND: Command = CommandBuilder::new("tehi")
-        .arg(Argument::ImageBuffer)
-        .public()
-        .description("tehi")
-        .example(consts::Y21)
-        .usage("[image]")
-        .cooldown(Duration::from_secs(4))
-        .category(CATEGORY_NAME)
-        .build();
     pub static ref UNCAPTION_COMMAND: Command = CommandBuilder::new("uncaption")
         .arg(Argument::ImageBuffer)
         .arg(Argument::Optional(Box::new(Argument::String)))
@@ -654,7 +645,7 @@ pub async fn run_randomize_command(
     let mut effects = vec![];
     context.reply_with_text("processing...").await?;
     for _ in 0..3 {
-        let rand = rand_u8() % 25;
+        let rand = rand_u8() % 24;
         current = match rand {
             0 => {
                 effects.push("bloom");
@@ -763,22 +754,18 @@ pub async fn run_randomize_command(
                 wsi::swirl(context.assyst.clone(), current.clone(), context.author_id()).await?
             }
             21 => {
-                effects.push("tehi");
-                wsi::tehi(context.assyst.clone(), current.clone(), context.author_id()).await?
-            }
-            22 => {
                 effects.push("wall");
                 wsi::wall(context.assyst.clone(), current.clone(), context.author_id()).await?
             }
-            23 => {
+            22 => {
                 effects.push("wormhole");
                 wsi::wormhole(context.assyst.clone(), current.clone(), context.author_id()).await?
             }
-            24 => {
+            23 => {
                 effects.push("zoom");
                 wsi::zoom(context.assyst.clone(), current.clone(), context.author_id()).await?
             }
-            25 => {
+            24 => {
                 effects.push("zoomblur");
                 wsi::zoom_blur(context.assyst.clone(), current.clone(), context.author_id(), (rand_u8() % 10) as f64).await?
             }
@@ -1577,21 +1564,6 @@ pub async fn run_swirl_command(
 ) -> CommandResult {
     let raw_image = args[0].as_bytes();
     let wsi_fn = wsi::swirl;
-    run_wsi_noarg_command(
-        context,
-        raw_image,
-        Box::new(move |assyst, bytes, user_id| Box::pin(wsi_fn(assyst, bytes, user_id))),
-    )
-    .await
-}
-
-pub async fn run_tehi_command(
-    context: Arc<Context>,
-    args: Vec<ParsedArgument>,
-    _flags: ParsedFlags,
-) -> CommandResult {
-    let raw_image = args[0].as_bytes();
-    let wsi_fn = wsi::tehi;
     run_wsi_noarg_command(
         context,
         raw_image,

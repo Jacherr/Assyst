@@ -17,7 +17,6 @@ pub fn init_healthcheck(assyst: Arc<Assyst>) {
             let assyst = assyst.clone();
             let _ = tokio::spawn(async move {
                 loop {
-                    sleep(Duration::from_secs(5 * 60)).await;
                     let result = healthcheck(assyst.clone()).await;
         
                     for check in &result {
@@ -27,6 +26,7 @@ pub fn init_healthcheck(assyst: Arc<Assyst>) {
                     }
         
                     *assyst.healthcheck_result.lock().await = (Instant::now(), result);
+                    sleep(Duration::from_secs(5 * 60)).await;
                 }
             }).await;
         }
