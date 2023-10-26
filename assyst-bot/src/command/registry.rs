@@ -185,7 +185,6 @@ impl CommandRegistry {
         register_command!(self, SWEDEN_COMMAND, run_sweden_command);
         register_command!(self, SWIRL_COMMAND, run_swirl_command);
         register_command!(self, TAG_COMMAND, run_tag_command);
-        register_command!(self, TEHI_COMMAND, run_tehi_command);
         register_command!(self, TERRARIA_COMMAND, run_terraria_command);
         register_command!(self, TOASTER_COMMAND, run_toaster_command);
         register_command!(self, TOP_BT_COMMAND, run_top_bt_command);
@@ -193,7 +192,7 @@ impl CommandRegistry {
         register_command!(self, TOP_GUILDS_COMMAND, run_top_guilds_command);
         register_command!(self, TOWAV_COMMAND, run_towav_command);
         register_command!(self, TRANSLATE_COMMAND, run_translate_command);
-        register_command!(self, UNBLACKLIST_COMMAND, run_unblacklist_command);
+        register_command!(self, WHITELIST_COMMAND, run_whitelist_command);
         register_command!(self, UNCAPTION_COMMAND, run_uncaption_command);
         register_command!(self, VALENTINE_COMMAND, run_valentine_command);
         register_command!(self, VIDEOTOGIF_COMMAND, run_videotogif_command);

@@ -1027,6 +1027,34 @@ impl Database {
             .map(|_| ())
     }
 
+    pub async fn add_guild_specific_blacklist(&self, guild_id: u64, command: &str, r#type: &str, id: u64) -> Result<(), sqlx::Error> {
+        let query = r#"INSERT INTO command_restrictions VALUES ($1, $2, $3, $4, $5)"#;
+
+        sqlx::query(query)
+            .bind(guild_id as i64)
+            .bind(command)
+            .bind("block")
+            .bind(r#type)
+            .bind(id as i64)
+            .execute(&self.pool)
+            .await
+            .map(|_| ())
+    }
+
+    pub async fn add_guild_specific_whitelist(&self, guild_id: u64, command: &str, r#type: &str, id: u64) -> Result<(), sqlx::Error> {
+        let query = r#"INSERT INTO command_restrictions VALUES ($1, $2, $3, $4, $5)"#;
+
+        sqlx::query(query)
+            .bind(guild_id as i64)
+            .bind(command)
+            .bind("allow")
+            .bind(r#type)
+            .bind(id as i64)
+            .execute(&self.pool)
+            .await
+            .map(|_| ())
+    }
+
     pub async fn delete_old_logs(&self) {
         let query = r#"DELETE FROM logs WHERE timestamp < now() - interval '7 days'"#;
 
