@@ -13,12 +13,12 @@ pub fn update_patrons(assyst: Arc<Assyst>) {
                 .await
                 .unwrap();
 
-            let patron_user_ids = patrons
+            /*let patron_user_ids = patrons
                 .iter()
                 .filter(|x| !x.admin)
                 .map(|x| x.user_id.get().to_string())
                 .collect::<Vec<_>>()
-                .join("\n");
+                .join("\n");*/
 
             *assyst.patrons.write().await = patrons;
 

@@ -1,7 +1,7 @@
 use core::fmt;
 use std::time::{Duration, Instant};
 
-use assyst_common::{config::Config, consts};
+use assyst_common::config::Config;
 use bytes::Bytes;
 use futures::{Stream, StreamExt};
 use reqwest::{Client, StatusCode, Url};
