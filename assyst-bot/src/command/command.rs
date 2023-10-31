@@ -102,6 +102,7 @@ impl ParsedArgument {
         *self == ParsedArgument::Nothing
     }
     pub fn as_text(&self) -> &str {
+        println!("abcdefg");
         match self {
             ParsedArgument::Text(t) => t,
             otherwise => panic!("expected text argument, got {:?}", otherwise),
