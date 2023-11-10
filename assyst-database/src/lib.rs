@@ -136,6 +136,15 @@ pub struct CodesprintTest {
     pub expected: String,
 }
 
+#[derive(sqlx::FromRow, Debug)]
+pub struct CommandRestriction {
+    pub guild_id: i64,
+    pub command_name: String,
+    pub allow_or_block: String,
+    pub r#type: String,
+    pub id: i64
+}
+
 type GuildDisabledCommands = Cache<GuildId, HashSet<String>>;
 
 pub struct DatabaseCache {
@@ -1053,6 +1062,15 @@ impl Database {
             .execute(&self.pool)
             .await
             .map(|_| ())
+    }
+
+    pub async fn list_guild_blacklists(&self, guild_id: u64) -> Result<Vec<CommandRestriction>, sqlx::Error> {
+        let query = r#"SELECT * from command_restrictions WHERE guild_id = $1 and allow_or_block = 'block'"#;
+
+        sqlx::query_as::<_, CommandRestriction>(query)
+            .bind(guild_id as i64)
+            .fetch_all(&self.pool)
+            .await
     }
 
     pub async fn delete_old_logs(&self) {

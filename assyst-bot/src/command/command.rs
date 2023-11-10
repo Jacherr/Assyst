@@ -102,7 +102,6 @@ impl ParsedArgument {
         *self == ParsedArgument::Nothing
     }
     pub fn as_text(&self) -> &str {
-        println!("abcdefg");
         match self {
             ParsedArgument::Text(t) => t,
             otherwise => panic!("expected text argument, got {:?}", otherwise),
@@ -130,6 +129,12 @@ impl ParsedArgument {
         match self {
             ParsedArgument::Choice(t) => *t,
             otherwise => panic!("expected choice argument, got {:?}", otherwise),
+        }
+    }
+    pub fn maybe_choice(&self) -> Option<&str> {
+        match self {
+            ParsedArgument::Choice(t) => Some(t),
+            _ => None,
         }
     }
 }

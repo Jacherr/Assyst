@@ -151,6 +151,25 @@ pub async fn miri(
     .await
 }
 
+pub async fn clippy(
+    client: &Client,
+    code: &str,
+    channel: Option<&str>,
+    opt: OptimizationLevel,
+) -> Result<ApiResult, Error> {
+    request(
+        client,
+        "clippy",
+        code,
+        channel,
+        Some(opt.as_str()),
+        None,
+        None,
+        None,
+    )
+    .await
+}
+
 pub fn prepend_code(code: &str) -> Cow<str> {
     if !code.contains("fn main") {
         Cow::Owned(format!(
@@ -171,6 +190,17 @@ pub async fn run_miri(
     let code = prepend_code(code);
 
     miri(client, &*code, Some(channel), opt).await
+}
+
+pub async fn run_clippy(
+    client: &Client,
+    code: &str,
+    channel: &str,
+    opt: OptimizationLevel,
+) -> Result<ApiResult, Error> {
+    let code = prepend_code(code);
+
+    clippy(client, &*code, Some(channel), opt).await
 }
 
 pub async fn run_binary(
