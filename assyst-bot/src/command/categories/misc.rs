@@ -39,6 +39,7 @@ use bytes::Bytes;
 use lazy_static::lazy_static;
 use shared::query_params::ResizeMethod;
 use shared::response_data::Stats;
+use twilight_model::id::Id;
 use std::fmt::Write;
 use std::{
     collections::HashMap,
@@ -126,7 +127,7 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .build();
     pub static ref RUST_COMMAND: Command = CommandBuilder::new("rust")
-        .arg(Argument::Choice(&["run", "bench", "miri", "asm"]))
+        .arg(Argument::Choice(&["run", "bench", "miri", "asm", "clippy"]))
         .arg(Argument::StringRemaining)
         .flag("stable", None)
         .flag("release", None)
@@ -172,19 +173,20 @@ lazy_static! {
         .availability(CommandAvailability::GuildOwner)
         .arg(Argument::Choice(&["add", "list", "remove"]))
         .arg(Argument::Optional(Box::new(Argument::String)))
-        .arg(Argument::Optional(Box::new(Argument::String)))
+        .arg(Argument::Optional(Box::new(Argument::Choice(&["channel", "role", "user"]))))
         .arg(Argument::Optional(Box::new(Argument::String)))
         .description("blacklist a command from being used in a channel, by a role or by a user - whitelist overrides blacklist")
         .usage("[add|remove|list] [command] [channel|role|user] [id]")
-        .example("caption channel 1099116247364407337")
+        .example("add caption channel 1099116247364407337")
+        .example("remove caption channel 1099116247364407337")
+        .example("list")
         .category(CATEGORY_NAME)
-        .disable()
         .build();
     pub static ref WHITELIST_COMMAND: Command = CommandBuilder::new("whitelist")
         .availability(CommandAvailability::GuildOwner)
         .arg(Argument::Choice(&["add", "list", "remove"]))
         .arg(Argument::Optional(Box::new(Argument::String)))
-        .arg(Argument::Optional(Box::new(Argument::String)))
+        .arg(Argument::Optional(Box::new(Argument::Choice(&["channel", "role", "user"]))))
         .arg(Argument::Optional(Box::new(Argument::String)))
         .description("whitelist a command to be used in a channel, by a role or by a user - whitelist overrides blacklist")
         .usage("[add|remove|list] [command] [channel|role|user] [id]")
@@ -636,6 +638,7 @@ pub async fn run_rust_command(
         "run" => rust::run_binary(&context.assyst.reqwest_client, code, channel, opt).await,
         "bench" => rust::run_benchmark(&context.assyst.reqwest_client, code).await,
         "miri" => rust::run_miri(&context.assyst.reqwest_client, code, channel, opt).await,
+        "clippy" => rust::run_clippy(&context.assyst.reqwest_client, code, channel, opt).await,
         "asm" => rust::run_godbolt(&context.assyst.reqwest_client, code).await,
         _ => unreachable!(),
     }?;
@@ -1227,16 +1230,75 @@ pub async fn run_blacklist_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
-    // args: command|all,role
-    let subcommand = args[0].as_text();
-    let command = args[1].as_text();
-
-
-    let r#type = args[2].as_text();
-    let id = args[3].as_text();
-
     // safe to unwrap because dm commands dont work
     let guild_id = context.message.guild_id.unwrap().get();
+
+    // args: list|add|remove,command|all,role|channel|user,id
+    let subcommand = args[0].as_choice();
+    match subcommand {
+        "list" => {
+           let guild_command_restrictions = context.assyst.database.list_guild_blacklists(guild_id).await?;
+           if guild_command_restrictions.len() == 0 {
+                context.reply_with_text("No blacklists in the current guild").await?;
+                return Ok(())
+           }
+           let mut formatted: Vec<String> = vec![];
+           for i in guild_command_restrictions {
+                formatted.push(format!("Command {}: Deny {} with ID {}", i.command_name, i.r#type, i.id));
+           }
+           let out = formatted.join("\n");
+           context.reply_with_text(format!("{} You can filter by type by doing `list [user|role|channel] <id>` or `list command [command name]`", codeblock(&out, "js"))).await?;
+           return Ok(());
+        },
+        "add" => {
+            let command = args[1].maybe_text().context("No command provided")?;
+            let r#type = args[2].maybe_choice().context("No ID type (role,channel,user) provided")?;
+            let id = args[3].maybe_text().context("No ID provided")?;
+            let id = id.parse::<u64>()?;
+            
+            // validate that the provided id exists for the provided type
+            match r#type {
+                "channel" => {
+                    let channels = context.assyst.http.guild_channels(Id::new(guild_id)).await?.model().await?;
+                    if !channels.iter().map(|x| x.id.get()).collect::<Vec<u64>>().contains(&id) {
+                        bail!("No channel exists with this ID in this guild");
+                    }
+                },
+                "role" => {
+                    let roles = context.assyst.http.roles(Id::new(guild_id)).await?.model().await?;
+                    if !roles.iter().map(|x| x.id.get()).collect::<Vec<u64>>().contains(&id) {
+                        bail!("No role exists with this ID in this guild");
+                    }
+                },
+                "user" => {
+                    let user = context.assyst.http.guild_member(Id::new(guild_id), Id::new(id)).await;
+                    if user.is_err() {
+                        bail!("No user exists with this ID in this guild");
+                    }
+                },
+                _ => bail!("r#type not role, user, or channel")
+            }
+
+            // check if this exact blacklist already exists
+            let guild_command_restrictions = context.assyst.database.list_guild_blacklists(guild_id).await?;
+            for i in guild_command_restrictions {
+                if i.allow_or_block == "block".to_owned() 
+                    && i.command_name == command
+                    && i.id as u64 == id
+                    && i.r#type == r#type {
+                        bail!("This blacklist already exists in this guild")
+                    }
+            }
+
+            context.assyst.database.add_guild_specific_blacklist(guild_id, command, r#type, id).await?;
+            context.reply_with_text("Successfully added blacklist").await?;
+            return Ok(());
+        },
+        "remove" => {
+
+        },
+        _ => bail!("subcommand not add, remove, or list")
+    }
 
     context
         .reply_with_text("Successfully blacklisted user")

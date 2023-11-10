@@ -9,3 +9,4 @@ members = [
     "assyst-database",
     "assyst-common"
 ]
+resolver = "2"
