@@ -89,6 +89,7 @@ lazy_static! {
     pub static ref HELP_COMMAND: Command = CommandBuilder::new("help")
         .alias("h")
         .alias("commands")
+        .alias("cmds")
         .arg(Argument::Optional(Box::new(Argument::String)))
         .public()
         .description("get help")
@@ -755,13 +756,21 @@ pub async fn run_top_commands_command(
     args: Vec<ParsedArgument>,
     _flags: ParsedFlags,
 ) -> CommandResult {
+    let diff_lock = context.assyst.command_usage_diff.lock().await;
+
     if args[0].is_nothing() {
         let top_commands = context.assyst.database.get_command_usage_stats().await?;
 
         let top_commands_formatted_raw: Vec<(&str, String)> = top_commands
             .iter()
             .take(20)
-            .map(|t| (&t.command_name[..], t.uses.to_string()))
+            .map(|t|  { 
+                let cmd_diff = diff_lock.iter().find(|n| n.0 == t.command_name)
+                    .cloned()
+                    .unwrap_or(("Unknown".to_owned(), 0))
+                    .1;
+                (&t.command_name[..], format!("{} ({}/hr)", t.uses, cmd_diff)) 
+            })
             .collect::<Vec<_>>();
 
         let top_commands_formatted = top_commands_formatted_raw
@@ -788,10 +797,14 @@ pub async fn run_top_commands_command(
                 .get_command_usage_stats_for(cmd_name)
                 .await?;
 
+            let cmd_diff = diff_lock.iter().find(|n| n.0 == cmd_name)
+                .cloned()
+                .unwrap_or(("Unknown".to_owned(), 0));
+
             context
                 .reply_with_text(format!(
-                    "Command `{}` been used **{}** times.",
-                    cmd_name, data.uses
+                    "Command `{}` been used **{}** times. ({}/hr)",
+                    cmd_name, data.uses, cmd_diff.1
                 ))
                 .await?;
         } else {
