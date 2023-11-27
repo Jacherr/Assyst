@@ -767,9 +767,12 @@ pub async fn run_top_commands_command(
             .map(|t|  { 
                 let cmd_diff = diff_lock.iter().find(|n| n.0 == t.command_name)
                     .cloned()
-                    .unwrap_or(("Unknown".to_owned(), 0))
+                    .unwrap_or(("Unknown".to_owned(), vec![(0, Instant::now())]))
                     .1;
-                (&t.command_name[..], format!("{} ({}/hr)", t.uses, cmd_diff)) 
+                let min = cmd_diff.first().unwrap();
+                let max = cmd_diff.last().unwrap();
+                let diff = max.0 - min.0;
+                (&t.command_name[..], format!("{} ({}/hr)", t.uses, diff)) 
             })
             .collect::<Vec<_>>();
 
@@ -799,12 +802,16 @@ pub async fn run_top_commands_command(
 
             let cmd_diff = diff_lock.iter().find(|n| n.0 == cmd_name)
                 .cloned()
-                .unwrap_or(("Unknown".to_owned(), 0));
+                .unwrap_or(("Unknown".to_owned(), vec![(0, Instant::now())]))
+                .1;
+            let min = cmd_diff.first().unwrap();
+            let max = cmd_diff.last().unwrap();
+            let diff = max.0 - min.0;
 
             context
                 .reply_with_text(format!(
                     "Command `{}` been used **{}** times. ({}/hr)",
-                    cmd_name, data.uses, cmd_diff.1
+                    cmd_name, data.uses, diff
                 ))
                 .await?;
         } else {

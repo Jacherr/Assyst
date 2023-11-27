@@ -1,9 +1,17 @@
 use std::sync::Arc;
 
-use crate::{assyst::Assyst, logger, rest::{ServiceStatus, get_filer_stats, FilerStats}, util};
+use crate::{
+    assyst::Assyst,
+    logger,
+    rest::{get_filer_stats, FilerStats, ServiceStatus},
+    util,
+};
 use prometheus::{register_gauge, register_int_gauge_vec};
 use std::time::Duration;
+use std::time::Instant;
 use tokio::time::sleep;
+
+static COMMAND_RATE_SAMPLE_TIME: u64 = 60 * 60;
 
 pub fn init_metrics_collect_loop(assyst: Arc<Assyst>) -> anyhow::Result<()> {
     let memory_counter = register_gauge!("memory_usage", "Memory usage in MB")?;
@@ -16,20 +24,34 @@ pub fn init_metrics_collect_loop(assyst: Arc<Assyst>) -> anyhow::Result<()> {
 
     tokio::spawn(async move {
         loop {
-            // 1 hour
+            sleep(Duration::from_secs(60 * 1)).await;
             let command_uses = a2.database.get_command_usage_stats().await.unwrap();
-            sleep(Duration::from_secs(60 * 60)).await;
-            let new_command_uses = a2.database.get_command_usage_stats().await.unwrap();
 
-            let mut diff: Vec<(String, usize)> = vec![];
-            for i in new_command_uses {
-                let old_command_usage = command_uses.iter().find(|x| x.command_name == i.command_name);
-                if let Some(n) = old_command_usage {
-                    diff.push((n.command_name.clone(), i.uses as usize - n.uses as usize));
+            let mut diff = a2.command_usage_diff.lock().await;
+            for i in command_uses {
+                if let Some(diff) = diff.iter_mut().find(|d| d.0 == i.command_name) {
+                    diff.1
+                        .push((i.uses as usize, Instant::now()));
+                    let mut to_remove = vec![];
+                    for (pos, entry) in diff.1.iter().enumerate() {
+                        // remove old entries
+                        if Instant::now().duration_since(entry.1).as_secs()
+                            > COMMAND_RATE_SAMPLE_TIME
+                        {
+                            to_remove.push(pos);
+                        }
+                    }
+                    for i in to_remove {
+                        diff.1.remove(i);
+                    }
+                    diff.1.sort_by(|a, b| a.0.cmp(&b.0));
+                } else {
+                    diff.push((
+                        i.command_name,
+                        vec![(i.uses as usize, Instant::now())],
+                    ));
                 }
             }
-
-            *a2.command_usage_diff.lock().await = diff;
         }
     });
 
@@ -89,7 +111,10 @@ pub fn init_metrics_collect_loop(assyst: Arc<Assyst>) -> anyhow::Result<()> {
             let counter = cache_size.with_label_values(&["disabled_commands"]);
             counter.set(disabled_commands_size as i64);
 
-            let filer_stats = get_filer_stats(assyst.clone()).await.unwrap_or(FilerStats { count: 0, size_bytes: 0 });
+            let filer_stats = get_filer_stats(assyst.clone()).await.unwrap_or(FilerStats {
+                count: 0,
+                size_bytes: 0,
+            });
             assyst.metrics.set_cdn_files(filer_stats.count as i64);
             assyst.metrics.set_cdn_size(filer_stats.size_bytes as i64);
         }

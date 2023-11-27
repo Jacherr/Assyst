@@ -123,7 +123,7 @@ pub struct Assyst {
     pub started_at: u64,
     pub commands_executed: AtomicU64,
     pub healthcheck_result: Mutex<(Instant, Vec<HealthcheckResult>)>,
-    pub command_usage_diff: Mutex<Vec<(String, usize)>>,
+    pub command_usage_diff: Mutex<Vec<(String, Vec<(usize, Instant)>)>>,
     cache_tx: UnboundedSender<(Sender<CacheResponseInner>, CacheRequestData)>,
     wsi_tx: UnboundedSender<(Sender<JobResult>, FifoSend, usize)>,
 }
