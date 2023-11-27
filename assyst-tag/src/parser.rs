@@ -135,9 +135,17 @@ impl<'a> Parser<'a> {
     ///
     /// The returned parser shares the same limits and variables with `other`
     pub fn from_parent(input: &'a [u8], other: &Self) -> Self {
+        Self::from_parent_with_args(input, other, other.args)
+    }
+
+    /// Creates a parser with shared state from the parent parser.
+    /// Allows changing the args for this specific parser
+    ///
+    /// The returned parser shares the same limits and variables with `other`
+    pub fn from_parent_with_args(input: &'a [u8], other: &Self, args: &'a [&'a str]) -> Self {
         Self {
             input,
-            args: other.args,
+            args,
             idx: 0,
             state: other.state.clone(),
             rng: rand::thread_rng(),
@@ -337,7 +345,7 @@ impl<'a> Parser<'a> {
         match name {
             "repeat" => subtags::repeat(args),
             "range" => subtags::range(self, args),
-            "eval" => subtags::eval(self, args),
+            "eval" => subtags::eval(self, &args),
             "tryarg" => subtags::tryarg(self, args),
             "arg" => subtags::arg(self, args),
             "args" => subtags::args(self),
@@ -369,6 +377,7 @@ impl<'a> Parser<'a> {
             "mention" => subtags::mention(self, args),
             "idof" => subtags::idof(self, args),
             "userid" => subtags::userid(self),
+            "tag" => subtags::tag(self, args),
             _ => Err(anyhow!("Unknown subtag: {name}")),
         }
     }

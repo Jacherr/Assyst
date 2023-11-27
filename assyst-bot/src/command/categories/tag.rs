@@ -6,6 +6,7 @@ use assyst_common::{
     eval::FakeEvalImageResponse,
     util::{mention_to_id, UserId},
 };
+use assyst_database::Tag;
 use assyst_tag as tag;
 use lazy_static::lazy_static;
 use std::fmt::Write;
@@ -480,6 +481,18 @@ impl tag::Context for TagContext {
             Ok(util::format_tag(&user))
         } else {
             Ok(util::format_tag(&self.ccx.message.author))
+        }
+    }
+    fn get_tag_contents(&self, tag: &str) -> anyhow::Result<String> {
+        let guild_id = self.ccx.message.guild_id.unwrap().get();
+        let tag = self
+            .tokio
+            .block_on(async { self.ccx.assyst.database.get_tag(guild_id as i64, tag).await });
+
+        match tag {
+            Ok(Some(Tag { data, .. })) => Ok(data),
+            Ok(None) => Err(anyhow!("Tag not found")),
+            Err(e) => Err(e.into()),
         }
     }
 }
