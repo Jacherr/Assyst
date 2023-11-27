@@ -18,7 +18,7 @@ pub fn init_metrics_collect_loop(assyst: Arc<Assyst>) -> anyhow::Result<()> {
         loop {
             // 1 hour
             let command_uses = a2.database.get_command_usage_stats().await.unwrap();
-            sleep(Duration::from_secs(60 * 1000)).await;
+            sleep(Duration::from_secs(60 * 60)).await;
             let new_command_uses = a2.database.get_command_usage_stats().await.unwrap();
 
             let mut diff: Vec<(String, usize)> = vec![];
