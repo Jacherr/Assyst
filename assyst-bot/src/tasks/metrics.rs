@@ -12,6 +12,26 @@ pub fn init_metrics_collect_loop(assyst: Arc<Assyst>) -> anyhow::Result<()> {
     let cache_size = register_int_gauge_vec!("cache_sizes", "Cache sizes", &["cache"])?;
 
     let a = assyst.clone();
+    let a2 = assyst.clone();
+
+    tokio::spawn(async move {
+        loop {
+            // 1 hour
+            let command_uses = a2.database.get_command_usage_stats().await.unwrap();
+            sleep(Duration::from_secs(60 * 1000)).await;
+            let new_command_uses = a2.database.get_command_usage_stats().await.unwrap();
+
+            let mut diff: Vec<(String, usize)> = vec![];
+            for i in new_command_uses {
+                let old_command_usage = command_uses.iter().find(|x| x.command_name == i.command_name);
+                if let Some(n) = old_command_usage {
+                    diff.push((n.command_name.clone(), i.uses as usize - n.uses as usize));
+                }
+            }
+
+            *a2.command_usage_diff.lock().await = diff;
+        }
+    });
 
     tokio::spawn(async move {
         loop {

@@ -123,6 +123,7 @@ pub struct Assyst {
     pub started_at: u64,
     pub commands_executed: AtomicU64,
     pub healthcheck_result: Mutex<(Instant, Vec<HealthcheckResult>)>,
+    pub command_usage_diff: Mutex<Vec<(String, usize)>>,
     cache_tx: UnboundedSender<(Sender<CacheResponseInner>, CacheRequestData)>,
     wsi_tx: UnboundedSender<(Sender<JobResult>, FifoSend, usize)>,
 }
@@ -166,6 +167,7 @@ impl Assyst {
             started_at: get_current_millis(),
             commands_executed: AtomicU64::new(0),
             healthcheck_result: Mutex::new((Instant::now(), vec![])),
+            command_usage_diff: Mutex::new(vec![]),
             cache_tx,
             wsi_tx,
         };
@@ -185,23 +187,23 @@ impl Assyst {
         assyst
     }
 
-    pub async fn blacklist(&self, user_id: u64) -> Result<bool, sqlx::Error> {
+    pub async fn blacklist(&self, user_id: u64) -> Result<bool, anyhow::Error> {
         let is_new = self.blacklist.write().await.insert(user_id);
 
         // only actually write to db if the user wasn't already blacklisted
         if is_new {
-            self.database.add_blacklist(user_id).await.map(|_| true)
+            Ok(self.database.add_blacklist(user_id).await.map(|_| true)?)
         } else {
             Ok(false)
         }
     }
 
-    pub async fn unblacklist(&self, user_id: u64) -> Result<bool, sqlx::Error> {
+    pub async fn unblacklist(&self, user_id: u64) -> Result<bool, anyhow::Error> {
         let is_removed = self.blacklist.write().await.remove(&user_id);
 
         // sync with db if it was found
         if is_removed {
-            self.database.remove_blacklist(user_id).await.map(|_| true)
+            Ok(self.database.remove_blacklist(user_id).await.map(|_| true)?)
         } else {
             Ok(false)
         }
@@ -211,7 +213,7 @@ impl Assyst {
         self.blacklist.read().await.contains(&user_id)
     }
 
-    pub async fn initialize_blacklist(&self) -> Result<(), sqlx::Error> {
+    pub async fn initialize_blacklist(&self) -> Result<(), anyhow::Error> {
         let remote_blacklist = self.database.get_blacklisted_users().await?;
         let blacklist = HashSet::from_iter(remote_blacklist.into_iter().map(|(u,)| u as u64));
         *self.blacklist.write().await = blacklist;

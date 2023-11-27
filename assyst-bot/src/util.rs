@@ -483,7 +483,7 @@ pub fn bytes_to_readable(bytes: usize) -> String {
 
 /// This function will remove a free voter request if the user has any
 /// and are not a patron!
-pub async fn get_wsi_request_tier(assyst: &Assyst, user_id: UserId) -> Result<usize, sqlx::Error> {
+pub async fn get_wsi_request_tier(assyst: &Assyst, user_id: UserId) -> Result<usize, anyhow::Error> {
     let patrons = assyst.patrons.read().await;
     let patron = patrons.iter().find(|i| i.user_id == user_id);
     if let Some(p) = patron {

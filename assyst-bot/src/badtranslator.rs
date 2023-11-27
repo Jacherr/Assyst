@@ -279,11 +279,11 @@ impl BadTranslator {
 async fn register_badtranslated_message_to_db(
     assyst: &Assyst,
     guild_id: u64,
-) -> Result<(), sqlx::Error> {
-    assyst
+) -> Result<(), anyhow::Error> {
+    Ok(assyst
         .database
         .increment_badtranslator_messages(guild_id)
-        .await
+        .await?)
 }
 
 fn is_webhook(message: &MessageCreate) -> bool {

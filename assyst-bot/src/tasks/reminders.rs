@@ -38,7 +38,7 @@ async fn process_single_reminder(
 async fn process_reminders(
     assyst: &Arc<Assyst>,
     reminders: Vec<DatabaseReminder>,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), anyhow::Error> {
     if reminders.len() < 1 {
         return Ok(());
     }
@@ -50,7 +50,7 @@ async fn process_reminders(
     }
 
     // Once we're done, delete them from database
-    assyst.database.delete_reminders(reminders).await
+    Ok(assyst.database.delete_reminders(reminders).await?)
 }
 
 pub fn init_reminder_loop(assyst: Arc<Assyst>) {

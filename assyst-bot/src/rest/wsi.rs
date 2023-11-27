@@ -220,7 +220,7 @@ pub enum RequestError {
     Reqwest(Error),
     Serde(serde_json::Error),
     Wsi(WsiError),
-    Sqlx(sqlx::Error),
+    Sqlx(anyhow::Error),
 }
 impl From<ProcessingError> for RequestError {
     fn from(e: ProcessingError) -> Self {
