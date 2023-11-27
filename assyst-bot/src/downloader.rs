@@ -1,5 +1,5 @@
 use core::fmt;
-use std::time::{Duration, Instant};
+use std::{time::{Duration, Instant}, sync::atomic::{AtomicUsize, Ordering}};
 
 use assyst_common::config::Config;
 use bytes::Bytes;
@@ -7,6 +7,8 @@ use futures::{Stream, StreamExt};
 use reqwest::{Client, StatusCode, Url};
 
 use crate::{assyst::Assyst, rest::ServiceStatus};
+
+static PROXY_NUM: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Debug)]
 pub enum DownloadError {
@@ -34,6 +36,12 @@ impl fmt::Display for DownloadError {
 
 impl std::error::Error for DownloadError {}
 
+fn get_next_proxy(config: &Config) -> String {
+    let len = config.url.proxy.len();
+    let next = &config.url.proxy[PROXY_NUM.fetch_add(1, Ordering::Relaxed) % len];
+    next.to_string()
+}
+
 async fn download_with_proxy(
     client: &Client,
     config: &Config,
@@ -41,7 +49,7 @@ async fn download_with_proxy(
     limit: usize,
 ) -> Result<impl Stream<Item = Result<Bytes, reqwest::Error>>, DownloadError> {
     let resp = client
-        .get(&format!("{}/proxy", config.url.proxy))
+        .get(&format!("{}/proxy", get_next_proxy(config)))
         .query(&[("url", url), ("limit", &limit.to_string())])
         .timeout(Duration::from_secs(10))
         .send()
@@ -90,8 +98,17 @@ pub async fn download_content(
     url: &str,
     limit: usize,
 ) -> Result<Vec<u8>, DownloadError> {
-    const WHITLISTED_DOMAINS: [&str; 8] =
-        ["tenor.com", "jacher.io", "discordapp.com", "discordapp.net", "wuk.sh", "gyazo.com", "cdn.discordapp.com", "media.discordapp.net"];
+    const WHITLISTED_DOMAINS: [&str; 9] = [
+        "tenor.com",
+        "jacher.io",
+        "discordapp.com",
+        "discordapp.net",
+        "wuk.sh",
+        "gyazo.com",
+        "cdn.discordapp.com",
+        "media.discordapp.net",
+        "notsobot.com",
+    ];
 
     let config = &assyst.config;
     let client = &assyst.reqwest_client;
@@ -122,7 +139,7 @@ pub async fn healthcheck(assyst: &Assyst) -> ServiceStatus {
     let result = (|| async {
         assyst
             .reqwest_client
-            .get(&format!("{}/healthcheck", &assyst.config.url.proxy))
+            .get(&format!("{}/healthcheck", get_next_proxy(&assyst.config)))
             .send()
             .await?
             .error_for_status()?;

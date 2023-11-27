@@ -60,7 +60,7 @@ pub struct Url {
     pub wsi: Box<str>,
     pub codesprint: Box<str>,
     pub cdn: Box<str>,
-    pub proxy: Box<str>,
+    pub proxy: Vec<Box<str>>,
     pub eval: Box<str>,
     pub wombo: Box<str>,
 }
