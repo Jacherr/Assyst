@@ -16,7 +16,11 @@ fn not_implemented<T>() -> anyhow::Result<T> {
 /// It contains methods that can be provided by the caller (normally the bot crate).
 pub trait Context {
     /// Executes provided JavaScript code and returns the result (string or image)
-    fn execute_javascript(&self, code: &str, args: Vec<String>) -> anyhow::Result<FakeEvalImageResponse>;
+    fn execute_javascript(
+        &self,
+        code: &str,
+        args: Vec<String>,
+    ) -> anyhow::Result<FakeEvalImageResponse>;
     /// Returns the URL of the last attachment
     fn get_last_attachment(&self) -> anyhow::Result<String>;
     /// Returns the avatar URL of the provided user, or the message author
@@ -31,10 +35,16 @@ pub trait Context {
     fn user_id(&self) -> anyhow::Result<u64>;
     /// Returns the tag of the provided ID
     fn user_tag(&self, id: Option<u64>) -> anyhow::Result<String>;
+    /// Loads the contents of a tag
+    fn get_tag_contents(&self, tag: &str) -> anyhow::Result<String>;
 }
 
 impl Context for NopContext {
-    fn execute_javascript(&self, _code: &str, _args: Vec<String>) -> anyhow::Result<FakeEvalImageResponse> {
+    fn execute_javascript(
+        &self,
+        _code: &str,
+        _args: Vec<String>,
+    ) -> anyhow::Result<FakeEvalImageResponse> {
         not_implemented()
     }
 
@@ -65,10 +75,18 @@ impl Context for NopContext {
     fn user_tag(&self, _id: Option<u64>) -> anyhow::Result<String> {
         not_implemented()
     }
+
+    fn get_tag_contents(&self, _: &str) -> anyhow::Result<String> {
+        not_implemented()
+    }
 }
 
 impl Context for &dyn Context {
-    fn execute_javascript(&self, code: &str, args: Vec<String>) -> anyhow::Result<FakeEvalImageResponse> {
+    fn execute_javascript(
+        &self,
+        code: &str,
+        args: Vec<String>,
+    ) -> anyhow::Result<FakeEvalImageResponse> {
         (**self).execute_javascript(code, args)
     }
 
@@ -98,5 +116,9 @@ impl Context for &dyn Context {
 
     fn user_tag(&self, user_id: Option<u64>) -> anyhow::Result<String> {
         (**self).user_tag(user_id)
+    }
+
+    fn get_tag_contents(&self, tag: &str) -> anyhow::Result<String> {
+        (**self).get_tag_contents(tag)
     }
 }

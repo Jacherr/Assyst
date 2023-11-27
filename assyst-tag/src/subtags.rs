@@ -45,7 +45,7 @@ pub fn range(parser: &mut Parser, args: Vec<String>) -> anyhow::Result<String> {
 }
 
 #[rustfmt::skip]
-pub fn eval(parser: &mut Parser, args: Vec<String>) -> anyhow::Result<String> {
+pub fn eval(parser: &mut Parser, args: &[String]) -> anyhow::Result<String> {
     let text = args.first().context("Missing input argument")?;
 
     ensure!(parser.depth() < MAX_DEPTH, "Maximum recursion depth reached ({MAX_DEPTH})");
@@ -76,7 +76,7 @@ pub fn tryarg(parser: &Parser, args: Vec<String>) -> anyhow::Result<String> {
         .map(|x| (**x).to_owned())
         .unwrap_or_else(String::new);
 
-    Ok(arg.to_string())
+    Ok(arg)
 }
 
 pub fn args(parser: &Parser) -> anyhow::Result<String> {
@@ -187,9 +187,11 @@ pub fn min(args: Vec<String>) -> anyhow::Result<String> {
 }
 
 pub fn choose(parser: &mut Parser, args: Vec<String>) -> anyhow::Result<String> {
+    if args.is_empty() {
+        bail!("Nothing to choose from!");
+    }
+
     let idx = parser.rng().gen_range(0..args.len());
-    // Generated index is always in bounds, except when args.is_empty()
-    // So if this returns None, it means that there are no arguments
     args.get(idx).cloned().context("No arguments present")
 }
 
@@ -324,7 +326,14 @@ pub fn javascript(parser: &mut Parser, args: Vec<String>) -> anyhow::Result<Stri
     ensure_request_limit!(parser);
 
     let code = args.first().context("Missing code argument")?;
-    let result = parser.context().execute_javascript(code, parser.args().iter().map(|x| x.to_string()).collect::<Vec<_>>())?;
+    let result = parser.context().execute_javascript(
+        code,
+        parser
+            .args()
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<_>>(),
+    )?;
 
     match result {
         FakeEvalImageResponse::Image(img, ty) => {
@@ -352,7 +361,7 @@ pub fn download(parser: &mut Parser, args: Vec<String>) -> anyhow::Result<String
     ensure_request_limit!(parser);
 
     let url = args.first().context("Missing URL argument")?;
-    parser.context().download(url)
+    parser.context().download(url.trim())
 }
 
 pub fn channelid(parser: &Parser) -> anyhow::Result<String> {
@@ -367,6 +376,22 @@ pub fn idof(parser: &Parser, args: Vec<String>) -> anyhow::Result<String> {
     let mention = args.first().context("Missing mention argument")?;
     match assyst_common::util::mention_to_id(mention) {
         Some(id) => Ok(id.to_string()),
-        None => userid(parser)
+        None => userid(parser),
     }
+}
+
+pub fn tag(parser: &mut Parser, args: Vec<String>) -> anyhow::Result<String> {
+    let [name, args @ ..] = args.as_slice() else {
+        bail!("Missing tag name argument");
+    };
+    ensure!(
+        parser.depth() < MAX_DEPTH,
+        "Maximum recursion depth reached ({MAX_DEPTH})"
+    );
+
+    let tag_content = parser.context().get_tag_contents(name)?;
+
+    let args = args.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+
+    Parser::from_parent_with_args(tag_content.as_bytes(), parser, &args).parse_segment(true)
 }

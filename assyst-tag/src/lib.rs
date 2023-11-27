@@ -53,4 +53,14 @@ mod tests {
             Err(e) => println!("Error: {:?}", e),
         }
     }
+
+    #[test]
+    fn tags_invoke_each_other() {
+        let input = "tag content: {tag:wtf|a|b}!";
+        let segment = parse(input, &["h", "o"], NopContext);
+        match segment {
+            Ok(r) => println!("{r:?}"),
+            Err(e) => println!("Error: {:?}", e),
+        }
+    }
 }
