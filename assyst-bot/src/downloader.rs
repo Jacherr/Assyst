@@ -98,7 +98,7 @@ pub async fn download_content(
     url: &str,
     limit: usize,
 ) -> Result<Vec<u8>, DownloadError> {
-    const WHITLISTED_DOMAINS: [&str; 9] = [
+    const WHITLISTED_DOMAINS: &[&str] = &[
         "tenor.com",
         "jacher.io",
         "discordapp.com",
@@ -108,6 +108,8 @@ pub async fn download_content(
         "cdn.discordapp.com",
         "media.discordapp.net",
         "notsobot.com",
+        "twimg.com",
+        "cdninstagram.com"
     ];
 
     let config = &assyst.config;
@@ -115,6 +117,8 @@ pub async fn download_content(
 
     let url_p = Url::parse(url).map_err(DownloadError::Url)?;
     let host = url_p.host_str().ok_or(DownloadError::NoHost)?;
+
+    println!("{url}");
 
     let is_whitelisted = WHITLISTED_DOMAINS.iter().any(|d| host.contains(d));
 
