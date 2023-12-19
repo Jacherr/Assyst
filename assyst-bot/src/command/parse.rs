@@ -141,9 +141,20 @@ pub mod image_lookups {
 
     use crate::util::regexes;
     use assyst_common::util::UserId;
+    use serde::Deserialize;
     use twilight_model::channel::{message::sticker::StickerFormatType, Message};
 
-    pub fn emoji(argument: &str) -> Option<String> {
+    #[derive(Deserialize)]
+    struct TwemojiVendorImage {
+        pub twitter: String
+    }
+
+    #[derive(Deserialize)]
+    struct TwemojiLookup {
+        pub vendor_images: TwemojiVendorImage
+    }
+
+    pub async fn emoji(argument: &str) -> Option<String> {
         let unicode_emoji = emoji::lookup_by_glyph::lookup(argument);
         if let Some(e) = unicode_emoji {
             let codepoint = e
@@ -152,8 +163,10 @@ pub mod image_lookups {
                 .replace(" ", "-")
                 .replace("-fe0f", "");
 
-            let emoji_url = format!("https://derpystuff.gitlab.io/webstorage3/container/twemoji-JedKxRr7RNYrgV9Sauy8EGAu/{}.png", codepoint);
-            return Some(emoji_url);
+            let emoji_url = format!("https://bignutty.gitlab.io/emojipedia-data/data/{}.json", codepoint);
+            let dl = reqwest::get(emoji_url).await.ok()?.json::<TwemojiLookup>().await.ok()?;     
+
+            return Some(dl.vendor_images.twitter);
         }
 
         let emoji_id = regexes::CUSTOM_EMOJI
@@ -278,7 +291,7 @@ pub mod image_lookups {
             return Some(Cow::Borrowed(embed.unwrap()));
         }
 
-        let emoji = self::emoji(&reply.content)?;
+        let emoji = self::emoji(&reply.content).await?;
         Some(Cow::Owned(emoji))
     }
 
@@ -371,7 +384,7 @@ pub mod subsections {
         }
 
         if try_url.is_none() {
-            try_url = image_lookups::emoji(argument).map(Cow::Owned);
+            try_url = image_lookups::emoji(argument).await.map(Cow::Owned);
         }
 
         if try_url.is_none() {

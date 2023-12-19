@@ -118,8 +118,6 @@ pub async fn download_content(
     let url_p = Url::parse(url).map_err(DownloadError::Url)?;
     let host = url_p.host_str().ok_or(DownloadError::NoHost)?;
 
-    println!("{url}");
-
     let is_whitelisted = WHITLISTED_DOMAINS.iter().any(|d| host.contains(d));
 
     if !config.url.proxy.is_empty() && !is_whitelisted {
