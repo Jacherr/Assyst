@@ -1,6 +1,6 @@
 use std::{convert::TryInto, sync::Arc, time::Duration, future::IntoFuture};
 
-use anyhow::{anyhow, ensure, Context as _};
+use anyhow::{anyhow, ensure, Context as _, bail};
 use assyst_common::{
     consts,
     eval::FakeEvalImageResponse,

@@ -334,16 +334,17 @@ impl ToString for ServiceStatus {
 pub struct HealthcheckResult {
     pub service: String,
     pub status: ServiceStatus,
+    pub error: String
 }
 impl HealthcheckResult {
-    pub fn new(service: String, status: ServiceStatus) -> Self {
-        Self { service, status }
+    pub fn new(service: String, status: ServiceStatus, error: String) -> Self {
+        Self { service, status, error }
     }
 
-    pub fn new_from_result<T, E>(service: &str, result: Result<T, E>, time: usize) -> Self {
+    pub fn new_from_result<T, E: ToString>(service: &str, result: Result<T, E>, time: usize) -> Self {
         match result {
-            Ok(_) => Self::new(service.to_string(), ServiceStatus::Online(time)),
-            Err(_) => Self::new(service.to_string(), ServiceStatus::Offline),
+            Ok(_) => Self::new(service.to_string(), ServiceStatus::Online(time), "".to_owned()),
+            Err(e) => { Self::new(service.to_string(), ServiceStatus::Offline, e.to_string())} ,
         }
     }
 }
@@ -461,7 +462,7 @@ pub async fn healthcheck(assyst: Arc<Assyst>) -> Vec<HealthcheckResult> {
     ));
 
     let status = downloader::healthcheck(&assyst).await;
-    results.push(HealthcheckResult::new("Content Proxy".into(), status));
+    results.push(HealthcheckResult::new("Content Proxy".into(), status, "".to_owned()));
 
     let timer = Instant::now();
     let cobalt_result = download_video_from_cobalt(assyst.clone(), "https://www.youtube.com/watch?v=tPEE9ZwTmy0", true, None).await;
