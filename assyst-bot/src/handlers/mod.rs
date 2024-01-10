@@ -1,6 +1,6 @@
 use std::num::NonZeroU16;
 
-use twilight_model::{channel::{Message, message::{MessageType, Embed, embed::{EmbedThumbnail, EmbedImage}}, Attachment}, id::{Id, marker::{GuildMarker, ChannelMarker, ApplicationMarker, MessageMarker, UserMarker, AttachmentMarker}}, util::Timestamp, user::User};
+use twilight_model::{channel::{Message, message::{MessageType, Embed, embed::{EmbedThumbnail, EmbedImage}}, Attachment}, id::{Id, marker::{GuildMarker, ChannelMarker, ApplicationMarker, MessageMarker, UserMarker, AttachmentMarker, WebhookMarker}}, util::Timestamp, user::User};
 use serenity::{model::{channel::Message as SerMessage, Timestamp as SerTimestamp}, all::{User as SerUser, MessageUpdateEvent, Attachment as SerAttachment, Embed as SerEmbed, EmbedThumbnail as SerEmbedThumbnail, EmbedImage as SerEmbedImage}};
 
 pub mod message_create;
@@ -70,7 +70,7 @@ pub fn ser_message_to_twl_message(ser: SerMessage) -> Message {
         sticker_items: vec![],
         timestamp: ser_timestamp_to_twl_timestamp(ser.timestamp),
         tts: false,
-        webhook_id: None,
+        webhook_id: ser.webhook_id.map(|x| Id::<WebhookMarker>::new(x.get())),
         components: vec![],
         thread: None,
         role_subscription_data: None
