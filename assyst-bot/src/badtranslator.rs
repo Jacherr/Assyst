@@ -12,7 +12,7 @@ use std::{borrow::Cow, time::Duration};
 use tokio::sync::RwLock;
 use twilight_http::error::ErrorType;
 use twilight_model::gateway::payload::incoming::MessageCreate;
-use twilight_model::channel::Webhook;
+use twilight_model::channel::{Webhook, Message};
 
 mod flags {
     pub const DISABLED: u32 = 0x1;
@@ -162,7 +162,7 @@ impl BadTranslator {
     pub async fn handle_message(
         &self,
         assyst: &Assyst,
-        message: Box<MessageCreate>,
+        message: Box<Message>,
     ) -> anyhow::Result<()> {
         // We're assuming the caller has already made sure this is a valid channel
         // So we don't check if it's a BT channel again
@@ -286,11 +286,11 @@ async fn register_badtranslated_message_to_db(
         .await?)
 }
 
-fn is_webhook(message: &MessageCreate) -> bool {
+fn is_webhook(message: &Message) -> bool {
     message.author.system.unwrap_or(false) || message.webhook_id.is_some()
 }
 
-fn is_ratelimit_message(assyst: &Assyst, message: &MessageCreate) -> bool {
+fn is_ratelimit_message(assyst: &Assyst, message: &Message) -> bool {
     // TODO: check if message was sent by the bot itself
     message.content.contains(consts::BT_RATELIMIT_MESSAGE)
         && message.author.id.get() == assyst.config.bot_id

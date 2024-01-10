@@ -2,7 +2,7 @@
 
 use std::{
     rc::Rc,
-    sync::Arc,
+    sync::Arc, time::Duration,
 };
 
 use assyst_common::{
@@ -13,22 +13,37 @@ use assyst_common::{
     },
     ok_or_break,
 };
+use bincode::serialize;
 use futures_util::StreamExt;
 use tokio::{
     fs::remove_file,
     io::{AsyncWriteExt, BufWriter},
-    net::UnixListener,
-    sync::Mutex,
+    net::{UnixListener, UnixStream},
+    sync::{Mutex, mpsc::Sender}, time::sleep, spawn,
 };
 use twilight_gateway::{
     stream::{create_recommended, ShardMessageStream},
     Config as GatewayConfig, Intents, Message,
 };
-use twilight_http::Client;
+//use twilight_http::Client;
 use twilight_model::gateway::{
     payload::outgoing::update_presence::UpdatePresencePayload,
     presence::{Activity, ActivityType, Status},
 };
+
+use serenity::{async_trait, all::Event, gateway::ActivityData};
+use serenity::model::gateway::Ready;
+use serenity::prelude::*;
+
+
+struct Handler(Sender<Vec<u8>>);
+#[async_trait]
+impl RawEventHandler for Handler {
+    async fn raw_event(&self, _: Context, event: Event) {
+        let serialised = serde_json::to_string(&event).unwrap().as_bytes().to_owned();
+        let _ = self.0.send(serialised).await;
+    }
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<!> {
@@ -36,24 +51,8 @@ async fn main() -> anyhow::Result<!> {
 
     let config = Config::new();
 
-    let activity = Activity {
-        application_id: None,
-        assets: None,
-        created_at: None,
-        details: None,
-        emoji: None,
-        flags: None,
-        id: None,
-        instance: None,
-        kind: ActivityType::Playing,
-        name: format!("{}help | jacher.io/assyst", config.prefix.default),
-        party: None,
-        secrets: None,
-        state: None,
-        timestamps: None,
-        url: None,
-        buttons: Vec::new(),
-    };
+    let activity = ActivityData::playing("-help | jacher.io/assyst");
+    /* 
     let presence = UpdatePresencePayload::new(vec![activity], false, None, Status::Online)?;
     let http_client = Client::new(config.auth.discord.to_string());
     let gateway_config = GatewayConfig::builder(
@@ -75,7 +74,32 @@ async fn main() -> anyhow::Result<!> {
 
     loop {
         let _ = supply_connection(listener.clone(), stream.clone()).await;
-    }
+    }*/
+
+    let intents = GatewayIntents::GUILD_MESSAGES | GatewayIntents::GUILDS | GatewayIntents::MESSAGE_CONTENT;
+    let listener = UnixListener::bind(EVENT_PIPE)?;
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<Vec<u8>>(10);
+
+    spawn(async move {
+        loop {
+            let (stream, _) = listener.accept().await.unwrap();
+            let writer = Arc::new(Mutex::new(BufWriter::new(stream)));
+            while let Some(x) = rx.recv().await {
+                let mut lock = writer.lock().await;
+                ok_or_break!(lock.write_u8(gateway::OP_EVENT).await);
+                ok_or_break!(lock.write_u32(x.len() as u32).await);
+                ok_or_break!(lock.write_all(&x).await);
+                ok_or_break!(lock.flush().await);
+            }
+        }
+    });
+
+    let mut client =
+        Client::builder(&config.auth.discord, intents).raw_event_handler(Handler(tx)).activity(activity).await.expect("Err creating client");
+
+    let _ = client.start_autosharded().await;
+
+    loop {}
 }
 
 pub async fn supply_connection(

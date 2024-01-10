@@ -11,6 +11,7 @@ use assyst_common::{
     some_or_break, unwrap_enum_variant,
 };
 use bincode::{serialize, deserialize};
+use serenity::all::{GuildCreateEvent, GuildDeleteEvent, ReadyEvent};
 use tokio::{
     io::{AsyncWriteExt, AsyncReadExt},
     net::UnixStream,
@@ -116,19 +117,19 @@ pub async fn get_top_guilds(assyst: Arc<Assyst>) -> anyhow::Result<TopGuilds> {
     Ok(unwrap_enum_variant!(response, CacheResponseData::TopGuilds))
 }
 
-pub async fn get_new_guilds_from_ready(assyst: Arc<Assyst>, event: Ready) -> anyhow::Result<usize> {
+pub async fn get_new_guilds_from_ready(assyst: Arc<Assyst>, event: ReadyEvent) -> anyhow::Result<usize> {
     let request = CacheRequestData::SendReadyEvent(event.into());
     let response = run_cache_job(assyst, request).await?;
     Ok(unwrap_enum_variant!(response, CacheResponseData::TotalNewGuilds))
 }
 
-pub async fn handle_guild_create_event(assyst: Arc<Assyst>, event: GuildCreate) -> anyhow::Result<bool> {
+pub async fn handle_guild_create_event(assyst: Arc<Assyst>, event: GuildCreateEvent) -> anyhow::Result<bool> {
     let request = CacheRequestData::SendGuildCreate(event.into());
     let response = run_cache_job(assyst, request).await?;
     Ok(unwrap_enum_variant!(response, CacheResponseData::ShouldLogGuildCreate))
 }
 
-pub async fn handle_guild_delete_event(assyst: Arc<Assyst>, event: GuildDelete) -> anyhow::Result<bool> {
+pub async fn handle_guild_delete_event(assyst: Arc<Assyst>, event: GuildDeleteEvent) -> anyhow::Result<bool> {
     let request = CacheRequestData::SendGuildDelete(event.into());
     let response = run_cache_job(assyst, request).await?;
     Ok(unwrap_enum_variant!(response, CacheResponseData::ShouldLogGuildDelete))

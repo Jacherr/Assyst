@@ -26,6 +26,7 @@ use assyst_webserver::run as webserver_run;
 use bincode::deserialize;
 use caching::persistent_caching::get_guild_count;
 use handler::handle_event;
+use serenity::all::Event;
 use std::sync::Arc;
 use tokio::{
     io::{AsyncReadExt, BufReader},
@@ -97,30 +98,19 @@ async fn main() -> anyhow::Result<()> {
             gateway::OP_EVENT => {
                 assyst.metrics.add_event();
                 tokio::spawn(async move {
-                    let json = String::from_utf8_lossy(&data);
-                    let event = twilight_gateway::parse(
-                        json.to_string(),
-                        EventTypeFlags::GUILD_CREATE
-                            | EventTypeFlags::GUILD_DELETE
-                            | EventTypeFlags::MESSAGE_CREATE
-                            | EventTypeFlags::MESSAGE_DELETE
-                            | EventTypeFlags::MESSAGE_UPDATE
-                            | EventTypeFlags::READY
-                    );
+                    let event = serde_json::from_str::<Event>(&String::from_utf8_lossy(&data));
                     match event {
                         Ok(x) => {
-                            if let Some(x) = x {
-                                let res = handle_event(assyst_clone.clone(), x).await;
-                                match res {
-                                    Err(e) => {
-                                        logger::fatal(
-                                            assyst_clone.as_ref(),
-                                            &format!("Event error: {}", e.to_string()),
-                                        )
-                                        .await;
-                                    }
-                                    _ => {}
+                            let res = handle_event(assyst_clone.clone(), x).await;
+                            match res {
+                                Err(e) => {
+                                    logger::fatal(
+                                        assyst_clone.as_ref(),
+                                        &format!("Event error: {}", e.to_string()),
+                                    )
+                                    .await;
                                 }
+                                _ => {}
                             }
                         }
                         Err(_) => {}

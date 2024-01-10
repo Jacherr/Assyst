@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
+use serenity::all::{GuildCreateEvent, GuildDeleteEvent, ReadyEvent, Guild, UnavailableGuild};
 use twilight_model::{
     gateway::payload::incoming::{GuildCreate, GuildDelete, Ready},
-    guild::{Guild, UnavailableGuild},
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -23,9 +23,10 @@ impl From<UnavailableGuild> for ReadyGuild {
 pub struct ReadySend {
     pub guilds: Vec<ReadyGuild>,
 }
-impl From<Ready> for ReadySend {
-    fn from(ready: Ready) -> Self {
+impl From<ReadyEvent> for ReadySend {
+    fn from(ready: ReadyEvent) -> Self {
         let g = ready
+            .ready
             .guilds
             .into_iter()
             .map(|x| ReadyGuild::from(x))
@@ -40,11 +41,11 @@ pub struct GuildDeleteSend {
     pub id: u64,
     pub unavailable: bool,
 }
-impl From<GuildDelete> for GuildDeleteSend {
-    fn from(guild_delete: GuildDelete) -> Self {
+impl From<GuildDeleteEvent> for GuildDeleteSend {
+    fn from(guild_delete: GuildDeleteEvent) -> Self {
         GuildDeleteSend {
-            id: guild_delete.id.get(),
-            unavailable: guild_delete.unavailable,
+            id: guild_delete.guild.id.get(),
+            unavailable: guild_delete.guild.unavailable,
         }
     }
 }
@@ -55,12 +56,12 @@ pub struct GuildCreateSend {
     pub name: String,
     pub member_count: Option<u64>,
 }
-impl From<GuildCreate> for GuildCreateSend {
-    fn from(guild_create: GuildCreate) -> Self {
+impl From<GuildCreateEvent> for GuildCreateSend {
+    fn from(guild_create: GuildCreateEvent) -> Self {
         GuildCreateSend {
-            id: guild_create.id.get(),
-            name: guild_create.name.clone(),
-            member_count: guild_create.member_count,
+            id: guild_create.guild.id.get(),
+            name: guild_create.guild.name.clone(),
+            member_count: Some(guild_create.guild.member_count),
         }
     }
 }

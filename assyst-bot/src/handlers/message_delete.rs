@@ -1,13 +1,14 @@
 use crate::Assyst;
 use std::sync::Arc;
-use twilight_model::gateway::payload::incoming::MessageDelete;
+use serenity::all::MessageDeleteEvent;
+use twilight_model::{gateway::payload::incoming::MessageDelete, id::{marker::{MessageMarker, ChannelMarker}, Id}};
 
-pub async fn handle(assyst: Arc<Assyst>, message: MessageDelete) -> () {
+pub async fn handle(assyst: Arc<Assyst>, message: MessageDeleteEvent) -> () {
     let try_reply = assyst
         .replies
         .read()
         .await
-        .get_reply_from_invocation_id(message.id)
+        .get_reply_from_invocation_id(Id::<MessageMarker>::new(message.message_id.get()))
         .await;
     if let Some(reply) = try_reply {
         let mut lock = reply.lock().await;
@@ -16,7 +17,7 @@ pub async fn handle(assyst: Arc<Assyst>, message: MessageDelete) -> () {
             if let Some(r) = &lock.reply {
                 let _ = assyst
                     .http
-                    .delete_message(message.channel_id, r.id)
+                    .delete_message(Id::<ChannelMarker>::new(message.channel_id.get()), r.id)
                     .await;
             }
         }
