@@ -4,7 +4,7 @@ use reqwest::{Client, Error as ReqwestError};
 use serde::Deserialize;
 use std::error::Error;
 
-const API_BASE: &str = "https://bt.y21.workers.dev";
+const API_BASE: &str = "http://128.140.104.33:3001";
 const MAX_ATTEMPTS: u8 = 5;
 
 mod routes {

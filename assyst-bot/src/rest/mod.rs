@@ -8,9 +8,10 @@ use std::{
 use anyhow::bail;
 use assyst_common::{
     ansi::Ansi,
+    consts::ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES,
     eval::{FakeEvalBody, FakeEvalImageResponse, FakeEvalMessageData},
     filetype,
-    util::UserId, consts::ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES,
+    util::UserId,
 };
 use bytes::Bytes;
 use reqwest::{Client, ClientBuilder, Error, StatusCode};
@@ -24,7 +25,12 @@ use tokio::time::Instant;
 
 use std::error::Error as StdError;
 
-use crate::{assyst::Assyst, downloader::{self, download_content}, rest::wsi::run_wsi_job, util};
+use crate::{
+    assyst::Assyst,
+    downloader::{self, download_content},
+    rest::wsi::run_wsi_job,
+    util,
+};
 
 use self::rust::OptimizationLevel;
 
@@ -43,7 +49,7 @@ mod routes {
     use assyst_common::consts::BOT_ID;
 
     pub const COOL_TEXT: &str = "https://cooltext.com/PostChange";
-    pub const OCR: &str = "http://ocr.y21-.repl.co/?url=";
+    pub const OCR: &str = "http://128.140.104.33:3002/?url=";
     pub const CHARINFO: &str = "https://www.fileformat.info/info/unicode/char/";
     pub const IDENTIFY: &str = "https://microsoft-computer-vision3.p.rapidapi.com/analyze?language=en&descriptionExclude=Celebrities&visualFeatures=Description&details=Celebrities";
 
@@ -70,7 +76,11 @@ pub enum OcrError {
 impl Display for OcrError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            OcrError::NetworkError(x) => write!(f, "An unknown network error occurred: {}", x.replace(routes::OCR, "ocr/")),
+            OcrError::NetworkError(x) => write!(
+                f,
+                "An unknown network error occurred: {}",
+                x.replace(routes::OCR, "ocr/")
+            ),
             OcrError::HtmlResponse => write!(f, "Failed to parse response"),
             OcrError::Ratelimited => write!(
                 f,
@@ -113,11 +123,11 @@ impl Into<Rule34Result> for &Rule34ResultBackup {
 
 #[derive(Deserialize)]
 pub struct CobaltResult {
-    pub url: String
+    pub url: String,
 }
 #[derive(Deserialize)]
 pub struct CobaltError {
-    pub text: String
+    pub text: String,
 }
 
 #[derive(Deserialize)]
@@ -190,7 +200,7 @@ pub async fn fake_eval(
     code: &str,
     image: bool,
     message: Option<&Message>,
-    args: Vec<String>
+    args: Vec<String>,
 ) -> anyhow::Result<FakeEvalImageResponse> {
     let result = assyst
         .reqwest_client
@@ -298,7 +308,10 @@ pub async fn convert_lottie_to_gif(assyst: &Assyst, lottie: &str) -> Result<Byte
 pub async fn get_random_rule34(assyst: &Assyst, tags: &str) -> Result<Vec<Rule34Result>, Error> {
     Ok(assyst
         .reqwest_client
-        .get(format!("https://api.rule34.xxx/index.php?tags={}", &tags.replace(' ', "+")[..]))
+        .get(format!(
+            "https://api.rule34.xxx/index.php?tags={}",
+            &tags.replace(' ', "+")[..]
+        ))
         .query(&[
             ("page", "dapi"),
             ("s", "post"),
@@ -334,17 +347,29 @@ impl ToString for ServiceStatus {
 pub struct HealthcheckResult {
     pub service: String,
     pub status: ServiceStatus,
-    pub error: String
+    pub error: String,
 }
 impl HealthcheckResult {
     pub fn new(service: String, status: ServiceStatus, error: String) -> Self {
-        Self { service, status, error }
+        Self {
+            service,
+            status,
+            error,
+        }
     }
 
-    pub fn new_from_result<T, E: ToString>(service: &str, result: Result<T, E>, time: usize) -> Self {
+    pub fn new_from_result<T, E: ToString>(
+        service: &str,
+        result: Result<T, E>,
+        time: usize,
+    ) -> Self {
         match result {
-            Ok(_) => Self::new(service.to_string(), ServiceStatus::Online(time), "".to_owned()),
-            Err(e) => { Self::new(service.to_string(), ServiceStatus::Offline, e.to_string())} ,
+            Ok(_) => Self::new(
+                service.to_string(),
+                ServiceStatus::Online(time),
+                "".to_owned(),
+            ),
+            Err(e) => Self::new(service.to_string(), ServiceStatus::Offline, e.to_string()),
         }
     }
 }
@@ -462,10 +487,20 @@ pub async fn healthcheck(assyst: Arc<Assyst>) -> Vec<HealthcheckResult> {
     ));
 
     let status = downloader::healthcheck(&assyst).await;
-    results.push(HealthcheckResult::new("Content Proxy".into(), status, "".to_owned()));
+    results.push(HealthcheckResult::new(
+        "Content Proxy".into(),
+        status,
+        "".to_owned(),
+    ));
 
     let timer = Instant::now();
-    let cobalt_result = download_video_from_cobalt(assyst.clone(), "https://www.youtube.com/watch?v=tPEE9ZwTmy0", true, None).await;
+    let cobalt_result = download_video_from_cobalt(
+        assyst.clone(),
+        "https://www.youtube.com/watch?v=tPEE9ZwTmy0",
+        true,
+        None,
+    )
+    .await;
     results.push(HealthcheckResult::new_from_result(
         "Cobalt.tools",
         cobalt_result,
@@ -475,15 +510,17 @@ pub async fn healthcheck(assyst: Arc<Assyst>) -> Vec<HealthcheckResult> {
     results
 }
 
-pub async fn download_video_from_cobalt(assyst: Arc<Assyst>, url: &str, audio_only: bool, quality: Option<String>) -> Result<Vec<u8>, anyhow::Error> {
+pub async fn download_video_from_cobalt(
+    assyst: Arc<Assyst>,
+    url: &str,
+    audio_only: bool,
+    quality: Option<String>,
+) -> Result<Vec<u8>, anyhow::Error> {
     let encoded_url = urlencoding::encode(url).to_string();
     let req_result = assyst
         .reqwest_client
         .post("https://co.wuk.sh/api/json")
-        .header(
-            "accept",
-            "application/json"
-        )
+        .header("accept", "application/json")
         .json(&json!({
             "url": encoded_url,
             "isAudioOnly": audio_only,
@@ -497,11 +534,19 @@ pub async fn download_video_from_cobalt(assyst: Arc<Assyst>, url: &str, audio_on
     let download_url = match req_result.status() {
         StatusCode::OK => req_result.json::<CobaltResult>().await?.url,
         _ => {
-            bail!("Failed to download media: {}", req_result.json::<CobaltError>().await?.text)
+            bail!(
+                "Failed to download media: {}",
+                req_result.json::<CobaltError>().await?.text
+            )
         }
     };
 
-    let downloaded_content = download_content(assyst.as_ref(), &download_url, ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES).await?;
-    
+    let downloaded_content = download_content(
+        assyst.as_ref(),
+        &download_url,
+        ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES,
+    )
+    .await?;
+
     Ok(downloaded_content)
 }
