@@ -3,7 +3,8 @@ use std::{convert::TryInto, num::NonZeroU16};
 use serenity::{
     all::{
         Attachment as SerAttachment, Embed as SerEmbed, EmbedImage as SerEmbedImage,
-        EmbedThumbnail as SerEmbedThumbnail, MessageUpdateEvent, User as SerUser,
+        EmbedThumbnail as SerEmbedThumbnail, ImageHash as SerImageHash, MessageUpdateEvent,
+        User as SerUser,
     },
     model::{channel::Message as SerMessage, Timestamp as SerTimestamp},
 };
@@ -175,17 +176,15 @@ pub fn ser_timestamp_to_twl_timestamp(ser: SerTimestamp) -> Timestamp {
     Timestamp::from_secs(ser.timestamp()).unwrap()
 }
 
+pub fn ser_imagehash_to_twl_imagehash(ser: Option<SerImageHash>) -> Option<ImageHash> {
+    ser.map(|x| ImageHash::parse(x.to_string().as_bytes()).ok())
+        .flatten()
+}
+
 pub fn ser_author_to_twl_author(ser: SerUser) -> User {
     User {
         accent_color: None,
-        avatar: ser
-            .avatar
-            .map(|x| x.to_string().into_bytes())
-            .map(|x| match x.try_into() {
-                Ok(h) => Some(ImageHash::new(h, false)),
-                Err(_) => None,
-            })
-            .flatten(),
+        avatar: ser_imagehash_to_twl_imagehash(ser.avatar),
         avatar_decoration: None,
         banner: None,
         bot: ser.bot,
