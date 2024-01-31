@@ -253,7 +253,7 @@ pub struct Command {
     pub cooldown_seconds: usize,
     pub category: &'static str,
     pub disabled: bool,
-    pub nsfw: bool
+    pub nsfw: bool,
 }
 
 pub struct CommandBuilder {
@@ -266,7 +266,7 @@ pub struct CommandBuilder {
     cooldown_seconds: Option<usize>,
     category: Option<&'static str>,
     disabled: bool,
-    nsfw: bool
+    nsfw: bool,
 }
 impl CommandBuilder {
     pub fn new(name: &'static str) -> Self {
@@ -284,7 +284,7 @@ impl CommandBuilder {
             cooldown_seconds: None,
             category: None,
             disabled: false,
-            nsfw: false
+            nsfw: false,
         }
     }
 
@@ -374,7 +374,7 @@ impl CommandBuilder {
             category,
             cooldown_seconds: cooldown,
             disabled: self.disabled,
-            nsfw: self.nsfw
+            nsfw: self.nsfw,
         }
     }
 }

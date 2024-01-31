@@ -142,7 +142,7 @@ pub struct CommandRestriction {
     pub command_name: String,
     pub allow_or_block: String,
     pub r#type: String,
-    pub id: i64
+    pub id: i64,
 }
 
 type GuildDisabledCommands = Cache<GuildId, HashSet<String>>;
@@ -161,7 +161,7 @@ impl DatabaseCache {
 }
 #[derive(sqlx::FromRow, Debug)]
 struct Count {
-    pub count: i64
+    pub count: i64,
 }
 
 pub struct Database {
@@ -854,11 +854,7 @@ impl Database {
             })
     }
 
-    pub async fn remove_tag_force(
-        &self,
-        guild_id: i64,
-        name: &str,
-    ) -> Result<bool, sqlx::Error> {
+    pub async fn remove_tag_force(&self, guild_id: i64, name: &str) -> Result<bool, sqlx::Error> {
         let query = r#"DELETE FROM tags WHERE name = $1 AND guild_id = $2"#;
 
         sqlx::query(query)
@@ -942,7 +938,8 @@ impl Database {
         offset: i64,
         limit: i64,
     ) -> Result<Vec<Tag>, sqlx::Error> {
-        let query = r#"SELECT * FROM tags WHERE guild_id = $1 ORDER BY created_at DESC OFFSET $2 LIMIT $3"#;
+        let query =
+            r#"SELECT * FROM tags WHERE guild_id = $1 ORDER BY created_at DESC OFFSET $2 LIMIT $3"#;
 
         sqlx::query_as(query)
             .bind(guild_id)
@@ -970,10 +967,7 @@ impl Database {
             .await
     }
 
-    pub async fn get_tags_count(
-        &self,
-        guild_id: i64,
-    ) -> Result<i64, sqlx::Error> {
+    pub async fn get_tags_count(&self, guild_id: i64) -> Result<i64, sqlx::Error> {
         let query = r#"SELECT count(*) FROM tags WHERE guild_id = $1"#;
 
         let result: Result<Count, sqlx::Error> = sqlx::query_as(query)
@@ -987,7 +981,7 @@ impl Database {
     pub async fn get_tags_count_for_user(
         &self,
         guild_id: i64,
-        user_id: i64
+        user_id: i64,
     ) -> Result<i64, sqlx::Error> {
         let query = r#"SELECT count(*) FROM tags WHERE guild_id = $1 AND author = $2"#;
 
@@ -1036,7 +1030,13 @@ impl Database {
             .map(|_| ())
     }
 
-    pub async fn add_guild_specific_blacklist(&self, guild_id: u64, command: &str, r#type: &str, id: u64) -> Result<(), sqlx::Error> {
+    pub async fn add_guild_specific_blacklist(
+        &self,
+        guild_id: u64,
+        command: &str,
+        r#type: &str,
+        id: u64,
+    ) -> Result<(), sqlx::Error> {
         let query = r#"INSERT INTO command_restrictions VALUES ($1, $2, $3, $4, $5)"#;
 
         sqlx::query(query)
@@ -1050,7 +1050,13 @@ impl Database {
             .map(|_| ())
     }
 
-    pub async fn add_guild_specific_whitelist(&self, guild_id: u64, command: &str, r#type: &str, id: u64) -> Result<(), sqlx::Error> {
+    pub async fn add_guild_specific_whitelist(
+        &self,
+        guild_id: u64,
+        command: &str,
+        r#type: &str,
+        id: u64,
+    ) -> Result<(), sqlx::Error> {
         let query = r#"INSERT INTO command_restrictions VALUES ($1, $2, $3, $4, $5)"#;
 
         sqlx::query(query)
@@ -1064,7 +1070,10 @@ impl Database {
             .map(|_| ())
     }
 
-    pub async fn list_guild_blacklists(&self, guild_id: u64) -> Result<Vec<CommandRestriction>, sqlx::Error> {
+    pub async fn list_guild_blacklists(
+        &self,
+        guild_id: u64,
+    ) -> Result<Vec<CommandRestriction>, sqlx::Error> {
         let query = r#"SELECT * from command_restrictions WHERE guild_id = $1 and allow_or_block = 'block'"#;
 
         sqlx::query_as::<_, CommandRestriction>(query)
@@ -1076,10 +1085,7 @@ impl Database {
     pub async fn delete_old_logs(&self) {
         let query = r#"DELETE FROM logs WHERE timestamp < now() - interval '7 days'"#;
 
-        sqlx::query(query)
-            .execute(&self.pool)
-            .await
-            .unwrap();
+        sqlx::query(query).execute(&self.pool).await.unwrap();
     }
 
     pub async fn log(&self, text: &str, category: i32) -> Result<(), sqlx::Error> {
@@ -1091,7 +1097,7 @@ impl Database {
             .execute(&self.pool)
             .await
             .map(|_| ());
-        
+
         self.delete_old_logs().await;
 
         r

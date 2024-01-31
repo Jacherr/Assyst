@@ -35,7 +35,7 @@ pub const CACHE_PIPE: &str = "/tmp/assyst-cache.sock";
 pub mod gateway {
     use std::collections::HashMap;
 
-    use serde::{Serialize, Deserialize};
+    use serde::{Deserialize, Serialize};
 
     pub const OP_EVENT: u8 = 0;
     pub const OP_LATENCIES: u8 = 1;

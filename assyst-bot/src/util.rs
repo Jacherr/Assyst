@@ -1,5 +1,8 @@
 use crate::{assyst::Assyst, command::context::Context, rest::wsi::RequestError};
-use assyst_common::{consts, filetype, util::{GuildId, UserId, ChannelId}};
+use assyst_common::{
+    consts, filetype,
+    util::{ChannelId, GuildId, UserId},
+};
 use bytes::Bytes;
 use regex::Captures;
 use shared::job::JobResult;
@@ -410,13 +413,7 @@ pub fn exec_sync(command: &str) -> Result<CommandOutput, std::io::Error> {
 
 /// Attempts to resolve the guild owner
 pub async fn get_guild_owner(http: &Client, guild_id: GuildId) -> Result<UserId, Error> {
-    Ok(http
-        .guild(guild_id)
-        .await?
-        .model()
-        .await
-        .unwrap()
-        .owner_id)
+    Ok(http.guild(guild_id).await?.model().await.unwrap().owner_id)
 }
 
 pub async fn is_guild_manager(
@@ -483,7 +480,10 @@ pub fn bytes_to_readable(bytes: usize) -> String {
 
 /// This function will remove a free voter request if the user has any
 /// and are not a patron!
-pub async fn get_wsi_request_tier(assyst: &Assyst, user_id: UserId) -> Result<usize, anyhow::Error> {
+pub async fn get_wsi_request_tier(
+    assyst: &Assyst,
+    user_id: UserId,
+) -> Result<usize, anyhow::Error> {
     let patrons = assyst.patrons.read().await;
     let patron = patrons.iter().find(|i| i.user_id == user_id);
     if let Some(p) = patron {
@@ -570,12 +570,7 @@ pub async fn get_guild_upload_limit_bytes(
     assyst: Arc<Assyst>,
     guild_id: GuildId,
 ) -> anyhow::Result<usize> {
-    let guild = assyst
-        .http
-        .guild(guild_id)
-        .await?
-        .model()
-        .await?;
+    let guild = assyst.http.guild(guild_id).await?.model().await?;
 
     let tier = guild.premium_tier;
 
@@ -583,7 +578,7 @@ pub async fn get_guild_upload_limit_bytes(
         PremiumTier::None | PremiumTier::Tier1 => 8_000_000,
         PremiumTier::Tier2 => 50_000_000,
         PremiumTier::Tier3 => 100_000_000,
-        _ => unreachable!()
+        _ => unreachable!(),
     })
 }
 

@@ -1,7 +1,7 @@
 use crate::{logger, Assyst};
-use std::sync::Arc;
 use serenity::all::MessageCreateEvent;
-use twilight_model::{gateway::payload::incoming::MessageCreate, channel::Message};
+use std::sync::Arc;
+use twilight_model::{channel::Message, gateway::payload::incoming::MessageCreate};
 
 use super::ser_message_to_twl_message;
 
@@ -14,7 +14,10 @@ pub async fn handle(assyst: Arc<Assyst>, message: Box<MessageCreateEvent>) {
         .is_channel(message.channel_id.get())
         .await
     {
-        let result = assyst.badtranslator.handle_message(&assyst, Box::new(message)).await;
+        let result = assyst
+            .badtranslator
+            .handle_message(&assyst, Box::new(message))
+            .await;
         handle_result(&assyst, result, "BT execution failed").await;
         return;
     }

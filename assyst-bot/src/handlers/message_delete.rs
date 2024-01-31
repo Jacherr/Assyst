@@ -1,7 +1,13 @@
 use crate::Assyst;
-use std::sync::Arc;
 use serenity::all::MessageDeleteEvent;
-use twilight_model::{gateway::payload::incoming::MessageDelete, id::{marker::{MessageMarker, ChannelMarker}, Id}};
+use std::sync::Arc;
+use twilight_model::{
+    gateway::payload::incoming::MessageDelete,
+    id::{
+        marker::{ChannelMarker, MessageMarker},
+        Id,
+    },
+};
 
 pub async fn handle(assyst: Arc<Assyst>, message: MessageDeleteEvent) -> () {
     let try_reply = assyst

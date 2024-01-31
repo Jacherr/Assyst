@@ -5,13 +5,13 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize)]
 pub struct FakeEvalMessageData<M: Serialize> {
     pub message: M,
-    pub args: Vec<String>
+    pub args: Vec<String>,
 }
 
 #[derive(Serialize)]
 pub struct FakeEvalBody<M: Serialize> {
     pub code: String,
-    pub data: Option<FakeEvalMessageData<M>>
+    pub data: Option<FakeEvalMessageData<M>>,
 }
 
 #[derive(Deserialize)]

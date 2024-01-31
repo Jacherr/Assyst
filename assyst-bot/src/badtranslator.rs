@@ -11,8 +11,8 @@ use std::collections::HashMap;
 use std::{borrow::Cow, time::Duration};
 use tokio::sync::RwLock;
 use twilight_http::error::ErrorType;
+use twilight_model::channel::{Message, Webhook};
 use twilight_model::gateway::payload::incoming::MessageCreate;
-use twilight_model::channel::{Webhook, Message};
 
 mod flags {
     pub const DISABLED: u32 = 0x1;

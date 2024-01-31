@@ -1,20 +1,21 @@
 use anyhow::Context as _;
-use assyst_common::{consts::{self, ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES, CANNOT_REPLY_WITHOUT_MESSAGE_HISTORY_CODE}, util::{GuildId, MessageId, UserId}};
+use assyst_common::{
+    consts::{
+        self, ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES, CANNOT_REPLY_WITHOUT_MESSAGE_HISTORY_CODE,
+    },
+    util::{GuildId, MessageId, UserId},
+};
 use async_recursion::async_recursion;
 use bytes::Bytes;
 use std::time::Instant;
 use tokio::sync::Mutex;
-use twilight_http::{Client as HttpClient, error::ErrorType, api_error::ApiError};
+use twilight_http::{api_error::ApiError, error::ErrorType, Client as HttpClient};
 use twilight_model::{
     channel::{message::embed::Embed, message::AllowedMentions, Message},
     http::attachment::Attachment as TwilightAttachment,
 };
 
-use crate::{
-    caching::local_caching::Reply,
-    util::get_guild_upload_limit_bytes,
-    Assyst,
-};
+use crate::{caching::local_caching::Reply, util::get_guild_upload_limit_bytes, Assyst};
 use std::sync::Arc;
 
 use super::messagebuilder::MessageBuilder;
@@ -71,10 +72,7 @@ impl Context {
             let reply = reply_lock.reply.as_ref().expect("No reply found");
 
             if reply.attachments.len() > 0 || message_builder.attachment.is_some() {
-                let _ = self
-                    .http()
-                    .delete_message(reply.channel_id, reply.id)
-                    .await;
+                let _ = self.http().delete_message(reply.channel_id, reply.id).await;
 
                 drop(reply_lock);
                 let result = self.create_new_message(message_builder).await?;
@@ -88,7 +86,10 @@ impl Context {
                         reply_lock.set_reply(r.clone());
                         Ok(r)
                     }
-                    Err(_) => { drop(reply_lock); Ok(self.create_new_message(message_builder).await?) },
+                    Err(_) => {
+                        drop(reply_lock);
+                        Ok(self.create_new_message(message_builder).await?)
+                    }
                 }
             }
         }
@@ -143,7 +144,9 @@ impl Context {
             match try_limit {
                 Ok(l) => {
                     if buffer.len() > l {
-                        let url = crate::rest::upload_to_filer(self.assyst.clone(), buffer, &format).await?;
+                        let url =
+                            crate::rest::upload_to_filer(self.assyst.clone(), buffer, &format)
+                                .await?;
                         let builder = builder.content(url.into_boxed_str());
                         self.reply(builder).await
                     } else {
@@ -153,9 +156,10 @@ impl Context {
                         );
                         self.reply(builder).await
                     }
-                },
+                }
                 Err(_) => {
-                    let url = crate::rest::upload_to_filer(self.assyst.clone(), buffer, &format).await?;
+                    let url =
+                        crate::rest::upload_to_filer(self.assyst.clone(), buffer, &format).await?;
                     let builder = builder.content(url.into_boxed_str());
                     self.reply(builder).await
                 }
@@ -233,7 +237,12 @@ impl Context {
                 Ok(result)
             }
             Err(x) => {
-                if let ErrorType::Response { body: _, error, status: _ } = x.kind() {
+                if let ErrorType::Response {
+                    body: _,
+                    error,
+                    status: _,
+                } = x.kind()
+                {
                     if let ApiError::General(y) = error {
                         if y.code == CANNOT_REPLY_WITHOUT_MESSAGE_HISTORY_CODE && c.should_reply {
                             c.should_reply = false;
@@ -249,7 +258,6 @@ impl Context {
                 }
             }
         }
-
     }
 
     async fn edit_message(

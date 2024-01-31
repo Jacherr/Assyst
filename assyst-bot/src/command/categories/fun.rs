@@ -14,7 +14,10 @@ use crate::{
     util::{codeblock, ensure_guild_manager, normalize_emojis},
 };
 use anyhow::{bail, Context as _};
-use assyst_common::{consts, util::{GuildId, RoleId}};
+use assyst_common::{
+    consts,
+    util::{GuildId, RoleId},
+};
 use bytes::Bytes;
 use lazy_static::lazy_static;
 use rand::{prelude::SliceRandom, thread_rng};
@@ -207,9 +210,8 @@ pub async fn run_rule34_command(
     let query = args[0].as_text();
     let mut result = rest::get_random_rule34(&context.assyst, query).await?;
 
-    result
-        .shuffle(&mut thread_rng());
-    
+    result.shuffle(&mut thread_rng());
+
     let result = result
         .first()
         .map(|first| format!("**Score: {}**\n{}", first.score, first.url))

@@ -136,7 +136,7 @@ pub async fn wsi_listen(
                     }
                     _ => {}
                 }
-                
+
                 match writer.write_all(&job).await {
                     Err(e) => {
                         println!("Failed to write to WSI: {:?}", e.to_string());
@@ -315,10 +315,7 @@ pub async fn audio_pcm(
     input: Bytes,
     user_id: UserId,
 ) -> Result<Bytes, RequestError> {
-    let job = FifoSend::AudioPcm(FifoData::new(
-        input.to_vec(),
-        NoneQuery {}
-    ));
+    let job = FifoSend::AudioPcm(FifoData::new(input.to_vec(), NoneQuery {}));
 
     run_wsi_job(assyst, job, user_id).await
 }
@@ -1048,9 +1045,12 @@ pub async fn uncaption(
     assyst: Arc<Assyst>,
     image: Bytes,
     user_id: UserId,
-    lines: Option<String>
+    lines: Option<String>,
 ) -> Result<Bytes, RequestError> {
-    let job = FifoSend::Uncaption(FifoData::new(image.to_vec(), UncaptionQueryParams { lines }));
+    let job = FifoSend::Uncaption(FifoData::new(
+        image.to_vec(),
+        UncaptionQueryParams { lines },
+    ));
 
     run_wsi_job(assyst, job, user_id).await
 }

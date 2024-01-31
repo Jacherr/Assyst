@@ -19,17 +19,22 @@ pub fn init_healthcheck(assyst: Arc<Assyst>) {
             let _ = tokio::spawn(async move {
                 loop {
                     let result = healthcheck(assyst.clone()).await;
-        
+
                     for check in &result {
                         if check.status == ServiceStatus::Offline {
-                            logger::fatal(&assyst, &format!("{} is offline ({})", check.service, check.error)).await;
+                            logger::fatal(
+                                &assyst,
+                                &format!("{} is offline ({})", check.service, check.error),
+                            )
+                            .await;
                         }
                     }
-        
+
                     *assyst.healthcheck_result.lock().await = (Instant::now(), result);
                     sleep(Duration::from_secs(5 * 60)).await;
                 }
-            }).await;
+            })
+            .await;
         }
     });
 }

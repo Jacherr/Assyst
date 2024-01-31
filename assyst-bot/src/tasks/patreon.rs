@@ -14,11 +14,11 @@ pub fn update_patrons(assyst: Arc<Assyst>) {
                 .unwrap();
 
             /*let patron_user_ids = patrons
-                .iter()
-                .filter(|x| !x.admin)
-                .map(|x| x.user_id.get().to_string())
-                .collect::<Vec<_>>()
-                .join("\n");*/
+            .iter()
+            .filter(|x| !x.admin)
+            .map(|x| x.user_id.get().to_string())
+            .collect::<Vec<_>>()
+            .join("\n");*/
 
             *assyst.patrons.write().await = patrons;
 

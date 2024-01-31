@@ -1,6 +1,9 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use twilight_model::id::{marker::{ChannelMarker, GuildMarker, UserMarker, WebhookMarker, MessageMarker, RoleMarker}, Id};
+use twilight_model::id::{
+    marker::{ChannelMarker, GuildMarker, MessageMarker, RoleMarker, UserMarker, WebhookMarker},
+    Id,
+};
 
 pub type ChannelId = Id<ChannelMarker>;
 pub type GuildId = Id<GuildMarker>;
@@ -48,7 +51,7 @@ macro_rules! some_or_break {
 macro_rules! unwrap_enum_variant {
     ($expression:expr, $variant:path) => {
         match $expression {
-            $variant (v) => v,
+            $variant(v) => v,
             _ => unreachable!(),
         }
     };

@@ -19,11 +19,7 @@ impl Ratelimits {
         }
     }
 
-    pub fn set_command_expire_at(
-        &mut self,
-        guild_id: GuildId,
-        command: &Command,
-    ) -> () {
+    pub fn set_command_expire_at(&mut self, guild_id: GuildId, command: &Command) -> () {
         self.cache
             .entry(guild_id.get())
             .or_insert_with(|| GuildRatelimits::new())
@@ -33,11 +29,7 @@ impl Ratelimits {
             );
     }
 
-    pub fn time_until_guild_command_usable(
-        &self,
-        guild_id: GuildId,
-        command: &str,
-    ) -> Option<u64> {
+    pub fn time_until_guild_command_usable(&self, guild_id: GuildId, command: &str) -> Option<u64> {
         let guild_ratelimits = self.cache.get(&guild_id.get())?;
         let command_ratelimit = guild_ratelimits.get_command_expiry(command)?;
         let millis = get_current_millis();

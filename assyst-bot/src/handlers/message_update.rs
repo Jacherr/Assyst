@@ -1,6 +1,6 @@
 use crate::{logger, Assyst};
-use std::sync::Arc;
 use serenity::all::MessageUpdateEvent;
+use std::sync::Arc;
 use twilight_model::channel::message::Message;
 use twilight_model::util::Timestamp;
 use twilight_model::{channel::message::MessageType, gateway::payload::incoming::MessageUpdate};

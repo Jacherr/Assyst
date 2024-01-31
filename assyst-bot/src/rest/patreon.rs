@@ -127,12 +127,14 @@ pub async fn get_patrons(assyst: Arc<Assyst>, api_key: &str) -> Result<Vec<Patro
         .await?
         .json::<Response>()
         .await?;
- 
+
     let mut entitled_tiers: HashMap<String, usize> = HashMap::new();
     let mut discord_connections: HashMap<String, UserId> = HashMap::new();
 
     for d in response.data {
-        if let Some(status) = d.attributes.patron_status && status == "active_patron" {
+        if let Some(status) = d.attributes.patron_status
+            && status == "active_patron"
+        {
             let tier = get_tier_from_pledge(d.attributes.currently_entitled_amount_cents);
             entitled_tiers.insert(d.relationships.user.data.id.clone(), tier);
         }

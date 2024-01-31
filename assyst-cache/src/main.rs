@@ -1,21 +1,29 @@
 #![feature(never_type)]
 
-mod state;
-mod request_handler;
 mod guild_cache;
+mod request_handler;
+mod state;
 
-use std::{rc::Rc, cell::RefCell};
+use std::{cell::RefCell, rc::Rc};
 
-use assyst_common::{consts::CACHE_PIPE, ok_or_break, persistent_cache::{CacheRequest, CacheResponse}};
+use assyst_common::{
+    consts::CACHE_PIPE,
+    ok_or_break,
+    persistent_cache::{CacheRequest, CacheResponse},
+};
 use bincode::{deserialize, serialize};
 use request_handler::handle_request;
 use state::State;
-use tokio::{net::UnixListener, io::{AsyncReadExt, AsyncWriteExt}, fs::remove_file};
+use tokio::{
+    fs::remove_file,
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::UnixListener,
+};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<!> {
     let _ = remove_file(CACHE_PIPE).await;
-    
+
     let state = Rc::new(RefCell::new(State::new()));
 
     let listener = UnixListener::bind(CACHE_PIPE)?;

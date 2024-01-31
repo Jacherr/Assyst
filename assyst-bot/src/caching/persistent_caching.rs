@@ -7,15 +7,22 @@ use std::{
 use assyst_common::{
     consts::CACHE_PIPE,
     ok_or_break,
-    persistent_cache::{CacheRequest, CacheRequestData, CacheResponse, CacheResponseData, CacheError, CacheResponseInner, guild_cache::TopGuilds},
+    persistent_cache::{
+        guild_cache::TopGuilds, CacheError, CacheRequest, CacheRequestData, CacheResponse,
+        CacheResponseData, CacheResponseInner,
+    },
     some_or_break, unwrap_enum_variant,
 };
-use bincode::{serialize, deserialize};
+use bincode::{deserialize, serialize};
 use serenity::all::{GuildCreateEvent, GuildDeleteEvent, ReadyEvent};
 use tokio::{
-    io::{AsyncWriteExt, AsyncReadExt},
+    io::{AsyncReadExt, AsyncWriteExt},
     net::UnixStream,
-    sync::{mpsc::UnboundedReceiver, oneshot::{Sender, self}, Mutex},
+    sync::{
+        mpsc::UnboundedReceiver,
+        oneshot::{self, Sender},
+        Mutex,
+    },
     time::{sleep, timeout},
 };
 use twilight_model::gateway::payload::incoming::{GuildCreate, GuildDelete, Ready};
@@ -40,7 +47,9 @@ pub async fn init_guild_caching(
 
         CONNECTED.store(true, std::sync::atomic::Ordering::Relaxed);
 
-        let jobs = Arc::new(Mutex::new(HashMap::<usize, Sender<CacheResponseInner>>::new()));
+        let jobs = Arc::new(Mutex::new(
+            HashMap::<usize, Sender<CacheResponseInner>>::new(),
+        ));
         let jobs_clone = jobs.clone();
         let jobs_clone_2 = jobs.clone();
 
@@ -55,7 +64,8 @@ pub async fn init_guild_caching(
                 let id = deserialized.id();
                 let tx = jobs_clone.lock().await.remove(&id);
                 if let Some(tx) = tx {
-                    tx.send(deserialized.data()).expect("failed to send cache job result to sender");
+                    tx.send(deserialized.data())
+                        .expect("failed to send cache job result to sender");
                 }
             }
         });
@@ -107,7 +117,7 @@ pub async fn run_cache_job(assyst: Arc<Assyst>, job: CacheRequestData) -> CacheR
     let res = timeout(TIME_LIMIT, rx).await;
     match res {
         Err(_) => Err(CacheError::Timeout),
-        Ok(x) => x.unwrap_or(Err(CacheError::CacheServerDied))
+        Ok(x) => x.unwrap_or(Err(CacheError::CacheServerDied)),
     }
 }
 
@@ -117,26 +127,47 @@ pub async fn get_top_guilds(assyst: Arc<Assyst>) -> anyhow::Result<TopGuilds> {
     Ok(unwrap_enum_variant!(response, CacheResponseData::TopGuilds))
 }
 
-pub async fn get_new_guilds_from_ready(assyst: Arc<Assyst>, event: ReadyEvent) -> anyhow::Result<usize> {
+pub async fn get_new_guilds_from_ready(
+    assyst: Arc<Assyst>,
+    event: ReadyEvent,
+) -> anyhow::Result<usize> {
     let request = CacheRequestData::SendReadyEvent(event.into());
     let response = run_cache_job(assyst, request).await?;
-    Ok(unwrap_enum_variant!(response, CacheResponseData::TotalNewGuilds))
+    Ok(unwrap_enum_variant!(
+        response,
+        CacheResponseData::TotalNewGuilds
+    ))
 }
 
-pub async fn handle_guild_create_event(assyst: Arc<Assyst>, event: GuildCreateEvent) -> anyhow::Result<bool> {
+pub async fn handle_guild_create_event(
+    assyst: Arc<Assyst>,
+    event: GuildCreateEvent,
+) -> anyhow::Result<bool> {
     let request = CacheRequestData::SendGuildCreate(event.into());
     let response = run_cache_job(assyst, request).await?;
-    Ok(unwrap_enum_variant!(response, CacheResponseData::ShouldLogGuildCreate))
+    Ok(unwrap_enum_variant!(
+        response,
+        CacheResponseData::ShouldLogGuildCreate
+    ))
 }
 
-pub async fn handle_guild_delete_event(assyst: Arc<Assyst>, event: GuildDeleteEvent) -> anyhow::Result<bool> {
+pub async fn handle_guild_delete_event(
+    assyst: Arc<Assyst>,
+    event: GuildDeleteEvent,
+) -> anyhow::Result<bool> {
     let request = CacheRequestData::SendGuildDelete(event.into());
     let response = run_cache_job(assyst, request).await?;
-    Ok(unwrap_enum_variant!(response, CacheResponseData::ShouldLogGuildDelete))
+    Ok(unwrap_enum_variant!(
+        response,
+        CacheResponseData::ShouldLogGuildDelete
+    ))
 }
 
 pub async fn get_guild_count(assyst: Arc<Assyst>) -> anyhow::Result<usize> {
     let request = CacheRequestData::GetTotalGuilds;
     let response = run_cache_job(assyst, request).await?;
-    Ok(unwrap_enum_variant!(response, CacheResponseData::TotalGuilds))
+    Ok(unwrap_enum_variant!(
+        response,
+        CacheResponseData::TotalGuilds
+    ))
 }

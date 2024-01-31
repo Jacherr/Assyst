@@ -1,6 +1,6 @@
-use std::{convert::TryInto, sync::Arc, time::Duration, future::IntoFuture};
+use std::{convert::TryInto, future::IntoFuture, sync::Arc, time::Duration};
 
-use anyhow::{anyhow, ensure, Context as _, bail};
+use anyhow::{anyhow, bail, ensure, Context as _};
 use assyst_common::{
     consts,
     eval::FakeEvalImageResponse,
@@ -211,7 +211,9 @@ async fn run_list_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -
     };
 
     if count == 0 {
-        context.reply_err("No tags found for the requested filter").await?;
+        context
+            .reply_err("No tags found for the requested filter")
+            .await?;
         return Ok(());
     }
 
@@ -247,10 +249,16 @@ async fn run_list_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) -
 
     for (index, tag) in tags.into_iter().enumerate() {
         let offset = (index as i64) + offset + 1;
-        write!(message, "{}. {} {}\n", offset, tag.name, match user_id {
-            Some(_) => "".to_owned(),
-            None => format!("(<@{}>)", tag.author.to_string())
-        })?;
+        write!(
+            message,
+            "{}. {} {}\n",
+            offset,
+            tag.name,
+            match user_id {
+                Some(_) => "".to_owned(),
+                None => format!("(<@{}>)", tag.author.to_string()),
+            }
+        )?;
     }
 
     write!(
@@ -319,7 +327,7 @@ async fn run_tag_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) ->
         .context("No tag name provided.")?;
 
     println!("Running tag {} in {:?}", name, context.message.guild_id);
-    
+
     let tag = context
         .assyst
         .database
@@ -339,13 +347,15 @@ async fn run_tag_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) ->
             let arg2 = args[1];
             let raw_replaced = arg2.replace("\n", " \n");
             let mut arg2split = raw_replaced
-                    .split(' ')
-                    .map(|x| String::from(x))
-                    .collect::<Vec<String>>();
+                .split(' ')
+                .map(|x| String::from(x))
+                .collect::<Vec<String>>();
             let mut new_args = vec![args[0].to_string()];
             new_args.append(&mut arg2split);
             new_args
-        } else { args.iter().map(|x| String::from(*x)).collect::<Vec<_>>() };
+        } else {
+            args.iter().map(|x| String::from(*x)).collect::<Vec<_>>()
+        };
 
         let tokio = tokio::runtime::Handle::current();
         let b = args.iter().map(|s| s as &str).collect::<Vec<_>>();
@@ -354,7 +364,7 @@ async fn run_tag_subcommand(context: Arc<Context>, args: Vec<ParsedArgument>) ->
     })
     .await?
     .context("Tag execution failed");
-    
+
     match output {
         Ok(ParseResult { attachment, output }) => {
             if let Some((buffer, ty)) = attachment {
@@ -400,13 +410,17 @@ struct TagContext {
 }
 
 impl tag::Context for TagContext {
-    fn execute_javascript(&self, code: &str, args: Vec<String>) -> anyhow::Result<FakeEvalImageResponse> {
+    fn execute_javascript(
+        &self,
+        code: &str,
+        args: Vec<String>,
+    ) -> anyhow::Result<FakeEvalImageResponse> {
         let response = self.tokio.block_on(fake_eval(
             &self.ccx.assyst,
             code,
             true,
             Some(&self.ccx.message),
-            args
+            args,
         ))?;
 
         Ok(response)

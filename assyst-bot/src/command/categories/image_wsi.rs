@@ -656,7 +656,8 @@ pub async fn run_randomize_command(
                     rand_u8() as usize,
                     rand_u8() as usize,
                     rand_u8() as usize,
-                ).await?
+                )
+                .await?
             }
             1 => {
                 effects.push("blur");
@@ -665,7 +666,8 @@ pub async fn run_randomize_command(
                     current.clone(),
                     context.author_id(),
                     &(rand_u8() % 3).to_string(),
-                ).await?
+                )
+                .await?
             }
             2 => {
                 effects.push("deepfry");
@@ -714,7 +716,8 @@ pub async fn run_randomize_command(
                     current.clone(),
                     context.author_id(),
                     rand_u8().clamp(0, 5) as usize,
-                ).await?
+                )
+                .await?
             }
             13 => {
                 effects.push("paint");
@@ -727,7 +730,8 @@ pub async fn run_randomize_command(
                     current.clone(),
                     context.author_id(),
                     Some(((rand_u8() * 2) as usize).clamp(25, 500)),
-                ).await?
+                )
+                .await?
             }
             15 => {
                 effects.push("printer");
@@ -739,7 +743,8 @@ pub async fn run_randomize_command(
             }
             17 => {
                 effects.push("speechbubble");
-                wsi::speechbubble(context.assyst.clone(), current.clone(), context.author_id()).await?
+                wsi::speechbubble(context.assyst.clone(), current.clone(), context.author_id())
+                    .await?
             }
             18 => {
                 effects.push("spin");
@@ -767,13 +772,28 @@ pub async fn run_randomize_command(
             }
             24 => {
                 effects.push("zoomblur");
-                wsi::zoom_blur(context.assyst.clone(), current.clone(), context.author_id(), (rand_u8() % 10) as f64).await?
+                wsi::zoom_blur(
+                    context.assyst.clone(),
+                    current.clone(),
+                    context.author_id(),
+                    (rand_u8() % 10) as f64,
+                )
+                .await?
             }
             _ => unreachable!(),
         }
     }
-    let format = format!("image/{}", get_buffer_filetype(&current).unwrap_or_else(|| "png"));
-    context.reply_with_image_and_text(&format, current, Some(format!("Filters used: `{}`", effects.join(", ")))).await?;
+    let format = format!(
+        "image/{}",
+        get_buffer_filetype(&current).unwrap_or_else(|| "png")
+    );
+    context
+        .reply_with_image_and_text(
+            &format,
+            current,
+            Some(format!("Filters used: `{}`", effects.join(", "))),
+        )
+        .await?;
     Ok(())
 }
 
@@ -1241,7 +1261,7 @@ pub async fn run_meme_command(
         context.assyst.clone(),
         image,
         context.author_id(),
-        top_text.trim(), 
+        top_text.trim(),
         bottom_text.trim(),
     )
     .await?;

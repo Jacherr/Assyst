@@ -30,8 +30,7 @@ pub fn init_metrics_collect_loop(assyst: Arc<Assyst>) -> anyhow::Result<()> {
             let mut diff = a2.command_usage_diff.lock().await;
             for i in command_uses {
                 if let Some(diff) = diff.iter_mut().find(|d| d.0 == i.command_name) {
-                    diff.1
-                        .push((i.uses as usize, Instant::now()));
+                    diff.1.push((i.uses as usize, Instant::now()));
                     let mut to_remove = vec![];
                     for (pos, entry) in diff.1.iter().enumerate() {
                         // remove old entries
@@ -46,10 +45,7 @@ pub fn init_metrics_collect_loop(assyst: Arc<Assyst>) -> anyhow::Result<()> {
                     }
                     diff.1.sort_by(|a, b| a.0.cmp(&b.0));
                 } else {
-                    diff.push((
-                        i.command_name,
-                        vec![(i.uses as usize, Instant::now())],
-                    ));
+                    diff.push((i.command_name, vec![(i.uses as usize, Instant::now())]));
                 }
             }
         }

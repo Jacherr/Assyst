@@ -18,7 +18,7 @@ pub struct Auth {
     pub rapidapi_identify: Box<str>,
     pub rapidapi_shazam: Box<str>,
     pub top_gg_post_stats: Box<str>,
-    pub wsi: Box<str>
+    pub wsi: Box<str>,
 }
 
 #[derive(Clone, Deserialize)]

@@ -1,7 +1,8 @@
 use std::{collections::HashMap, sync::RwLock};
 
 use prometheus::{
-    register_counter, register_int_counter, register_int_gauge, Counter, IntCounter, IntGauge, IntGaugeVec, register_int_gauge_vec,
+    register_counter, register_int_counter, register_int_gauge, register_int_gauge_vec, Counter,
+    IntCounter, IntGauge, IntGaugeVec,
 };
 
 pub struct CountableMetrics {
@@ -12,7 +13,7 @@ pub struct CountableMetrics {
     pub current_commands: IntGauge,
     pub latency: IntGaugeVec,
     pub cdn_files: IntGauge,
-    pub cdn_size: IntGauge
+    pub cdn_size: IntGauge,
 }
 
 impl CountableMetrics {
@@ -28,7 +29,7 @@ impl CountableMetrics {
             )?,
             latency: register_int_gauge_vec!("latency", "Gateway latency", &["shard"])?,
             cdn_files: register_int_gauge!("cdn_files", "Total files stored in the CDN")?,
-            cdn_size: register_int_gauge!("cdn_size", "Size in bytes of the CDN")?
+            cdn_size: register_int_gauge!("cdn_size", "Size in bytes of the CDN")?,
         })
     }
 }

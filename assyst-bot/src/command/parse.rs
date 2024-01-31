@@ -146,12 +146,12 @@ pub mod image_lookups {
 
     #[derive(Deserialize)]
     struct TwemojiVendorImage {
-        pub twitter: String
+        pub twitter: String,
     }
 
     #[derive(Deserialize)]
     struct TwemojiLookup {
-        pub vendor_images: TwemojiVendorImage
+        pub vendor_images: TwemojiVendorImage,
     }
 
     pub async fn emoji(argument: &str) -> Option<String> {
@@ -163,8 +163,16 @@ pub mod image_lookups {
                 .replace(" ", "-")
                 .replace("-fe0f", "");
 
-            let emoji_url = format!("https://bignutty.gitlab.io/emojipedia-data/data/{}.json", codepoint);
-            let dl = reqwest::get(emoji_url).await.ok()?.json::<TwemojiLookup>().await.ok()?;     
+            let emoji_url = format!(
+                "https://bignutty.gitlab.io/emojipedia-data/data/{}.json",
+                codepoint
+            );
+            let dl = reqwest::get(emoji_url)
+                .await
+                .ok()?
+                .json::<TwemojiLookup>()
+                .await
+                .ok()?;
 
             return Some(dl.vendor_images.twitter);
         }

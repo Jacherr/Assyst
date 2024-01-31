@@ -1,5 +1,8 @@
 use core::fmt;
-use std::{time::{Duration, Instant}, sync::atomic::{AtomicUsize, Ordering}};
+use std::{
+    sync::atomic::{AtomicUsize, Ordering},
+    time::{Duration, Instant},
+};
 
 use assyst_common::config::Config;
 use bytes::Bytes;
@@ -109,7 +112,7 @@ pub async fn download_content(
         "media.discordapp.net",
         "notsobot.com",
         "twimg.com",
-        "cdninstagram.com"
+        "cdninstagram.com",
     ];
 
     let config = &assyst.config;

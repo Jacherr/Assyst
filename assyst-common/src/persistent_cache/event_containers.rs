@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
-use serenity::all::{GuildCreateEvent, GuildDeleteEvent, ReadyEvent, Guild, UnavailableGuild};
-use twilight_model::{
-    gateway::payload::incoming::{GuildCreate, GuildDelete, Ready},
-};
+use serenity::all::{Guild, GuildCreateEvent, GuildDeleteEvent, ReadyEvent, UnavailableGuild};
+use twilight_model::gateway::payload::incoming::{GuildCreate, GuildDelete, Ready};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ReadyGuild {

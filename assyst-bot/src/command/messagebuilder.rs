@@ -19,7 +19,7 @@ impl MessageBuilder {
             attachment: None,
             content: None,
             embed: None,
-            should_reply: true
+            should_reply: true,
         }
     }
 

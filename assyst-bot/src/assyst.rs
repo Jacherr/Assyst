@@ -1,6 +1,9 @@
 use crate::{
     badtranslator::BadTranslator,
-    caching::{local_caching::{Ratelimits, Replies, Reply}, persistent_caching::init_guild_caching},
+    caching::{
+        local_caching::{Ratelimits, Replies, Reply},
+        persistent_caching::init_guild_caching,
+    },
     command::{
         command::{
             Argument, Command, CommandAvailability, CommandParseError, CommandParseErrorType,
@@ -20,7 +23,8 @@ use anyhow::bail;
 use assyst_common::{
     config::Config,
     consts::BOT_ID,
-    persistent_cache::{CacheRequestData, CacheResponseInner}, util::GuildId,
+    persistent_cache::{CacheRequestData, CacheResponseInner},
+    util::GuildId,
 };
 use assyst_database::Database;
 use async_recursion::async_recursion;
@@ -35,7 +39,7 @@ use std::{
         atomic::{AtomicU64, Ordering},
         Arc,
     },
-    time::{Instant, Duration},
+    time::{Duration, Instant},
 };
 use tokio::sync::{mpsc::UnboundedSender, oneshot::Sender, Mutex, RwLock};
 use twilight_http::Client as HttpClient;
@@ -138,7 +142,12 @@ impl Assyst {
     /// of this project. Use that to configure the behaviour of the bot.
     pub async fn new() -> Self {
         let config = Arc::new(Config::new());
-        let http = Arc::new(HttpClient::builder().token(config.auth.discord.to_string()).timeout(Duration::from_secs(30)).build());
+        let http = Arc::new(
+            HttpClient::builder()
+                .token(config.auth.discord.to_string())
+                .timeout(Duration::from_secs(30))
+                .build(),
+        );
         let reqwest_client = ReqwestClient::new();
         let database = Database::new(2, config.database.to_url())
             .await
@@ -150,7 +159,8 @@ impl Assyst {
             tokio::sync::mpsc::unbounded_channel::<(Sender<JobResult>, FifoSend, usize)>();
 
         let (cache_tx, cache_rx) =
-            tokio::sync::mpsc::unbounded_channel::<(Sender<CacheResponseInner>, CacheRequestData)>();
+            tokio::sync::mpsc::unbounded_channel::<(Sender<CacheResponseInner>, CacheRequestData)>(
+            );
 
         let mut assyst = Assyst {
             blacklist: RwLock::new(HashSet::new()),
@@ -203,7 +213,11 @@ impl Assyst {
 
         // sync with db if it was found
         if is_removed {
-            Ok(self.database.remove_blacklist(user_id).await.map(|_| true)?)
+            Ok(self
+                .database
+                .remove_blacklist(user_id)
+                .await
+                .map(|_| true)?)
         } else {
             Ok(false)
         }
@@ -383,12 +397,7 @@ impl Assyst {
         };
 
         if command_instance.nsfw {
-            let channel = self
-                .http
-                .channel(message.channel_id)
-                .await?
-                .model()
-                .await?;
+            let channel = self.http.channel(message.channel_id).await?.model().await?;
 
             if let Some(_) = channel.guild_id {
                 if !channel.nsfw.unwrap_or(false) {
@@ -451,7 +460,11 @@ impl Assyst {
 
         self.commands_executed.fetch_add(1, Ordering::Relaxed);
 
-        let message = format!("{} in guild {}", command_instance.name, message.guild_id.unwrap_or(GuildId::new(1)));
+        let message = format!(
+            "{} in guild {}",
+            command_instance.name,
+            message.guild_id.unwrap_or(GuildId::new(1))
+        );
         log_command_use(self.as_ref(), &message).await;
 
         Ok(())

@@ -1,11 +1,7 @@
-
 use crate::util::get_buffer_filetype;
 use crate::{
     command::{
-        command::{
-            Argument, Command, CommandBuilder, 
-            ParsedArgument, ParsedFlags,
-        },
+        command::{Argument, Command, CommandBuilder, ParsedArgument, ParsedFlags},
         context::Context,
         registry::CommandResult,
     },
@@ -129,7 +125,7 @@ lazy_static! {
         .cooldown(Duration::from_secs(4))
         .category(CATEGORY_NAME)
         .build();
-    /* 
+    /*
     pub static ref QUOTE_COMMAND: Command = CommandBuilder::new("quote")
         .arg(Argument::StringRemaining)
         .flag("white", Some(FlagKind::Text))
@@ -156,7 +152,7 @@ async fn run_makesweet_noarg_command(
     Ok(())
 }
 
-/* 
+/*
 pub async fn run_quote_command(
     context: Arc<Context>,
     args: Vec<ParsedArgument>,

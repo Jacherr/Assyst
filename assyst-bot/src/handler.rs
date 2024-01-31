@@ -6,7 +6,7 @@ use crate::{
     logger, Assyst,
 };
 use anyhow::Context;
-use serenity::all::{Event, ShardInfo, ShardId};
+use serenity::all::{Event, ShardId, ShardInfo};
 use std::sync::Arc;
 use twilight_model::gateway::event::{DispatchEvent, GatewayEvent};
 
@@ -21,7 +21,7 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) -> anyhow::Result<(
         Event::MessageUpdate(message) => {
             message_update::handle(assyst, Box::new(message)).await;
         }
-        Event::GuildCreate(guild) => { 
+        Event::GuildCreate(guild) => {
             let id = guild.guild.id;
             let name = guild.guild.name.clone();
             let member_count = guild.guild.member_count;
@@ -50,7 +50,10 @@ pub async fn handle_event(assyst: Arc<Assyst>, event: Event) -> anyhow::Result<(
             }
         }
         Event::Ready(r) => {
-            let shard = r.ready.shard.unwrap_or(ShardInfo { id: ShardId(0), total: 1});
+            let shard = r.ready.shard.unwrap_or(ShardInfo {
+                id: ShardId(0),
+                total: 1,
+            });
             let guilds = r.ready.guilds.len();
             let new_guilds = get_new_guilds_from_ready(assyst.clone(), r)
                 .await

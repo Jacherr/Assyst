@@ -3,7 +3,10 @@ pub mod guild_cache;
 
 use serde::{Deserialize, Serialize};
 
-use self::{event_containers::{ReadySend, GuildDeleteSend, GuildCreateSend}, guild_cache::TopGuilds};
+use self::{
+    event_containers::{GuildCreateSend, GuildDeleteSend, ReadySend},
+    guild_cache::TopGuilds,
+};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum CacheRequestData {

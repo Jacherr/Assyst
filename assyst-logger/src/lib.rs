@@ -1,10 +1,10 @@
 use std::error::Error;
 
-use assyst_common::{config::Config, consts::MESSAGE_CHARACTER_LIMIT, ansi::Ansi};
+use assyst_common::{ansi::Ansi, config::Config, consts::MESSAGE_CHARACTER_LIMIT};
+use assyst_database::Database;
 use twilight_http::Client as HttpClient;
 use twilight_model::id::{marker::WebhookMarker, Id};
 use twilight_util::builder::embed::EmbedBuilder;
-use assyst_database::Database;
 
 const CATEGORY_LOGS: i32 = 0;
 const CATEGORY_COMMAND_USE: i32 = 1;
@@ -60,7 +60,11 @@ pub async fn guild_remove(config: &Config, database: &Database, message: &str) {
         return;
     };
 
-    let message = format!("{} {}", "Removed from guild:".fg_bright_red(), message.fg_bright_red());
+    let message = format!(
+        "{} {}",
+        "Removed from guild:".fg_bright_red(),
+        message.fg_bright_red()
+    );
 
     let _ = database.log(&message, CATEGORY_GUILD_JOIN_LEAVE).await;
 }
@@ -71,7 +75,7 @@ pub async fn command_use(config: &Config, database: &Database, message: &str) {
     };
 
     let message = format!("Command used: {}", message);
-   
+
     let _ = database.log(&message, CATEGORY_COMMAND_USE).await;
 }
 
