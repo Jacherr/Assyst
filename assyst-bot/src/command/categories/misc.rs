@@ -39,7 +39,6 @@ use bytes::Bytes;
 use lazy_static::lazy_static;
 use shared::query_params::ResizeMethod;
 use shared::response_data::Stats;
-use twilight_model::id::Id;
 use std::fmt::Write;
 use std::{
     collections::HashMap,
@@ -47,6 +46,7 @@ use std::{
     sync::{atomic::Ordering, Arc},
     time::{Duration, Instant},
 };
+use twilight_model::id::Id;
 use url::Url;
 
 const USEFUL_LINKS_TEXT: &str = "**Invite the bot: <https://jacher.io/assyst>**\nSupport server: <https://discord.gg/brmtnpxbtg>\nVote for Assyst for some sweet perks! <https://vote.jacher.io/topgg> & <https://vote.jacher.io/dbl>";
@@ -171,7 +171,7 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .build();
     pub static ref BLACKLIST_COMMAND: Command = CommandBuilder::new("blacklist")
-        .availability(CommandAvailability::GuildOwner)
+        .availability(CommandAvailability::Private)
         .arg(Argument::Choice(&["add", "list", "remove"]))
         .arg(Argument::Optional(Box::new(Argument::String)))
         .arg(Argument::Optional(Box::new(Argument::Choice(&["channel", "role", "user"]))))
@@ -184,7 +184,7 @@ lazy_static! {
         .category(CATEGORY_NAME)
         .build();
     pub static ref WHITELIST_COMMAND: Command = CommandBuilder::new("whitelist")
-        .availability(CommandAvailability::GuildOwner)
+        .availability(CommandAvailability::Private)
         .arg(Argument::Choice(&["add", "list", "remove"]))
         .arg(Argument::Optional(Box::new(Argument::String)))
         .arg(Argument::Optional(Box::new(Argument::Choice(&["channel", "role", "user"]))))
@@ -764,15 +764,17 @@ pub async fn run_top_commands_command(
         let top_commands_formatted_raw: Vec<(&str, String)> = top_commands
             .iter()
             .take(20)
-            .map(|t|  { 
-                let cmd_diff = diff_lock.iter().find(|n| n.0 == t.command_name)
+            .map(|t| {
+                let cmd_diff = diff_lock
+                    .iter()
+                    .find(|n| n.0 == t.command_name)
                     .cloned()
                     .unwrap_or(("Unknown".to_owned(), vec![(0, Instant::now())]))
                     .1;
                 let min = cmd_diff.first().unwrap();
                 let max = cmd_diff.last().unwrap();
                 let diff = max.0 - min.0;
-                (&t.command_name[..], format!("{} ({}/hr)", t.uses, diff)) 
+                (&t.command_name[..], format!("{} ({}/hr)", t.uses, diff))
             })
             .collect::<Vec<_>>();
 
@@ -800,7 +802,9 @@ pub async fn run_top_commands_command(
                 .get_command_usage_stats_for(cmd_name)
                 .await?;
 
-            let cmd_diff = diff_lock.iter().find(|n| n.0 == cmd_name)
+            let cmd_diff = diff_lock
+                .iter()
+                .find(|n| n.0 == cmd_name)
                 .cloned()
                 .unwrap_or(("Unknown".to_owned(), vec![(0, Instant::now())]))
                 .1;
@@ -1257,67 +1261,113 @@ pub async fn run_blacklist_command(
     let subcommand = args[0].as_choice();
     match subcommand {
         "list" => {
-           let guild_command_restrictions = context.assyst.database.list_guild_blacklists(guild_id).await?;
-           if guild_command_restrictions.len() == 0 {
-                context.reply_with_text("No blacklists in the current guild").await?;
-                return Ok(())
-           }
-           let mut formatted: Vec<String> = vec![];
-           for i in guild_command_restrictions {
-                formatted.push(format!("Command {}: Deny {} with ID {}", i.command_name, i.r#type, i.id));
-           }
-           let out = formatted.join("\n");
-           context.reply_with_text(format!("{} You can filter by type by doing `list [user|role|channel] <id>` or `list command [command name]`", codeblock(&out, "js"))).await?;
-           return Ok(());
-        },
+            let guild_command_restrictions = context
+                .assyst
+                .database
+                .list_guild_blacklists(guild_id)
+                .await?;
+            if guild_command_restrictions.len() == 0 {
+                context
+                    .reply_with_text("No blacklists in the current guild")
+                    .await?;
+                return Ok(());
+            }
+            let mut formatted: Vec<String> = vec![];
+            for i in guild_command_restrictions {
+                formatted.push(format!(
+                    "Command {}: Deny {} with ID {}",
+                    i.command_name, i.r#type, i.id
+                ));
+            }
+            let out = formatted.join("\n");
+            context.reply_with_text(format!("{} You can filter by type by doing `list [user|role|channel] <id>` or `list command [command name]`", codeblock(&out, "js"))).await?;
+            return Ok(());
+        }
         "add" => {
             let command = args[1].maybe_text().context("No command provided")?;
-            let r#type = args[2].maybe_choice().context("No ID type (role,channel,user) provided")?;
+            let r#type = args[2]
+                .maybe_choice()
+                .context("No ID type (role,channel,user) provided")?;
             let id = args[3].maybe_text().context("No ID provided")?;
             let id = id.parse::<u64>()?;
-            
+
             // validate that the provided id exists for the provided type
             match r#type {
                 "channel" => {
-                    let channels = context.assyst.http.guild_channels(Id::new(guild_id)).await?.model().await?;
-                    if !channels.iter().map(|x| x.id.get()).collect::<Vec<u64>>().contains(&id) {
+                    let channels = context
+                        .assyst
+                        .http
+                        .guild_channels(Id::new(guild_id))
+                        .await?
+                        .model()
+                        .await?;
+                    if !channels
+                        .iter()
+                        .map(|x| x.id.get())
+                        .collect::<Vec<u64>>()
+                        .contains(&id)
+                    {
                         bail!("No channel exists with this ID in this guild");
                     }
-                },
+                }
                 "role" => {
-                    let roles = context.assyst.http.roles(Id::new(guild_id)).await?.model().await?;
-                    if !roles.iter().map(|x| x.id.get()).collect::<Vec<u64>>().contains(&id) {
+                    let roles = context
+                        .assyst
+                        .http
+                        .roles(Id::new(guild_id))
+                        .await?
+                        .model()
+                        .await?;
+                    if !roles
+                        .iter()
+                        .map(|x| x.id.get())
+                        .collect::<Vec<u64>>()
+                        .contains(&id)
+                    {
                         bail!("No role exists with this ID in this guild");
                     }
-                },
+                }
                 "user" => {
-                    let user = context.assyst.http.guild_member(Id::new(guild_id), Id::new(id)).await;
+                    let user = context
+                        .assyst
+                        .http
+                        .guild_member(Id::new(guild_id), Id::new(id))
+                        .await;
                     if user.is_err() {
                         bail!("No user exists with this ID in this guild");
                     }
-                },
-                _ => bail!("r#type not role, user, or channel")
+                }
+                _ => bail!("r#type not role, user, or channel"),
             }
 
             // check if this exact blacklist already exists
-            let guild_command_restrictions = context.assyst.database.list_guild_blacklists(guild_id).await?;
+            let guild_command_restrictions = context
+                .assyst
+                .database
+                .list_guild_blacklists(guild_id)
+                .await?;
             for i in guild_command_restrictions {
-                if i.allow_or_block == "block".to_owned() 
+                if i.allow_or_block == "block".to_owned()
                     && i.command_name == command
                     && i.id as u64 == id
-                    && i.r#type == r#type {
-                        bail!("This blacklist already exists in this guild")
-                    }
+                    && i.r#type == r#type
+                {
+                    bail!("This blacklist already exists in this guild")
+                }
             }
 
-            context.assyst.database.add_guild_specific_blacklist(guild_id, command, r#type, id).await?;
-            context.reply_with_text("Successfully added blacklist").await?;
+            context
+                .assyst
+                .database
+                .add_guild_specific_blacklist(guild_id, command, r#type, id)
+                .await?;
+            context
+                .reply_with_text("Successfully added blacklist")
+                .await?;
             return Ok(());
-        },
-        "remove" => {
-
-        },
-        _ => bail!("subcommand not add, remove, or list")
+        }
+        "remove" => {}
+        _ => bail!("subcommand not add, remove, or list"),
     }
 
     context
@@ -1441,8 +1491,9 @@ pub async fn run_download_command(
         .map(|x| x.as_ref().map(|y| y.as_text().to_string()))
         .flatten();
 
-    let downloaded =
-        Bytes::from(download_video_from_cobalt(context.assyst.clone(), url, audio_flag, quality_flag).await?);
+    let downloaded = Bytes::from(
+        download_video_from_cobalt(context.assyst.clone(), url, audio_flag, quality_flag).await?,
+    );
 
     let fmt = if !audio_flag { "mp4" } else { "mp3" };
     context.reply_with_image(fmt, downloaded).await?;
