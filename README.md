@@ -1,3 +1,5 @@
+# This repository is the legacy version of Assyst - please go [here](https://github.com/jacherr/assyst2) for the currently developed version.
+
 # Assyst - The dev-facilitating bot
 Assyst's primary purpose is to provide ease-of-life features to developers.
 It has a range of utilitarian commands, ranging from code execution to website screenshotting.
