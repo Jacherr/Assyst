@@ -114,7 +114,8 @@ pub async fn download_content(
         "twimg.com",
         "cdninstagram.com",
         "cobalt.tools",
-        "api.cobalt.tools"
+        "api.cobalt.tools",
+        "imput.net"
     ];
 
     let config = &assyst.config;
