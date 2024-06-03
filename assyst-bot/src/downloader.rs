@@ -113,6 +113,8 @@ pub async fn download_content(
         "notsobot.com",
         "twimg.com",
         "cdninstagram.com",
+        "cobalt.tools",
+        "api.cobalt.tools"
     ];
 
     let config = &assyst.config;
