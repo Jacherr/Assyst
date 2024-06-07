@@ -554,7 +554,7 @@ pub async fn get_web_download_api_urls(assyst: Arc<Assyst>) -> anyhow::Result<Ve
     let test_urls = json
         .iter()
         .map(|entry: &InstancesQueryResult| {
-            if entry.protocol == "https" && entry.score >= 99.9 {
+            if entry.protocol == "https" && entry.score >= 90.0 {
                 format!("https://{}/api/json", entry.api)
             } else if entry.api == "api.cobalt.tools" {
                 format!("https://{}/api/json", entry.api)
