@@ -8,6 +8,8 @@ use crate::{assyst::Assyst, rest::patreon::{get_patrons, Patron}};
 
 const FETCH_INTERVAL: i64 = 60000 * 60; // 1 hour
 
+const T2_SKU_ID: u64 = 1248746470115381410;
+
 pub fn update_patrons(assyst: Arc<Assyst>) {
     tokio::spawn(async move {
         loop {
@@ -22,10 +24,14 @@ pub fn update_patrons(assyst: Arc<Assyst>) {
             .collect::<Vec<_>>()
             .join("\n");*/
 
+            
+
             let serenity_http = Http::new(&assyst.config.auth.discord);
+            serenity_http.set_application_id(assyst.config.bot_id.into());
+            
             let entitlements = serenity_http.get_entitlements(None, None, None, None, None, None, None).await.unwrap();
             for entitlement in entitlements {
-                if entitlement.sku_id == 1248746470115381410 /*Assyst Premium T2 */ {
+                if entitlement.sku_id == T2_SKU_ID /*Assyst Premium T2 */ {
                     patrons.push(Patron {
                         user_id: Id::<UserMarker>::new(entitlement.user_id.map(|x| x.get()).unwrap_or(0)),
                         tier: 2,
@@ -33,7 +39,6 @@ pub fn update_patrons(assyst: Arc<Assyst>) {
                     })
                 }
             }
-
 
             *assyst.patrons.write().await = patrons;
 
