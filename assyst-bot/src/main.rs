@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 #![feature(let_chains)]
+#![feature(lazy_cell)]
 
 // a
 
@@ -26,6 +27,7 @@ use assyst_webserver::run as webserver_run;
 use bincode::deserialize;
 use caching::persistent_caching::get_guild_count;
 use handler::handle_event;
+use rest::get_web_download_api_urls;
 use serenity::all::Event;
 use std::sync::Arc;
 use tokio::{
@@ -83,6 +85,7 @@ async fn main() -> anyhow::Result<()> {
     };
 
     assyst.initialize_blacklist().await?;
+    *assyst.web_download_urls.lock().await = get_web_download_api_urls(assyst.clone()).await?;
 
     let stream = UnixStream::connect(EVENT_PIPE).await?;
     let mut reader = BufReader::new(stream);

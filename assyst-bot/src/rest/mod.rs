@@ -1,8 +1,5 @@
 use std::{
-    collections::hash_map::DefaultHasher,
-    fmt::Display,
-    hash::{Hash, Hasher},
-    sync::Arc,
+    cell::LazyCell, collections::hash_map::DefaultHasher, fmt::Display, hash::{Hash, Hasher}, sync::Arc, time::Duration
 };
 
 use anyhow::bail;
@@ -14,20 +11,22 @@ use assyst_common::{
     util::UserId,
 };
 use bytes::Bytes;
+use futures::future::join_all;
+use rand::thread_rng;
 use reqwest::{Client, ClientBuilder, Error, StatusCode};
 use serde::Deserialize;
-use serde_json::json;
+use serde_json::{from_str, json};
 use shared::{
     fifo::{FifoData, FifoSend},
     query_params::NoneQuery,
 };
-use tokio::time::Instant;
+use tokio::time::{timeout, Instant};
 
 use std::error::Error as StdError;
 
 use crate::{
     assyst::Assyst,
-    downloader::{self, download_content},
+    downloader::{self, download_content, download_content_trusted},
     rest::wsi::run_wsi_job,
     util,
 };
@@ -499,6 +498,7 @@ pub async fn healthcheck(assyst: Arc<Assyst>) -> Vec<HealthcheckResult> {
         "https://www.youtube.com/watch?v=tPEE9ZwTmy0",
         true,
         None,
+        None
     )
     .await;
     results.push(HealthcheckResult::new_from_result(
@@ -510,50 +510,189 @@ pub async fn healthcheck(assyst: Arc<Assyst>) -> Vec<HealthcheckResult> {
     results
 }
 
+pub const INSTANCES_ROUTE: &str = "https://instances.hyper.lol/instances.json";
+
+pub const TEST_URL: &str = "https://www.youtube.com/watch?v=sbvp3kuU2ak";
+pub const TEST_URL_TIMEOUT: LazyCell<Duration> = LazyCell::new(|| Duration::from_secs(10));
+
+#[derive(Deserialize)]
+pub struct InstancesQueryResult {
+    pub score: f32,
+    pub api: String,
+    pub protocol: String,
+}
+
+/// Tests a web download route to see if it meets requirements.
+/// Requirement is that the entire request finishes in less than 15 seconds on this URL, with a
+/// successful download.
+/// Returns true if the route is valid, false otherwise.
+async fn test_route(assyst: Arc<Assyst>, url: &str) -> bool {
+    let start = Instant::now();
+
+    let res = download_video_from_cobalt(assyst.clone(), TEST_URL, false, Some("144".to_owned()), Some(url.to_owned())).await;
+    let success = res.is_ok();
+
+    let elapsed = start.elapsed();
+
+    success && (elapsed < *TEST_URL_TIMEOUT)
+}
+
+/// Always returns the main API instance (api.cobalt.tools) at the minimum. \
+/// Other URLs must be a score of 100 (i.e., all sites supported) and must have a \
+/// domain over https.
+pub async fn get_web_download_api_urls(assyst: Arc<Assyst>) -> anyhow::Result<Vec<String>> {
+    let res = assyst
+        .reqwest_client
+        .get(INSTANCES_ROUTE)
+        .header("accept", "application/json")
+        .header("User-Agent", "Assyst Discord Bot (https://github.com/jacherr/assyst2)")
+        .send()
+        .await?;
+
+    let json = res.json::<Vec<InstancesQueryResult>>().await?;
+
+    let test_urls = json
+        .iter()
+        .map(|entry: &InstancesQueryResult| {
+            if entry.protocol == "https" && entry.score >= 99.9 {
+                format!("https://{}/api/json", entry.api)
+            } else if entry.api == "api.cobalt.tools" {
+                format!("https://{}/api/json", entry.api)
+            } else {
+                String::new()
+            }
+        })
+        .filter(|x| !x.is_empty())
+        .map(|url| {
+            let a = assyst.clone();
+            timeout(
+                *TEST_URL_TIMEOUT,
+                tokio::spawn(async move {
+                    if url != "https://api.cobalt.tools/api/json" {
+                        let res = test_route(a, &url).await;
+                        (url, res)
+                    } else {
+                        (url, true)
+                    }
+                }),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    let valid_urls = join_all(test_urls)
+        .await
+        .into_iter()
+        .filter_map(|res| res.ok())
+        .map(|res| res.unwrap())
+        .filter(|res| res.1)
+        .map(|res| res.0)
+        .collect::<Vec<_>>();
+
+    Ok(valid_urls)
+}
+
 pub async fn download_video_from_cobalt(
     assyst: Arc<Assyst>,
     url: &str,
     audio_only: bool,
     quality: Option<String>,
+    api_url_override: Option<String>
 ) -> Result<Vec<u8>, anyhow::Error> {
+    use rand::prelude::SliceRandom;
+    
     let encoded_url = urlencoding::encode(url).to_string();
-    let req_result = assyst
-        .reqwest_client
-        .post("https://co.wuk.sh/api/json")
-        .header("accept", "application/json")
-        .json(&json!({
-            "url": encoded_url,
-            "isAudioOnly": audio_only,
-            "aFormat": "mp3",
-            "isNoTTWatermark": true,
-            "vQuality": quality.unwrap_or("720".to_owned())
-        }))
-        .send()
-        .await?;
 
-    let download_url = match req_result.status() {
-        StatusCode::OK => req_result.json::<CobaltResult>().await?.url,
-        _ => {
-            let mut e = req_result.json::<CobaltError>().await?.text;
-            if e.contains("i couldn't process your request :(") {
-                e = "The web downloader could not process your request. Please try again later."
-                    .to_owned()
-            } else if e.contains("i couldn't connect to the service api.") {
-                e = "The web downloader could not connect to the service API. Please try again later.".to_owned()
-            } else if e.contains("couldn't get this youtube video because it requires sign in") {
-                e = "YouTube has blocked video downloading. Please try again later.".to_owned()
-            }
-
-            bail!("Failed to download media: {e}")
-        }
+    let urls = if let Some(api_url) = api_url_override  {
+        vec![api_url]
+    } else if assyst.web_download_urls.lock().await.len() == 0 {
+        vec!["https://api.cobalt.tools/api/json".to_owned()]
+    } else {
+        let mut urls = assyst.web_download_urls.lock().await.clone();
+        urls.shuffle(&mut thread_rng());
+        urls
     };
 
-    let downloaded_content = download_content(
-        assyst.as_ref(),
-        &download_url,
-        ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES,
-    )
-    .await?;
+    let mut req_result_url: Option<String> = None;
+    let mut err: String = String::new();
 
-    Ok(downloaded_content)
+    for route in urls {
+        let res = assyst
+            .reqwest_client
+            .post(route)
+            .header("accept", "application/json")
+            .header("User-Agent", "Assyst Discord Bot (https://github.com/jacherr/assyst2)")
+            .json(&json!({
+                "url": encoded_url,
+                "isAudioOnly": audio_only,
+                "aFormat": "mp3",
+                "isNoTTWatermark": true,
+                "vQuality": quality.clone().unwrap_or("720".to_owned())
+            }))
+            .timeout(Duration::from_secs(60))
+            .send()
+            .await;
+
+        match res {
+            Ok(r) => {
+                if r.status() == StatusCode::OK {
+                    let try_json = r.json::<CobaltResult>().await;
+                    match try_json {
+                        Ok(j) => {
+                            req_result_url = Some(j.url.to_string());
+                            break;
+                        },
+                        Err(e) => err = format!("Failed to deserialize download url: {}", e.to_string()),
+                    }
+                } else {
+                    let try_err = r.text().await;
+                    match try_err {
+                        Ok(e) => {
+                            let try_json = from_str::<CobaltError>(&e);
+                            match try_json {
+                                Ok(j) => {
+                                    // some errors we can break on because they probably affect all instances (i.e.,
+                                    // could not find info about link)
+                                    let mut breakable = false;
+
+                                    let mut e = j.text;
+                                    if e.contains("i couldn't process your request :(") {
+                                        e = "The web downloader could not process your request. Please try again later."
+                                            .to_owned()
+                                    } else if e.contains("i couldn't connect to the service api.") {
+                                        e = "The web downloader could not connect to the service API. Please try again later.".to_owned()
+                                    } else if e.contains("couldn't get this youtube video because it requires sign in")
+                                    {
+                                        e = "YouTube has blocked video downloading. Please try again later.".to_owned()
+                                    } else if e.contains("i couldn't find anything about this link") {
+                                        breakable = true;
+                                    }
+
+                                    err = format!("Download request failed: {}", e);
+                                    if breakable {
+                                        break;
+                                    }
+                                },
+                                Err(d_e) => {
+                                    err = format!("Download request failed: {} (raw error: {})", d_e.to_string(), e)
+                                },
+                            }
+                        },
+                        Err(e) => err = format!("Failed to extract download request error: {}", e.to_string()),
+                    }
+                }
+            },
+            Err(e) => {
+                err = format!("Download request failed: {}", e.to_string());
+            },
+        }
+    }
+
+    if let Some(r) = req_result_url {
+        let media = download_content_trusted(&assyst, &r, ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES).await?;
+        return Ok(media);
+    } else if !err.is_empty() {
+        bail!("{err}");
+    } else {
+        bail!("Failed to download media: an unknown error occurred");
+    }
 }

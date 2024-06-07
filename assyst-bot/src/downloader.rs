@@ -140,6 +140,19 @@ pub async fn download_content(
     read_stream(stream, limit).await
 }
 
+/// Attempts to download a resource from a URL. No proxying.
+pub async fn download_content_trusted(
+    assyst: &Assyst,
+    url: &str,
+    limit: usize,
+) -> Result<Vec<u8>, DownloadError> {
+    let client = &assyst.reqwest_client;
+
+    // Getting here means that the proxy failed or the bot is configured to not use one. Try without proxy
+    let stream = download_no_proxy(client, url).await?;
+    read_stream(stream, limit).await
+}
+
 /// Checks whether the proxy is available and returns the time it took to ping
 pub async fn healthcheck(assyst: &Assyst) -> ServiceStatus {
     let now = Instant::now();

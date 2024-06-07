@@ -128,6 +128,7 @@ pub struct Assyst {
     pub commands_executed: AtomicU64,
     pub healthcheck_result: Mutex<(Instant, Vec<HealthcheckResult>)>,
     pub command_usage_diff: Mutex<Vec<(String, Vec<(usize, Instant)>)>>,
+    pub web_download_urls: Mutex<Vec<String>>,
     cache_tx: UnboundedSender<(Sender<CacheResponseInner>, CacheRequestData)>,
     wsi_tx: UnboundedSender<(Sender<JobResult>, FifoSend, usize)>,
 }
@@ -180,6 +181,7 @@ impl Assyst {
             command_usage_diff: Mutex::new(vec![]),
             cache_tx,
             wsi_tx,
+            web_download_urls: Mutex::new(vec![]),
         };
         if assyst.config.disable_bad_translator {
             assyst.badtranslator.disable().await

@@ -1492,7 +1492,7 @@ pub async fn run_download_command(
         .flatten();
 
     let downloaded = Bytes::from(
-        download_video_from_cobalt(context.assyst.clone(), url, audio_flag, quality_flag).await?,
+        download_video_from_cobalt(context.assyst.clone(), url, audio_flag, quality_flag, None).await?,
     );
 
     let fmt = if !audio_flag { "mp4" } else { "mp3" };
