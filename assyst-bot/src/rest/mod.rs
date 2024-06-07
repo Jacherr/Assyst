@@ -534,10 +534,17 @@ pub async fn download_video_from_cobalt(
     let download_url = match req_result.status() {
         StatusCode::OK => req_result.json::<CobaltResult>().await?.url,
         _ => {
-            bail!(
-                "Failed to download media: {}",
-                req_result.json::<CobaltError>().await?.text
-            )
+            let mut e = req_result.json::<CobaltError>().await?.text;
+            if e.contains("i couldn't process your request :(") {
+                e = "The web downloader could not process your request. Please try again later."
+                    .to_owned()
+            } else if e.contains("i couldn't connect to the service api.") {
+                e = "The web downloader could not connect to the service API. Please try again later.".to_owned()
+            } else if e.contains("couldn't get this youtube video because it requires sign in") {
+                e = "YouTube has blocked video downloading. Please try again later.".to_owned()
+            }
+
+            bail!("Failed to download media: {e}")
         }
     };
 
