@@ -26,7 +26,7 @@ use std::error::Error as StdError;
 
 use crate::{
     assyst::Assyst,
-    downloader::{self, download_content, download_content_trusted},
+    downloader::{self, download_content_trusted},
     rest::wsi::run_wsi_job,
     util,
 };
@@ -615,6 +615,8 @@ pub async fn download_video_from_cobalt(
     let mut req_result_url: Option<String> = None;
     let mut err: String = String::new();
 
+    let mut result = None;
+
     for route in urls {
         let res = assyst
             .reqwest_client
@@ -639,9 +641,8 @@ pub async fn download_video_from_cobalt(
                     match try_json {
                         Ok(j) => {
                             req_result_url = Some(j.url.to_string());
-                            break;
                         },
-                        Err(e) => err = format!("Failed to deserialize download url: {}", e.to_string()),
+                        Err(e) => err = format!("Failed to deserialize download url: {}", e),
                     }
                 } else {
                     let try_err = r.text().await;
@@ -650,10 +651,6 @@ pub async fn download_video_from_cobalt(
                             let try_json = from_str::<CobaltError>(&e);
                             match try_json {
                                 Ok(j) => {
-                                    // some errors we can break on because they probably affect all instances (i.e.,
-                                    // could not find info about link)
-                                    let mut breakable = false;
-
                                     let mut e = j.text;
                                     if e.contains("i couldn't process your request :(") {
                                         e = "The web downloader could not process your request. Please try again later."
@@ -663,36 +660,33 @@ pub async fn download_video_from_cobalt(
                                     } else if e.contains("couldn't get this youtube video because it requires sign in")
                                     {
                                         e = "YouTube has blocked video downloading. Please try again later.".to_owned()
-                                    } else if e.contains("i couldn't find anything about this link") {
-                                        breakable = true;
                                     }
 
                                     err = format!("Download request failed: {}", e);
-                                    if breakable {
-                                        break;
-                                    }
                                 },
-                                Err(d_e) => {
-                                    err = format!("Download request failed: {} (raw error: {})", d_e.to_string(), e)
-                                },
+                                Err(d_e) => err = format!("Download request failed: {} (raw error: {})", d_e, e),
                             }
                         },
-                        Err(e) => err = format!("Failed to extract download request error: {}", e.to_string()),
+                        Err(e) => err = format!("Failed to extract download request error: {}", e),
                     }
                 }
             },
             Err(e) => {
-                err = format!("Download request failed: {}", e.to_string());
+                err = format!("Download request failed: {}", e);
             },
+        };
+
+        if let Some(r) = req_result_url {
+            let media = download_content_trusted(&assyst, &r, ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES).await?;
+            if let Ok(s) = String::from_utf8(media.clone())
+                && s.starts_with("<!DOCTYPE")
+            {
+                err = "Failed to download media: an unknown error occurred".to_owned();
+            }
+            result = Some(media);
+            break;
         }
     }
 
-    if let Some(r) = req_result_url {
-        let media = download_content_trusted(&assyst, &r, ABSOLUTE_INPUT_FILE_SIZE_LIMIT_BYTES).await?;
-        return Ok(media);
-    } else if !err.is_empty() {
-        bail!("{err}");
-    } else {
-        bail!("Failed to download media: an unknown error occurred");
-    }
+    if let Some(r) = result { Ok(r) } else { bail!(err) }
 }
